@@ -4,7 +4,7 @@ export const ZONES: Record<ZoneId, Zone> = {
   bj: {
     id: "bj",
     label: "Bénin & Afrique de l'Ouest",
-    shortLabel: "BJ Bénin",
+    shortLabel: "Afrique (FCFA)",
     currency: "FCFA",
     freeShippingThreshold: 20000,
     regionDescription:
