@@ -9,18 +9,15 @@ export function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-brand-green/10 bg-ivory/95 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4 md:h-20">
-        <Link href="/" className="flex shrink-0 items-center gap-2">
+        <Link href="/" className="flex shrink-0 items-center">
           <Image
-            src="/logo/medallion.png"
-            alt="AfricAkani — L'Afrique, c'est bon."
-            width={44}
-            height={44}
+            src="/logo/wordmark.webp"
+            alt="AfricAkani — Boutique · Produits naturels"
+            width={2000}
+            height={600}
             priority
-            className="h-10 w-10 rounded-full md:h-11 md:w-11"
+            className="h-9 w-auto md:h-12"
           />
-          <span className="font-brand text-xl font-bold text-brand-green md:text-2xl">
-            Afric<span className="text-brand-gold">Akani</span>
-          </span>
         </Link>
 
         <nav className="hidden items-center gap-8 text-sm font-semibold text-brand-green-dark md:flex">
