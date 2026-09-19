@@ -1,26 +1,41 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --color-green: #0e5a44;
+  --color-green-dark: #0a4534;
+  --color-gold: #c9962c;
+  --color-gold-light: #e0b65a;
+  --color-ivory: #f4f1e9;
+  --color-ink: #1c1c1a;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-brand-green: var(--color-green);
+  --color-brand-green-dark: var(--color-green-dark);
+  --color-brand-gold: var(--color-gold);
+  --color-brand-gold-light: var(--color-gold-light);
+  --color-ivory: var(--color-ivory);
+  --color-ink: var(--color-ink);
+  --font-brand: var(--font-brand);
+  --font-sans: var(--font-ui);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-ivory);
+  color: var(--color-ink);
+}
+
+.font-brand {
+  font-family: var(--font-brand);
+}
+
+@keyframes marquee-fade {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
