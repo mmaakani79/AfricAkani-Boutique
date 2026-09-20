@@ -13,7 +13,7 @@ export function ZoneSwitcher() {
     <div
       role="group"
       aria-label="Zone de livraison et devise"
-      className="flex items-center rounded-full border border-brand-green/20 bg-white p-0.5 text-xs font-semibold"
+      className="flex items-center whitespace-nowrap rounded-full border border-brand-green/20 bg-white p-0.5 text-xs font-semibold"
     >
       {ORDER.map((id) => {
         const zone = ZONES[id];
@@ -24,7 +24,7 @@ export function ZoneSwitcher() {
             type="button"
             onClick={() => setZoneId(id)}
             aria-pressed={active}
-            className={`rounded-full px-2.5 py-1.5 transition-colors ${
+            className={`whitespace-nowrap rounded-full px-2.5 py-1.5 transition-colors ${
               active
                 ? "bg-brand-green text-ivory"
                 : "text-brand-green/70 hover:text-brand-green"

@@ -21,19 +21,19 @@ export function Header() {
           />
         </Link>
 
-        <nav className="hidden items-center gap-8 text-sm font-semibold text-brand-green-dark md:flex">
-          <Link href="/catalogue" className="hover:text-brand-gold">
+        <nav className="hidden items-center gap-4 whitespace-nowrap text-sm font-semibold text-brand-green-dark md:flex xl:gap-8">
+          <Link href="/catalogue" className="whitespace-nowrap hover:text-brand-gold">
             Catalogue
           </Link>
-          <Link href="/notre-histoire" className="hover:text-brand-gold">
+          <Link href="/notre-histoire" className="whitespace-nowrap hover:text-brand-gold">
             Notre histoire
           </Link>
-          <Link href="/compte" className="hover:text-brand-gold">
+          <Link href="/compte" className="whitespace-nowrap hover:text-brand-gold">
             Mon compte
           </Link>
         </nav>
 
-        <div className="flex items-center gap-2 md:gap-3">
+        <div className="flex items-center gap-2 xl:gap-3">
           <div className="hidden sm:block">
             <ZoneSwitcher />
           </div>

@@ -110,7 +110,17 @@ export function Footer() {
         </div>
       </Container>
 
-      <div className="border-t border-white/10">
+      <div>
+        <Container>
+          <div
+            className="h-px w-full"
+            style={{
+              background:
+                "linear-gradient(90deg, transparent 0%, var(--color-gold) 20%, var(--color-green) 50%, var(--color-gold) 80%, transparent 100%)",
+              boxShadow: "0 0 8px 0 rgba(201, 150, 44, 0.35)",
+            }}
+          />
+        </Container>
         <Container className="flex flex-col items-center justify-between gap-2 py-5 text-center text-xs text-ivory/60 sm:flex-row">
           <span>© 2026 AfricAkani</span>
           <Link href="/admin" className="text-[11px] text-ivory/35 hover:text-ivory/60">

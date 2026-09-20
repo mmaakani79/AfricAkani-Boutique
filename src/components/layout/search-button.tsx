@@ -54,10 +54,10 @@ export function SearchButton() {
       type="button"
       onClick={() => setOpen(true)}
       aria-label="Rechercher un produit"
-      className="flex items-center gap-2 rounded-full border border-brand-green/15 bg-white px-2.5 py-2 text-sm text-ink/40 hover:border-brand-green/30 hover:text-ink/60 sm:px-3.5"
+      className="flex h-8 shrink-0 items-center gap-2 rounded-full border border-brand-green/15 bg-white px-2.5 text-sm whitespace-nowrap text-ink/40 hover:border-brand-green/30 hover:text-ink/60 sm:h-10 xl:w-[210px] xl:px-3.5"
     >
       <Search className="h-4 w-4 shrink-0" aria-hidden />
-      <span className="hidden sm:inline">Rechercher un produit…</span>
+      <span className="hidden whitespace-nowrap xl:inline">Rechercher…</span>
     </button>
   );
 }

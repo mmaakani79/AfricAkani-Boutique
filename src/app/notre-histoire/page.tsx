@@ -49,17 +49,21 @@ export default function NotreHistoire() {
         <div className="absolute inset-0 bg-gradient-to-t from-brand-green-dark/95 via-brand-green-dark/55 to-brand-green-dark/25" />
 
         <Container className="relative pb-10 sm:pb-0">
-          <div className="mx-auto w-full max-w-2xl text-center text-white">
-            <p className="text-xs font-bold uppercase tracking-widest text-brand-gold-light">
+          <div className="mx-auto w-full max-w-2xl text-center text-white sm:mx-0 sm:w-1/2 sm:max-w-none sm:text-left">
+            <p className="text-xs font-bold uppercase tracking-widest text-brand-gold-bright drop-shadow-[0_1px_3px_rgba(0,0,0,0.45)] sm:text-sm">
               Notre histoire
             </p>
             <h1 className="mt-2 font-brand text-3xl font-extrabold sm:text-5xl">
-              Africa <span className="text-brand-gold-light">+</span> Akani.
+              Africa{" "}
+              <span className="text-4xl text-brand-gold-bright drop-shadow-[0_1px_3px_rgba(0,0,0,0.45)] sm:text-6xl">
+                +
+              </span>{" "}
+              Akani.
             </h1>
             <p className="mt-1 font-brand text-xl text-white sm:text-2xl">
               L&rsquo;Afrique, c&rsquo;est bon.
             </p>
-            <p className="mx-auto mt-5 max-w-xl text-sm text-ivory/90 sm:text-base">
+            <p className="mx-auto mt-5 max-w-xl text-sm text-ivory/90 sm:mx-0 sm:text-base">
               AfricAkani fusionne « Africa » et le prénom de son fondateur,
               Akani. Une boutique de produits naturels et halal d&rsquo;Afrique
               de l&rsquo;Ouest, pensée pour ceux qui y vivent et pour la
