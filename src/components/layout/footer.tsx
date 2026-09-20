@@ -3,7 +3,7 @@ import Image from "next/image";
 import { MapPin, Mail, Phone } from "lucide-react";
 import { Container } from "./container";
 import { FreeShippingFooterLink } from "./free-shipping-footer-link";
-import { ProductRequestButton } from "@/components/shop/product-request-modal";
+import { ProductRequestCard } from "@/components/shop/product-request-modal";
 
 const LINKS = [
   { href: "/notre-histoire#benin", label: "Bénin & Afrique de l'Ouest" },
@@ -87,26 +87,27 @@ export function Footer() {
                 WhatsApp +1 514 867 3738
               </a>
             </li>
-            <li>
-              <ProductRequestButton />
-            </li>
           </ul>
         </div>
 
-        <div className="flex items-start gap-3 rounded-xl bg-white/5 p-4">
-          <Image
-            src="/logo/medallion.png"
-            alt="AfricAkani"
-            width={48}
-            height={48}
-            className="h-12 w-12 shrink-0 rounded-full"
-          />
-          <div>
-            <p className="text-sm font-bold text-brand-gold-light">
-              Le cœur de l&rsquo;opération
-            </p>
-            <p className="text-sm text-ivory/70">Cotonou — Bénin</p>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-start gap-3 rounded-xl bg-white/5 p-4">
+            <Image
+              src="/logo/medallion.png"
+              alt="AfricAkani"
+              width={48}
+              height={48}
+              className="h-12 w-12 shrink-0 rounded-full"
+            />
+            <div>
+              <p className="text-sm font-bold text-brand-gold-light">
+                Le cœur de l&rsquo;opération
+              </p>
+              <p className="text-sm text-ivory/70">Cotonou — Bénin</p>
+            </div>
           </div>
+
+          <ProductRequestCard />
         </div>
       </Container>
 

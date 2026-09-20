@@ -10,7 +10,7 @@ import {
 
 const initialState: ProductRequestState = {};
 
-export function ProductRequestButton() {
+export function ProductRequestCard() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -22,14 +22,26 @@ export function ProductRequestButton() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="flex items-center gap-2 text-left hover:text-brand-gold-light"
-      >
-        <Mail className="mt-0.5 h-4 w-4 shrink-0 text-brand-gold-light" />
-        <span>Vous ne trouvez pas un produit ?</span>
-      </button>
+      <div className="rounded-2xl border border-brand-gold-light/40 p-4">
+        <p className="text-sm font-bold text-brand-gold-light">
+          Vous ne trouvez pas un produit ?
+        </p>
+        <p className="mt-1.5 text-sm text-white">
+          Dites-nous ce que vous cherchez, nous le trouvons pour vous.
+        </p>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="scallop-btn mt-4"
+        >
+          <span className="scallop-btn__ring" aria-hidden />
+          <span className="scallop-btn__glass" aria-hidden />
+          <span className="scallop-btn__content">
+            <Mail className="h-4 w-4" aria-hidden />
+            Faire une demande
+          </span>
+        </button>
+      </div>
 
       {open &&
         createPortal(
