@@ -35,16 +35,29 @@ const VALUES = [
 export default function NotreHistoire() {
   return (
     <div>
-      {/* Bandeau d'introduction */}
-      <section className="bg-brand-green-dark px-4 py-16 text-center text-white sm:py-20">
-        <div className="mx-auto max-w-2xl">
-          <h1 className="font-brand text-3xl font-extrabold sm:text-5xl">
-            Africa + <span className="text-brand-gold-light">Akani.</span>
+      {/* Hero : photo pleine largeur avec voile vert */}
+      <section className="relative flex min-h-[560px] items-end overflow-hidden sm:min-h-0 sm:items-center sm:py-24">
+        <Image
+          src="/photos/notre-histoire.webp"
+          alt="Femme en tenue wax vert et or, en extérieur au coucher du soleil"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-[62%_18%]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-brand-green-dark/95 via-brand-green-dark/55 to-brand-green-dark/25" />
+
+        <div className="relative mx-auto w-full max-w-2xl px-4 pb-10 text-center text-white sm:pb-0">
+          <p className="text-xs font-bold uppercase tracking-widest text-brand-gold-light">
+            Notre histoire
+          </p>
+          <h1 className="mt-2 font-brand text-3xl font-extrabold sm:text-5xl">
+            Africa <span className="text-brand-gold-light">+</span> Akani.
           </h1>
-          <p className="mt-2 font-brand text-xl text-brand-gold-light sm:text-2xl">
+          <p className="mt-1 font-brand text-xl text-white sm:text-2xl">
             L&rsquo;Afrique, c&rsquo;est bon.
           </p>
-          <p className="mx-auto mt-5 max-w-xl text-sm text-ivory/85 sm:text-base">
+          <p className="mx-auto mt-5 max-w-xl text-sm text-ivory/90 sm:text-base">
             AfricAkani fusionne « Africa » et le prénom de son fondateur,
             Akani. Une boutique de produits naturels et halal d&rsquo;Afrique
             de l&rsquo;Ouest, pensée pour ceux qui y vivent et pour la
@@ -59,31 +72,7 @@ export default function NotreHistoire() {
         </div>
       </section>
 
-      {/* Photo + histoire */}
       <section id="histoire">
-        <div className="relative flex h-[480px] items-end sm:h-[600px]">
-          <Image
-            src="/photos/notre-histoire.webp"
-            alt="Femme en tenue wax vert et or, en extérieur au coucher du soleil"
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover object-[50%_25%]"
-          />
-          <div className="relative mx-auto w-full max-w-6xl px-4 pb-10">
-            <p className="text-xs font-bold uppercase tracking-widest text-brand-gold-light">
-              Notre histoire
-            </p>
-            <h2 className="mt-2 font-brand text-3xl font-extrabold text-white sm:text-5xl">
-              Africa + Akani
-            </h2>
-            <p className="font-brand text-xl text-white/90 sm:text-2xl">
-              L&rsquo;Afrique, c&rsquo;est bon.
-            </p>
-          </div>
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-        </div>
-
         <div className="mx-auto max-w-3xl px-4 py-12 text-ink/80">
           <p className="text-lg font-medium text-brand-green-dark">
             AfricAkani naît d&rsquo;une conviction simple : l&rsquo;Afrique

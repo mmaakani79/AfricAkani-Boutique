@@ -38,10 +38,10 @@ export default async function Home() {
   return (
     <div>
       {/* Hero */}
-      <section className="relative overflow-hidden px-4 pb-24 pt-20 sm:pb-28 sm:pt-28">
+      <section className="relative overflow-hidden px-4 pb-24 pt-20 sm:px-6 sm:pb-28 sm:pt-28">
         <HeroCollage />
-        <div className="relative mx-auto max-w-3xl">
-          <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-brand-gold-light">
+        <div className="relative max-w-3xl">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-brand-green/40 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-brand-gold-light backdrop-blur-md">
             <Leaf className="h-3.5 w-3.5" /> Naturel · Halal · Premium
           </span>
           <h1 className="mt-6 font-brand text-4xl font-extrabold leading-tight text-white sm:text-6xl">
@@ -61,7 +61,7 @@ export default async function Home() {
             </Link>
             <Link
               href="/notre-histoire"
-              className="text-sm font-semibold text-white/90 underline-offset-4 hover:underline"
+              className="rounded-full border border-white/70 bg-transparent px-7 py-3 text-sm font-semibold text-white hover:bg-white/10"
             >
               Notre histoire
             </Link>
@@ -73,12 +73,12 @@ export default async function Home() {
       <div className="relative z-10 -mt-8 px-4 sm:-mt-9">
         <div
           id="livraison"
-          className="mx-auto grid max-w-6xl grid-cols-2 gap-3 sm:grid-cols-4"
+          className="mx-auto grid max-w-6xl grid-cols-2 divide-x divide-y divide-brand-green/10 overflow-hidden rounded-xl bg-white shadow-md sm:grid-cols-4 sm:divide-y-0"
         >
           {REASSURANCE.map(({ icon: Icon, title, text }) => (
             <div
               key={title}
-              className="flex items-center gap-2.5 rounded-xl bg-white px-3 py-2.5 shadow-md"
+              className="flex items-center gap-2 px-3 py-2.5"
             >
               <Icon className="h-4 w-4 shrink-0 text-brand-green" />
               <div className="min-w-0 leading-tight">

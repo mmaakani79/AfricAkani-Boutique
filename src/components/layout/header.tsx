@@ -8,7 +8,7 @@ import { MobileMenu } from "./mobile-menu";
 export function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-brand-green/10 bg-ivory/95 backdrop-blur">
-      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-3 px-4 md:h-24">
+      <div className="mx-auto flex h-24 max-w-7xl items-center justify-between gap-3 px-4 md:h-28">
         <Link href="/" className="flex shrink-0 items-center">
           <Image
             src="/logo/wordmark.webp"
@@ -16,7 +16,7 @@ export function Header() {
             width={2000}
             height={600}
             priority
-            className="h-14 w-auto md:h-16"
+            className="h-16 w-auto md:h-20"
           />
         </Link>
 
