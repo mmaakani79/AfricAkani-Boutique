@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingCart } from "lucide-react";
 import { useCart } from "@/context/cart-context";
 import { useZone } from "@/context/zone-context";
 import { getCategoryById } from "@/data/categories";
@@ -23,7 +23,10 @@ export default function PanierPage() {
     return (
       <Container className="py-24">
         <div className="mx-auto flex max-w-2xl flex-col items-center gap-4 text-center">
-          <ShoppingBag className="h-12 w-12 text-brand-green/40" />
+          <ShoppingCart
+            className="h-12 w-12 text-brand-green/40"
+            strokeWidth={1.75}
+          />
           <h1 className="font-brand text-2xl font-bold text-brand-green-dark">
             Votre panier est vide
           </h1>

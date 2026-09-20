@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Minus, Plus, Truck } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Truck } from "lucide-react";
 import { useZone } from "@/context/zone-context";
 import { useCart } from "@/context/cart-context";
 import type { Product } from "@/lib/types";
@@ -50,8 +50,11 @@ export function ProductPurchasePanel({ product }: { product: Product }) {
             setAdded(true);
             setTimeout(() => setAdded(false), 1800);
           }}
-          className="flex-1 rounded-full bg-brand-green px-6 py-3 text-sm font-bold text-ivory transition-colors hover:bg-brand-green-dark disabled:cursor-not-allowed disabled:bg-ink/20"
+          className="flex flex-1 items-center justify-center gap-2 rounded-full bg-brand-green px-6 py-3 text-sm font-bold text-ivory transition-colors hover:bg-brand-green-dark disabled:cursor-not-allowed disabled:bg-ink/20"
         >
+          {!outOfStock && !added && (
+            <ShoppingCart className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+          )}
           {outOfStock ? "Rupture de stock" : added ? "Ajouté ✓" : "Ajouter au panier"}
         </button>
       </div>
