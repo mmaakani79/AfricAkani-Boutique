@@ -73,6 +73,16 @@ CREATE TABLE IF NOT EXISTS order_items (
   unit_price NUMERIC NOT NULL,
   line_total NUMERIC NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS product_requests (
+  id SERIAL PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  product_name TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  phone TEXT NOT NULL,
+  email TEXT NOT NULL DEFAULT '',
+  email_sent BOOLEAN NOT NULL DEFAULT false
+);
 `;
 
 async function seedIfEmpty(): Promise<void> {

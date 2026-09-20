@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { LayoutDashboard, Package, LogOut } from "lucide-react";
+import { LayoutDashboard, Package, Mail, LogOut } from "lucide-react";
 import { logoutAction } from "../actions";
 
 export default function AdminProtectedLayout({
@@ -45,6 +45,12 @@ export default function AdminProtectedLayout({
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-brand-green-dark hover:bg-ivory"
           >
             <Package className="h-4 w-4" /> Produits
+          </Link>
+          <Link
+            href="/admin/demandes"
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-brand-green-dark hover:bg-ivory"
+          >
+            <Mail className="h-4 w-4" /> Demandes produits
           </Link>
         </nav>
       </header>

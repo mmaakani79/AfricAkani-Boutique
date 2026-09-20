@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { MapPin, Mail, Phone } from "lucide-react";
 import { FreeShippingFooterLink } from "./free-shipping-footer-link";
+import { ProductRequestButton } from "@/components/shop/product-request-modal";
 
 const LINKS = [
   { href: "/notre-histoire#benin", label: "Bénin & Afrique de l'Ouest" },
@@ -84,6 +85,9 @@ export function Footer() {
               >
                 WhatsApp +1 514 867 3738
               </a>
+            </li>
+            <li>
+              <ProductRequestButton />
             </li>
           </ul>
         </div>
