@@ -1,7 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import type { Metadata } from "next";
-import { Leaf, ShieldCheck, Heart, Globe2, User } from "lucide-react";
-import { PhotoPlaceholder } from "@/components/shop/photo-placeholder";
+import { Leaf, ShieldCheck, Heart, Globe2 } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Notre histoire — AfricAkani",
@@ -62,9 +62,14 @@ export default function NotreHistoire() {
       {/* Photo + histoire */}
       <section id="histoire">
         <div className="relative flex h-[480px] items-end sm:h-[600px]">
-          <div className="absolute inset-0">
-            <PhotoPlaceholder seed="gold" icon={User} className="relative h-full w-full" />
-          </div>
+          <Image
+            src="/photos/notre-histoire.webp"
+            alt="Femme en tenue wax vert et or, en extérieur au coucher du soleil"
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover object-[50%_25%]"
+          />
           <div className="relative mx-auto w-full max-w-6xl px-4 pb-10">
             <p className="text-xs font-bold uppercase tracking-widest text-brand-gold-light">
               Notre histoire
@@ -103,13 +108,13 @@ export default function NotreHistoire() {
 
       {/* Valeurs — même photo réutilisée en filigrane discret */}
       <section id="benin" className="relative overflow-hidden bg-white px-4 py-14">
-        <div className="absolute inset-0">
-          <PhotoPlaceholder
-            seed="gold"
-            icon={User}
-            className="relative h-full w-full opacity-[0.07]"
-          />
-        </div>
+        <Image
+          src="/photos/notre-histoire.webp"
+          alt=""
+          fill
+          sizes="100vw"
+          className="object-cover object-[50%_25%] opacity-[0.08] grayscale"
+        />
         <div className="absolute inset-0 bg-white/85" />
         <div className="relative mx-auto grid max-w-6xl grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {VALUES.map(({ icon: Icon, title, text }) => (
