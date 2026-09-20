@@ -3,10 +3,9 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
-import { PRODUCTS } from "@/data/products";
 import { CATEGORIES } from "@/data/categories";
 import { ProductCard } from "@/components/shop/product-card";
-import type { HalalStatus } from "@/lib/types";
+import type { HalalStatus, Product } from "@/lib/types";
 
 const HALAL_FILTERS: { value: HalalStatus | "tous"; label: string }[] = [
   { value: "tous", label: "Tous" },
@@ -14,7 +13,7 @@ const HALAL_FILTERS: { value: HalalStatus | "tous"; label: string }[] = [
   { value: "a_verifier", label: "À vérifier" },
 ];
 
-export function CatalogueClient() {
+export function CatalogueClient({ products }: { products: Product[] }) {
   const searchParams = useSearchParams();
 
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
@@ -27,13 +26,13 @@ export function CatalogueClient() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return PRODUCTS.filter((p) => {
+    return products.filter((p) => {
       if (categoryId !== "toutes" && p.categoryId !== categoryId) return false;
       if (halal !== "tous" && p.halal !== halal) return false;
       if (q && !p.name.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [query, categoryId, halal]);
+  }, [products, query, categoryId, halal]);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">

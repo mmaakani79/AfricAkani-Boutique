@@ -5,6 +5,7 @@
   --color-green-dark: #0a4534;
   --color-gold: #c9962c;
   --color-gold-light: #e0b65a;
+  --color-gold-bright: #e8b93d;
   --color-ivory: #f4f1e9;
   --color-ink: #1c1c1a;
 }
@@ -14,6 +15,7 @@
   --color-brand-green-dark: var(--color-green-dark);
   --color-brand-gold: var(--color-gold);
   --color-brand-gold-light: var(--color-gold-light);
+  --color-brand-gold-bright: var(--color-gold-bright);
   --color-ivory: var(--color-ivory);
   --color-ink: var(--color-ink);
   --font-brand: var(--font-brand);

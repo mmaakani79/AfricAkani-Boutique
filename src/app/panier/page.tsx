@@ -70,7 +70,7 @@ export default function PanierPage() {
           const category = getCategoryById(item.product.categoryId);
           const Icon = category ? CATEGORY_ICONS[category.id] : undefined;
           return (
-            <div key={item.productId} className="flex items-center gap-4 p-4">
+            <div key={item.product.id} className="flex items-center gap-4 p-4">
               <Link
                 href={`/produit/${item.product.slug}`}
                 className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl"
@@ -78,7 +78,7 @@ export default function PanierPage() {
                 <PhotoPlaceholder
                   seed={category?.photoSeed ?? "emerald"}
                   icon={Icon}
-                  className="h-full w-full"
+                  className="relative h-full w-full"
                 />
               </Link>
 
@@ -97,7 +97,7 @@ export default function PanierPage() {
                   type="button"
                   aria-label="Diminuer la quantité"
                   onClick={() =>
-                    updateQuantity(item.productId, item.quantity - 1)
+                    updateQuantity(item.product.id, item.quantity - 1)
                   }
                   className="p-2 text-brand-green-dark"
                 >
@@ -110,7 +110,7 @@ export default function PanierPage() {
                   type="button"
                   aria-label="Augmenter la quantité"
                   onClick={() =>
-                    updateQuantity(item.productId, item.quantity + 1)
+                    updateQuantity(item.product.id, item.quantity + 1)
                   }
                   className="p-2 text-brand-green-dark"
                 >
@@ -125,7 +125,7 @@ export default function PanierPage() {
               <button
                 type="button"
                 aria-label="Retirer du panier"
-                onClick={() => removeItem(item.productId)}
+                onClick={() => removeItem(item.product.id)}
                 className="shrink-0 rounded-full p-2 text-ink/40 hover:bg-ivory hover:text-red-600"
               >
                 <Trash2 className="h-4 w-4" />

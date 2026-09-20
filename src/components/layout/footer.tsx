@@ -13,9 +13,23 @@ export function Footer() {
     <footer className="bg-brand-green-dark text-ivory/90">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:grid-cols-2 md:grid-cols-4">
         <div>
-          <span className="font-brand text-2xl font-bold text-ivory">
-            Afric<span className="text-brand-gold-light">Akani</span>
-          </span>
+          <div className="flex items-center gap-3">
+            <Image
+              src="/logo/medallion.png"
+              alt="AfricAkani"
+              width={44}
+              height={44}
+              className="h-11 w-11 shrink-0 rounded-full"
+            />
+            <div>
+              <span className="font-brand text-2xl font-bold text-ivory">
+                Afric<span className="text-brand-gold-light">Akani</span>
+              </span>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-ivory/60">
+                Boutique · Produits naturels
+              </p>
+            </div>
+          </div>
           <p className="mt-3 text-sm text-ivory/70">
             L&rsquo;Afrique, c&rsquo;est bon. Produits naturels et halal
             d&rsquo;Afrique de l&rsquo;Ouest, livrés du Bénin au Canada.

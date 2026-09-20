@@ -46,7 +46,7 @@ export function ProductPurchasePanel({ product }: { product: Product }) {
           type="button"
           disabled={outOfStock}
           onClick={() => {
-            addItem(product.id, quantity);
+            addItem(product, quantity);
             setAdded(true);
             setTimeout(() => setAdded(false), 1800);
           }}

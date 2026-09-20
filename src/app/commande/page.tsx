@@ -8,6 +8,7 @@ import { useZone } from "@/context/zone-context";
 import { ZONES } from "@/data/zones";
 import type { ZoneId } from "@/lib/types";
 import { saveOrder, type Order } from "@/lib/orders";
+import { submitOrderAction } from "./actions";
 
 export default function CommandePage() {
   const { items, subtotal, clearCart } = useCart();
@@ -23,7 +24,7 @@ export default function CommandePage() {
   const remaining = Math.max(zone.freeShippingThreshold - subtotal, 0);
   const reached = remaining === 0;
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const order: Order = {
       id: `AK-${Date.now().toString(36).toUpperCase()}`,
@@ -32,7 +33,7 @@ export default function CommandePage() {
       subtotal,
       freeShippingReached: reached,
       items: items.map((i) => ({
-        productId: i.productId,
+        productId: i.product.id,
         name: i.product.name,
         quantity: i.quantity,
         unitPrice: i.lineTotal / i.quantity,
@@ -40,6 +41,14 @@ export default function CommandePage() {
       })),
       customer: { name, email, phone, address, city },
     };
+
+    try {
+      await submitOrderAction(order);
+    } catch {
+      // The order still succeeds for the customer even if the admin-facing
+      // database write fails (e.g. no database configured yet).
+    }
+
     saveOrder(order);
     clearCart();
     setConfirmedOrder(order);
@@ -153,7 +162,7 @@ export default function CommandePage() {
           </h2>
           <ul className="space-y-2 text-sm">
             {items.map((item) => (
-              <li key={item.productId} className="flex justify-between gap-2">
+              <li key={item.product.id} className="flex justify-between gap-2">
                 <span className="text-ink/70">
                   {item.quantity} × {item.product.name}
                 </span>

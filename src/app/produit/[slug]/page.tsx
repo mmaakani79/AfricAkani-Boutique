@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { PRODUCTS, getProductBySlug } from "@/data/products";
+import { getProductBySlug } from "@/lib/products-db";
 import { getCategoryById } from "@/data/categories";
 import { CATEGORY_ICONS } from "@/lib/category-icons";
 import { PhotoPlaceholder } from "@/components/shop/photo-placeholder";
@@ -8,9 +8,7 @@ import { HalalBadge } from "@/components/shop/halal-badge";
 import { PACKAGING_LABELS, HALAL_LABELS } from "@/lib/packaging";
 import { ProductPurchasePanel } from "./purchase-panel";
 
-export function generateStaticParams() {
-  return PRODUCTS.map((p) => ({ slug: p.slug }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -18,7 +16,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlug(slug);
   if (!product) return {};
   return {
     title: `${product.name} — AfricAkani`,
@@ -32,7 +30,7 @@ export default async function ProductPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const product = getProductBySlug(slug);
+  const product = await getProductBySlug(slug);
   if (!product) notFound();
 
   const category = getCategoryById(product.categoryId);
@@ -45,7 +43,7 @@ export default async function ProductPage({
           <PhotoPlaceholder
             seed={category?.photoSeed ?? "emerald"}
             icon={CategoryIcon}
-            className="h-full w-full"
+            className="relative h-full w-full"
           />
           <div className="absolute right-3 top-3">
             <HalalBadge status={product.halal} />

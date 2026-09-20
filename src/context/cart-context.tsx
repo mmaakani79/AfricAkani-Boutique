@@ -8,17 +8,15 @@ import {
   useMemo,
   useState,
 } from "react";
-import { PRODUCTS } from "@/data/products";
 import { useZone } from "./zone-context";
 import type { Product } from "@/lib/types";
 
 export interface CartLine {
-  productId: string;
+  product: Product;
   quantity: number;
 }
 
 export interface CartItem extends CartLine {
-  product: Product;
   lineTotal: number;
 }
 
@@ -27,7 +25,7 @@ interface CartContextValue {
   items: CartItem[];
   itemCount: number;
   subtotal: number;
-  addItem: (productId: string, quantity?: number) => void;
+  addItem: (product: Product, quantity?: number) => void;
   removeItem: (productId: string) => void;
   updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
@@ -64,49 +62,43 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [lines, hydrated]);
 
-  const addItem = useCallback((productId: string, quantity = 1) => {
+  const addItem = useCallback((product: Product, quantity = 1) => {
     setLines((prev) => {
-      const existing = prev.find((l) => l.productId === productId);
+      const existing = prev.find((l) => l.product.id === product.id);
       if (existing) {
         return prev.map((l) =>
-          l.productId === productId
+          l.product.id === product.id
             ? { ...l, quantity: l.quantity + quantity }
             : l
         );
       }
-      return [...prev, { productId, quantity }];
+      return [...prev, { product, quantity }];
     });
   }, []);
 
   const removeItem = useCallback((productId: string) => {
-    setLines((prev) => prev.filter((l) => l.productId !== productId));
+    setLines((prev) => prev.filter((l) => l.product.id !== productId));
   }, []);
 
   const updateQuantity = useCallback((productId: string, quantity: number) => {
     setLines((prev) => {
-      if (quantity <= 0) return prev.filter((l) => l.productId !== productId);
+      if (quantity <= 0) return prev.filter((l) => l.product.id !== productId);
       return prev.map((l) =>
-        l.productId === productId ? { ...l, quantity } : l
+        l.product.id === productId ? { ...l, quantity } : l
       );
     });
   }, []);
 
   const clearCart = useCallback(() => setLines([]), []);
 
-  const items = useMemo<CartItem[]>(() => {
-    return lines
-      .map((line) => {
-        const product = PRODUCTS.find((p) => p.id === line.productId);
-        if (!product) return null;
-        const unitPrice = priceFor(product);
-        return {
-          ...line,
-          product,
-          lineTotal: unitPrice * line.quantity,
-        };
-      })
-      .filter((item): item is CartItem => item !== null);
-  }, [lines, priceFor]);
+  const items = useMemo<CartItem[]>(
+    () =>
+      lines.map((line) => ({
+        ...line,
+        lineTotal: priceFor(line.product) * line.quantity,
+      })),
+    [lines, priceFor]
+  );
 
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);

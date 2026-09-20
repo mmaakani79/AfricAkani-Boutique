@@ -1,6 +1,6 @@
 import type { Product } from "@/lib/types";
 
-export const PRODUCTS: Product[] = [
+export const SEED_PRODUCTS: Product[] = [
   {
     id: "p01",
     slug: "huile-de-coco-vierge-bio",
@@ -408,13 +408,3 @@ export const PRODUCTS: Product[] = [
     stock: "stock_limite",
   },
 ];
-
-export function getProductBySlug(slug: string): Product | undefined {
-  return PRODUCTS.find((p) => p.slug === slug);
-}
-
-export function getProductsByCategory(categoryId: string): Product[] {
-  return PRODUCTS.filter((p) => p.categoryId === categoryId);
-}
-
-export const FEATURED_PRODUCTS: Product[] = PRODUCTS.filter((p) => p.featured);

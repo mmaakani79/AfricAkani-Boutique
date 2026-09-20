@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import { getAllProducts } from "@/lib/products-db";
 import { CatalogueClient } from "./catalogue-client";
 
 export const metadata: Metadata = {
@@ -8,10 +9,14 @@ export const metadata: Metadata = {
     "Le catalogue AfricAkani : produits naturels, halal, et sélection généraliste utile au quotidien.",
 };
 
-export default function CataloguePage() {
+export const dynamic = "force-dynamic";
+
+export default async function CataloguePage() {
+  const products = await getAllProducts();
+
   return (
     <Suspense fallback={null}>
-      <CatalogueClient />
+      <CatalogueClient products={products} />
     </Suspense>
   );
 }

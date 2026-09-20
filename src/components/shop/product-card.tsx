@@ -27,7 +27,7 @@ export function ProductCard({ product }: { product: Product }) {
         <PhotoPlaceholder
           seed={category?.photoSeed ?? "emerald"}
           icon={CategoryIcon}
-          className="h-full w-full"
+          className="relative h-full w-full"
         />
         <div className="absolute right-2 top-2">
           <HalalBadge status={product.halal} />
@@ -61,7 +61,7 @@ export function ProductCard({ product }: { product: Product }) {
           </span>
           <button
             type="button"
-            onClick={() => addItem(product.id)}
+            onClick={() => addItem(product)}
             disabled={product.stock === "rupture"}
             className="flex items-center gap-1 rounded-full bg-brand-green px-3 py-1.5 text-xs font-bold text-ivory transition-colors hover:bg-brand-green-dark disabled:cursor-not-allowed disabled:bg-ink/20"
           >

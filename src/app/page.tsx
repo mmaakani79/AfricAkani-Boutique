@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { Leaf, Truck, ShieldCheck, Globe2 } from "lucide-react";
 import { CATEGORIES } from "@/data/categories";
-import { FEATURED_PRODUCTS } from "@/data/products";
+import { getFeaturedProducts } from "@/lib/products-db";
 import { ProductCard } from "@/components/shop/product-card";
 import { CategoryCard } from "@/components/shop/category-card";
-import { seedGradient } from "@/lib/photo-palette";
+import { HeroCollage } from "@/components/shop/hero-collage";
 
 const REASSURANCE = [
   {
@@ -24,38 +24,35 @@ const REASSURANCE = [
   },
   {
     icon: Globe2,
-    title: "Bénin & Canada",
-    text: "Deux devises, une boutique",
+    title: "Afrique & Canada",
+    text: "Trois zones, une boutique",
   },
 ];
 
-export default function Home() {
+export const dynamic = "force-dynamic";
+
+export default async function Home() {
   const featuredCategories = CATEGORIES.filter((c) => c.featuredHome);
+  const featuredProducts = await getFeaturedProducts();
 
   return (
     <div>
       {/* Hero */}
-      <section
-        className="relative overflow-hidden px-4 py-20 sm:py-28"
-        style={{ background: seedGradient("emerald") }}
-      >
-        <Leaf
-          className="pointer-events-none absolute -right-16 -top-16 h-80 w-80 text-white/10"
-          strokeWidth={1}
-        />
-        <div className="relative mx-auto max-w-3xl text-center">
+      <section className="relative overflow-hidden px-4 pb-24 pt-20 sm:pb-28 sm:pt-28">
+        <HeroCollage />
+        <div className="relative mx-auto max-w-3xl">
           <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-brand-gold-light">
             <Leaf className="h-3.5 w-3.5" /> Naturel · Halal · Premium
           </span>
           <h1 className="mt-6 font-brand text-4xl font-extrabold leading-tight text-white sm:text-6xl">
             L&rsquo;Afrique, <br className="hidden sm:block" />
-            <span className="text-brand-gold-light">c&rsquo;est bon.</span>
+            <span className="text-brand-gold-bright">c&rsquo;est bon.</span>
           </h1>
-          <p className="mx-auto mt-5 max-w-xl text-base text-ivory/85 sm:text-lg">
+          <p className="mt-5 max-w-xl text-base text-ivory/85 sm:text-lg">
             Produits naturels et halal, et sélection généraliste utile au
             quotidien. Livrés chez vous, gratuitement.
           </p>
-          <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+          <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
             <Link
               href="/catalogue"
               className="rounded-full bg-brand-gold px-7 py-3 text-sm font-bold text-brand-green-dark shadow-lg transition-transform hover:scale-[1.03]"
@@ -72,26 +69,31 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Reassurance */}
-      <section id="livraison" className="bg-ivory px-4 py-10">
-        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-4 md:grid-cols-4">
+      {/* Reassurance — straddles the hero's bottom edge */}
+      <div className="relative z-10 -mt-8 px-4 sm:-mt-9">
+        <div
+          id="livraison"
+          className="mx-auto grid max-w-6xl grid-cols-2 gap-3 sm:grid-cols-4"
+        >
           {REASSURANCE.map(({ icon: Icon, title, text }) => (
             <div
               key={title}
-              className="flex flex-col items-start gap-2 rounded-2xl bg-white p-4 shadow-sm"
+              className="flex items-center gap-2.5 rounded-xl bg-white px-3 py-2.5 shadow-md"
             >
-              <Icon className="h-6 w-6 text-brand-green" />
-              <p className="text-sm font-bold text-brand-green-dark">
-                {title}
-              </p>
-              <p className="text-xs text-ink/60">{text}</p>
+              <Icon className="h-4 w-4 shrink-0 text-brand-green" />
+              <div className="min-w-0 leading-tight">
+                <p className="truncate text-xs font-bold text-brand-green-dark">
+                  {title}
+                </p>
+                <p className="truncate text-[11px] text-ink/55">{text}</p>
+              </div>
             </div>
           ))}
         </div>
-      </section>
+      </div>
 
       {/* Rayons phares */}
-      <section className="mx-auto max-w-6xl px-4 py-14">
+      <section className="mx-auto max-w-6xl px-4 pb-14 pt-16">
         <p className="text-center text-xs font-bold uppercase tracking-widest text-brand-gold">
           Nos rayons phares
         </p>
@@ -115,7 +117,7 @@ export default function Home() {
             Produits mis en avant
           </h2>
           <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {FEATURED_PRODUCTS.map((product) => (
+            {featuredProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
           </div>

@@ -13,11 +13,11 @@ export function CategoryCard({ category }: { category: Category }) {
       <PhotoPlaceholder
         seed={category.photoSeed}
         icon={Icon}
-        className="h-full w-full transition-transform duration-300 group-hover:scale-105"
+        className="relative h-full w-full transition-transform duration-300 group-hover:scale-105"
       />
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 p-4">
-        <h3 className="text-lg font-bold text-white">{category.name}</h3>
+        <h3 className="font-brand text-lg font-bold text-white">{category.name}</h3>
         <span className="mt-1 inline-block text-sm font-semibold text-brand-gold-light">
           Explorer →
         </span>
