@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { MapPin, Mail, Phone } from "lucide-react";
+import { Container } from "./container";
 import { FreeShippingFooterLink } from "./free-shipping-footer-link";
 import { ProductRequestButton } from "@/components/shop/product-request-modal";
 
@@ -12,7 +13,7 @@ const LINKS = [
 export function Footer() {
   return (
     <footer className="bg-brand-green-dark text-ivory/90">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:grid-cols-2 md:grid-cols-4">
+      <Container className="grid gap-10 py-12 sm:grid-cols-2 md:grid-cols-4">
         <div>
           <div className="flex items-center gap-3">
             <Image
@@ -107,10 +108,15 @@ export function Footer() {
             <p className="text-sm text-ivory/70">Cotonou — Bénin</p>
           </div>
         </div>
-      </div>
+      </Container>
 
-      <div className="border-t border-white/10 px-4 py-5 text-center text-xs text-ivory/60">
-        © 2026 AfricAkani
+      <div className="border-t border-white/10">
+        <Container className="flex flex-col items-center justify-between gap-2 py-5 text-center text-xs text-ivory/60 sm:flex-row">
+          <span>© 2026 AfricAkani</span>
+          <Link href="/admin" className="text-[11px] text-ivory/35 hover:text-ivory/60">
+            Administration
+          </Link>
+        </Container>
       </div>
     </footer>
   );

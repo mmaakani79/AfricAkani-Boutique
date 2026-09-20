@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import { CATEGORIES } from "@/data/categories";
 import { ProductCard } from "@/components/shop/product-card";
+import { Container } from "@/components/layout/container";
 import type { HalalStatus, Product } from "@/lib/types";
 
 const HALAL_FILTERS: { value: HalalStatus | "tous"; label: string }[] = [
@@ -35,7 +36,7 @@ export function CatalogueClient({ products }: { products: Product[] }) {
   }, [products, query, categoryId, halal]);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
+    <Container className="py-10">
       <h1 className="font-brand text-3xl font-bold text-brand-green-dark">
         Catalogue
       </h1>
@@ -111,6 +112,6 @@ export function CatalogueClient({ products }: { products: Product[] }) {
           ))}
         </div>
       )}
-    </div>
+    </Container>
   );
 }

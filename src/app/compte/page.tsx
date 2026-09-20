@@ -6,6 +6,7 @@ import { Package, MapPin } from "lucide-react";
 import { getOrders, type Order } from "@/lib/orders";
 import { ZONES } from "@/data/zones";
 import { formatPrice } from "@/data/zones";
+import { Container } from "@/components/layout/container";
 
 export default function ComptePage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -26,7 +27,7 @@ export default function ComptePage() {
   );
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
+    <Container className="py-10">
       <h1 className="font-brand text-3xl font-bold text-brand-green-dark">
         Mon compte
       </h1>
@@ -117,6 +118,6 @@ export default function ComptePage() {
           </ul>
         )}
       </section>
-    </div>
+    </Container>
   );
 }

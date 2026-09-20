@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { Container } from "./container";
 import { ZoneSwitcher } from "./zone-switcher";
 import { SearchButton } from "./search-button";
 import { CartLink } from "./cart-link";
@@ -8,7 +9,7 @@ import { MobileMenu } from "./mobile-menu";
 export function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-brand-green/10 bg-ivory/95 backdrop-blur">
-      <div className="mx-auto flex h-24 max-w-7xl items-center justify-between gap-3 px-4 md:h-28">
+      <Container className="flex h-24 items-center justify-between gap-3 md:h-28">
         <Link href="/" className="flex shrink-0 items-center">
           <Image
             src="/logo/wordmark.webp"
@@ -40,9 +41,11 @@ export function Header() {
           <CartLink />
           <MobileMenu />
         </div>
-      </div>
-      <div className="border-t border-brand-green/10 bg-white px-4 py-2 sm:hidden">
-        <ZoneSwitcher />
+      </Container>
+      <div className="border-t border-brand-green/10 bg-white py-2 sm:hidden">
+        <Container>
+          <ZoneSwitcher />
+        </Container>
       </div>
     </header>
   );

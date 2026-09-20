@@ -9,6 +9,7 @@ import { ZONES } from "@/data/zones";
 import type { ZoneId } from "@/lib/types";
 import { saveOrder, type Order } from "@/lib/orders";
 import { submitOrderAction } from "./actions";
+import { Container } from "@/components/layout/container";
 
 export default function CommandePage() {
   const { items, subtotal, clearCart } = useCart();
@@ -56,50 +57,54 @@ export default function CommandePage() {
 
   if (confirmedOrder) {
     return (
-      <div className="mx-auto flex max-w-xl flex-col items-center gap-4 px-4 py-24 text-center">
-        <CheckCircle2 className="h-12 w-12 text-brand-green" />
-        <h1 className="font-brand text-2xl font-bold text-brand-green-dark">
-          Merci, {confirmedOrder.customer.name.split(" ")[0] || "votre commande est confirmée"} !
-        </h1>
-        <p className="text-sm text-ink/60">
-          Votre commande <span className="font-semibold">{confirmedOrder.id}</span> a
-          bien été enregistrée. Vous la retrouverez dans votre espace « Mon
-          compte ».
-        </p>
-        <div className="mt-4 flex gap-3">
-          <Link
-            href="/compte"
-            className="rounded-full bg-brand-green px-6 py-3 text-sm font-bold text-ivory hover:bg-brand-green-dark"
-          >
-            Voir mes commandes
-          </Link>
-          <Link
-            href="/catalogue"
-            className="rounded-full border border-brand-green px-6 py-3 text-sm font-bold text-brand-green hover:bg-white"
-          >
-            Continuer mes achats
-          </Link>
+      <Container className="py-24">
+        <div className="mx-auto flex max-w-xl flex-col items-center gap-4 text-center">
+          <CheckCircle2 className="h-12 w-12 text-brand-green" />
+          <h1 className="font-brand text-2xl font-bold text-brand-green-dark">
+            Merci, {confirmedOrder.customer.name.split(" ")[0] || "votre commande est confirmée"} !
+          </h1>
+          <p className="text-sm text-ink/60">
+            Votre commande <span className="font-semibold">{confirmedOrder.id}</span> a
+            bien été enregistrée. Vous la retrouverez dans votre espace « Mon
+            compte ».
+          </p>
+          <div className="mt-4 flex gap-3">
+            <Link
+              href="/compte"
+              className="rounded-full bg-brand-green px-6 py-3 text-sm font-bold text-ivory hover:bg-brand-green-dark"
+            >
+              Voir mes commandes
+            </Link>
+            <Link
+              href="/catalogue"
+              className="rounded-full border border-brand-green px-6 py-3 text-sm font-bold text-brand-green hover:bg-white"
+            >
+              Continuer mes achats
+            </Link>
+          </div>
         </div>
-      </div>
+      </Container>
     );
   }
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto max-w-xl px-4 py-24 text-center">
-        <p className="text-sm text-ink/60">
-          Votre panier est vide.{" "}
-          <Link href="/catalogue" className="font-semibold text-brand-green">
-            Retourner au catalogue
-          </Link>
-          .
-        </p>
-      </div>
+      <Container className="py-24">
+        <div className="mx-auto max-w-xl text-center">
+          <p className="text-sm text-ink/60">
+            Votre panier est vide.{" "}
+            <Link href="/catalogue" className="font-semibold text-brand-green">
+              Retourner au catalogue
+            </Link>
+            .
+          </p>
+        </div>
+      </Container>
     );
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10">
+    <Container className="py-10">
       <h1 className="font-brand text-3xl font-bold text-brand-green-dark">
         Finaliser la commande
       </h1>
@@ -196,7 +201,7 @@ export default function CommandePage() {
           </div>
         </div>
       </div>
-    </div>
+    </Container>
   );
 }
 

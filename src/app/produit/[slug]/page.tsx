@@ -7,6 +7,7 @@ import { PhotoPlaceholder } from "@/components/shop/photo-placeholder";
 import { HalalBadge } from "@/components/shop/halal-badge";
 import { PACKAGING_LABELS, HALAL_LABELS } from "@/lib/packaging";
 import { ProductPurchasePanel } from "./purchase-panel";
+import { Container } from "@/components/layout/container";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +38,7 @@ export default async function ProductPage({
   const CategoryIcon = category ? CATEGORY_ICONS[category.id] : undefined;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10">
+    <Container className="py-10">
       <div className="grid gap-8 md:grid-cols-2">
         <div className="relative aspect-square overflow-hidden rounded-2xl">
           <PhotoPlaceholder
@@ -95,6 +96,6 @@ export default async function ProductPage({
           <ProductPurchasePanel product={product} />
         </div>
       </div>
-    </div>
+    </Container>
   );
 }

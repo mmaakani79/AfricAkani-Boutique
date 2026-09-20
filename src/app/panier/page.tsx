@@ -7,6 +7,7 @@ import { useZone } from "@/context/zone-context";
 import { getCategoryById } from "@/data/categories";
 import { CATEGORY_ICONS } from "@/lib/category-icons";
 import { PhotoPlaceholder } from "@/components/shop/photo-placeholder";
+import { Container } from "@/components/layout/container";
 
 export default function PanierPage() {
   const { items, subtotal, updateQuantity, removeItem } = useCart();
@@ -20,27 +21,29 @@ export default function PanierPage() {
 
   if (items.length === 0) {
     return (
-      <div className="mx-auto flex max-w-2xl flex-col items-center gap-4 px-4 py-24 text-center">
-        <ShoppingBag className="h-12 w-12 text-brand-green/40" />
-        <h1 className="font-brand text-2xl font-bold text-brand-green-dark">
-          Votre panier est vide
-        </h1>
-        <p className="text-sm text-ink/60">
-          Parcourez le catalogue pour trouver des produits naturels et
-          halal, et bien plus encore.
-        </p>
-        <Link
-          href="/catalogue"
-          className="mt-2 rounded-full bg-brand-green px-6 py-3 text-sm font-bold text-ivory hover:bg-brand-green-dark"
-        >
-          Découvrir la boutique →
-        </Link>
-      </div>
+      <Container className="py-24">
+        <div className="mx-auto flex max-w-2xl flex-col items-center gap-4 text-center">
+          <ShoppingBag className="h-12 w-12 text-brand-green/40" />
+          <h1 className="font-brand text-2xl font-bold text-brand-green-dark">
+            Votre panier est vide
+          </h1>
+          <p className="text-sm text-ink/60">
+            Parcourez le catalogue pour trouver des produits naturels et
+            halal, et bien plus encore.
+          </p>
+          <Link
+            href="/catalogue"
+            className="mt-2 rounded-full bg-brand-green px-6 py-3 text-sm font-bold text-ivory hover:bg-brand-green-dark"
+          >
+            Découvrir la boutique →
+          </Link>
+        </div>
+      </Container>
     );
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10">
+    <Container className="py-10">
       <h1 className="font-brand text-3xl font-bold text-brand-green-dark">
         Mon panier
       </h1>
@@ -147,6 +150,6 @@ export default function PanierPage() {
           Passer la commande →
         </Link>
       </div>
-    </div>
+    </Container>
   );
 }
