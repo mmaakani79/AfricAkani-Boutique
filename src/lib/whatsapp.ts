@@ -7,10 +7,11 @@ function normalizePhone(phone: string): string {
 
 export function whatsappReminderHref(order: OrderSummary): string {
   const phone = normalizePhone(order.customerPhone).replace(/^\+/, "");
+  const total = order.subtotal + order.shippingFee;
   const message = [
     `Bonjour ${order.customerName.split(" ")[0] || ""},`,
-    `Votre commande ${order.id} (${formatPrice(order.subtotal, order.zoneId)}) chez AfricAkani est toujours en attente de paiement.`,
-    "Pouvez-vous nous confirmer le règlement (à la livraison ou par WhatsApp) ? Merci !",
+    `Votre commande ${order.id} (${formatPrice(total, order.zoneId)}) chez AfricAkani est toujours en attente de paiement.`,
+    "Pouvez-vous nous confirmer le règlement ? Merci !",
   ].join(" ");
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }

@@ -18,6 +18,7 @@ export interface OrderInput {
   id: string;
   zoneId: ZoneId;
   subtotal: number;
+  shippingFee: number;
   freeShippingReached: boolean;
   items: OrderItemInput[];
   customer: {
@@ -37,12 +38,13 @@ export async function createOrder(input: OrderInput): Promise<void> {
     await client.query("BEGIN");
     await client.query(
       `INSERT INTO orders
-        (id, zone_id, subtotal, free_shipping_reached, customer_name, customer_email, customer_phone, customer_address, customer_city)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        (id, zone_id, subtotal, shipping_fee, free_shipping_reached, customer_name, customer_email, customer_phone, customer_address, customer_city)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
       [
         input.id,
         input.zoneId,
         input.subtotal,
+        input.shippingFee,
         input.freeShippingReached,
         input.customer.name,
         input.customer.email,
@@ -80,6 +82,7 @@ export interface OrderSummary {
   createdAt: string;
   zoneId: ZoneId;
   subtotal: number;
+  shippingFee: number;
   customerName: string;
   customerPhone: string;
   status: OrderStatus;
@@ -92,6 +95,7 @@ interface OrderSummaryRow {
   created_at: string;
   zone_id: string;
   subtotal: string;
+  shipping_fee: string;
   customer_name: string;
   customer_phone: string;
   status: string;
@@ -105,6 +109,7 @@ function rowToSummary(row: OrderSummaryRow): OrderSummary {
     createdAt: row.created_at,
     zoneId: row.zone_id as ZoneId,
     subtotal: Number(row.subtotal),
+    shippingFee: Number(row.shipping_fee),
     customerName: row.customer_name,
     customerPhone: row.customer_phone,
     status: row.status as OrderStatus,
@@ -167,7 +172,7 @@ export async function getAllOrders(
   const { clauses, params } = buildOrderFilters(filters);
   const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
   const { rows } = await getPool().query<OrderSummaryRow>(
-    `SELECT id, created_at, zone_id, subtotal, customer_name, customer_phone, status, payment_status, is_test
+    `SELECT id, created_at, zone_id, subtotal, shipping_fee, customer_name, customer_phone, status, payment_status, is_test
      FROM orders
      ${where}
      ORDER BY created_at DESC`,
@@ -211,6 +216,7 @@ interface OrderFullRow {
   created_at: string;
   zone_id: string;
   subtotal: string;
+  shipping_fee: string;
   free_shipping_reached: boolean;
   customer_name: string;
   customer_email: string;
@@ -264,6 +270,7 @@ export async function getOrderById(id: string): Promise<OrderDetail | null> {
     createdAt: order.created_at,
     zoneId: order.zone_id as ZoneId,
     subtotal: Number(order.subtotal),
+    shippingFee: Number(order.shipping_fee),
     customerName: order.customer_name,
     customerPhone: order.customer_phone,
     customerEmail: order.customer_email,
@@ -382,7 +389,7 @@ export async function getOrdersDueForReminder(
 ): Promise<(OrderSummary & { customerEmail: string })[]> {
   await ensureSchema();
   const { rows } = await getPool().query<ReminderCandidateRow>(
-    `SELECT id, created_at, zone_id, subtotal, customer_name, customer_phone, customer_email, status, payment_status, is_test
+    `SELECT id, created_at, zone_id, subtotal, shipping_fee, customer_name, customer_phone, customer_email, status, payment_status, is_test
      FROM orders
      WHERE payment_status = 'en_attente'
        AND is_test = false
@@ -422,7 +429,7 @@ export async function cancelExpiredOrders(
        AND is_test = false
        AND status != 'annulee'
        AND created_at <= now() - ($1 || ' hours')::interval
-     RETURNING id, created_at, zone_id, subtotal, customer_name, customer_phone, customer_email, status, payment_status, is_test`,
+     RETURNING id, created_at, zone_id, subtotal, shipping_fee, customer_name, customer_phone, customer_email, status, payment_status, is_test`,
     [timeoutHours]
   );
   return rows.map((r) => ({ ...rowToSummary(r), customerEmail: r.customer_email }));
@@ -430,7 +437,12 @@ export async function cancelExpiredOrders(
 
 export interface DashboardStats {
   orderCount: number;
-  revenueByZone: { zoneId: ZoneId; total: number }[];
+  revenueByZone: {
+    zoneId: ZoneId;
+    productTotal: number;
+    shippingTotal: number;
+    total: number;
+  }[];
   topProducts: { productId: string; name: string; quantity: number }[];
   ordersByDay: { day: string; count: number }[];
   pendingPaymentCount: number;
@@ -451,8 +463,9 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     pool.query<{ count: string }>(
       "SELECT count(*)::text FROM orders WHERE payment_status = 'paye' AND is_test = false"
     ),
-    pool.query<{ zone_id: string; total: string }>(
-      `SELECT zone_id, sum(subtotal)::text AS total FROM orders
+    pool.query<{ zone_id: string; product_total: string; shipping_total: string }>(
+      `SELECT zone_id, sum(subtotal)::text AS product_total, sum(shipping_fee)::text AS shipping_total
+       FROM orders
        WHERE payment_status = 'paye' AND is_test = false
        GROUP BY zone_id`
     ),
@@ -474,7 +487,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
        LIMIT 14`
     ),
     pool.query<{ zone_id: string; count: string; total: string }>(
-      `SELECT zone_id, count(*)::text AS count, coalesce(sum(subtotal), 0)::text AS total
+      `SELECT zone_id, count(*)::text AS count, coalesce(sum(subtotal + shipping_fee), 0)::text AS total
        FROM orders
        WHERE payment_status = 'en_attente' AND is_test = false AND status != 'annulee'
        GROUP BY zone_id`
@@ -491,7 +504,9 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     orderCount: Number(countRows[0]?.count ?? 0),
     revenueByZone: revenueRows.map((r) => ({
       zoneId: r.zone_id as ZoneId,
-      total: Number(r.total),
+      productTotal: Number(r.product_total),
+      shippingTotal: Number(r.shipping_total),
+      total: Number(r.product_total) + Number(r.shipping_total),
     })),
     topProducts: topRows.map((r) => ({
       productId: r.product_id,

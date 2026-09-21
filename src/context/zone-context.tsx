@@ -9,11 +9,14 @@ import {
   useState,
 } from "react";
 import { DEFAULT_ZONE, ZONES, formatPrice } from "@/data/zones";
-import type { Product, ZoneId } from "@/lib/types";
+import type { Product, Zone, ZoneId } from "@/lib/types";
+import type { ShippingSettings } from "@/lib/shipping-types";
+
+type ZoneWithShipping = Zone & Pick<ShippingSettings, "shippingFee" | "minOrderAmount">;
 
 interface ZoneContextValue {
   zoneId: ZoneId;
-  zone: (typeof ZONES)[ZoneId];
+  zone: ZoneWithShipping;
   setZoneId: (zoneId: ZoneId) => void;
   priceFor: (product: Product) => number | null;
   format: (amount: number) => string;
@@ -23,8 +26,43 @@ const ZoneContext = createContext<ZoneContextValue | null>(null);
 
 const STORAGE_KEY = "africakani.zone";
 
+// Fallback while /api/shipping-settings loads (and if it ever fails): the
+// static thresholds from zones.ts, no fee, no minimum — never blocks checkout.
+const DEFAULT_SHIPPING: Record<ZoneId, ShippingSettings> = (
+  Object.keys(ZONES) as ZoneId[]
+).reduce(
+  (acc, zoneId) => {
+    acc[zoneId] = {
+      zoneId,
+      freeShippingThreshold: ZONES[zoneId].freeShippingThreshold,
+      shippingFee: 0,
+      minOrderAmount: null,
+    };
+    return acc;
+  },
+  {} as Record<ZoneId, ShippingSettings>
+);
+
 export function ZoneProvider({ children }: { children: React.ReactNode }) {
   const [zoneId, setZoneIdState] = useState<ZoneId>(DEFAULT_ZONE);
+  const [shipping, setShipping] = useState<Record<ZoneId, ShippingSettings>>(
+    DEFAULT_SHIPPING
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/shipping-settings")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: Record<ZoneId, ShippingSettings> | null) => {
+        if (data && !cancelled) setShipping(data);
+      })
+      .catch(() => {
+        /* keep static fallback thresholds, no shipping fee ever blocks checkout */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -49,7 +87,13 @@ export function ZoneProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<ZoneContextValue>(() => {
-    const zone = ZONES[zoneId];
+    const zoneSettings = shipping[zoneId];
+    const zone: ZoneWithShipping = {
+      ...ZONES[zoneId],
+      freeShippingThreshold: zoneSettings.freeShippingThreshold,
+      shippingFee: zoneSettings.shippingFee,
+      minOrderAmount: zoneSettings.minOrderAmount,
+    };
     return {
       zoneId,
       zone,
@@ -57,7 +101,7 @@ export function ZoneProvider({ children }: { children: React.ReactNode }) {
       priceFor: (product: Product) => product.prices[zoneId],
       format: (amount: number) => formatPrice(amount, zoneId),
     };
-  }, [zoneId, setZoneId]);
+  }, [zoneId, setZoneId, shipping]);
 
   return <ZoneContext.Provider value={value}>{children}</ZoneContext.Provider>;
 }

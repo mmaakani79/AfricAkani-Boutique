@@ -125,18 +125,31 @@ export default async function AdminOrderDetailPage({
                 </tbody>
               </table>
             </div>
-            <div className="mt-3 flex justify-between border-t border-brand-green/10 pt-3 text-base font-bold text-brand-green-dark">
-              <span>Sous-total</span>
-              <span>{formatPrice(order.subtotal, order.zoneId)}</span>
+            <div className="mt-3 space-y-1.5 border-t border-brand-green/10 pt-3 text-sm">
+              <div className="flex justify-between text-ink/70">
+                <span>Sous-total</span>
+                <span>{formatPrice(order.subtotal, order.zoneId)}</span>
+              </div>
+              <div className="flex justify-between text-ink/70">
+                <span>Livraison</span>
+                <span>
+                  {order.shippingFee > 0
+                    ? formatPrice(order.shippingFee, order.zoneId)
+                    : "Gratuite"}
+                </span>
+              </div>
+              <div className="flex justify-between text-base font-bold text-brand-green-dark">
+                <span>Total</span>
+                <span>
+                  {formatPrice(order.subtotal + order.shippingFee, order.zoneId)}
+                </span>
+              </div>
             </div>
-            <p className="mt-1 text-xs text-ink/50">
-              Livraison {order.freeShippingReached ? "gratuite" : "standard"} —
-              mode de paiement :{" "}
-              {order.paymentMethod === "livraison"
-                ? "à la livraison"
-                : order.paymentMethod === "whatsapp"
-                  ? "confirmé par WhatsApp"
-                  : order.paymentMethod || "non renseigné"}
+            <p className="mt-2 text-xs text-ink/50">
+              Mode de paiement :{" "}
+              {order.paymentMethod === "whatsapp"
+                ? "confirmé par WhatsApp"
+                : order.paymentMethod || "non renseigné"}
             </p>
           </section>
 

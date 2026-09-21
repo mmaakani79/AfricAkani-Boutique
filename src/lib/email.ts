@@ -106,6 +106,20 @@ function itemsText(order: OrderDetail): string {
     .join("\n");
 }
 
+function totalsText(
+  order: Pick<OrderDetail, "subtotal" | "shippingFee" | "zoneId">
+): string {
+  return [
+    `Sous-total : ${formatPrice(order.subtotal, order.zoneId)}`,
+    `Livraison : ${
+      order.shippingFee > 0
+        ? formatPrice(order.shippingFee, order.zoneId)
+        : "Gratuite"
+    }`,
+    `Total : ${formatPrice(order.subtotal + order.shippingFee, order.zoneId)}`,
+  ].join("\n");
+}
+
 export async function sendAdminNewOrderNotification(
   order: OrderDetail
 ): Promise<void> {
@@ -116,7 +130,7 @@ export async function sendAdminNewOrderNotification(
   const { error } = await resend.emails.send({
     from: getFrom(),
     to,
-    subject: `Nouvelle commande ${order.id} — ${formatPrice(order.subtotal, order.zoneId)}`,
+    subject: `Nouvelle commande ${order.id} — ${formatPrice(order.subtotal + order.shippingFee, order.zoneId)}`,
     text: [
       `Commande ${order.id} — ${ZONES[order.zoneId].label}`,
       `Client : ${order.customerName} — ${order.customerPhone} — ${order.customerEmail}`,
@@ -125,8 +139,8 @@ export async function sendAdminNewOrderNotification(
       "Articles :",
       itemsText(order),
       "",
-      `Sous-total : ${formatPrice(order.subtotal, order.zoneId)}`,
-      `État du paiement : en attente (paiement à la livraison ou par WhatsApp, à confirmer manuellement)`,
+      totalsText(order),
+      `État du paiement : en attente (à confirmer manuellement par l'admin)`,
       "",
       `Voir la commande : ${siteUrl}/admin/commandes/${order.id}`,
     ].join("\n"),
@@ -156,10 +170,9 @@ export async function sendCustomerOrderConfirmation(
       "Articles :",
       itemsText(order),
       "",
-      `Sous-total : ${formatPrice(order.subtotal, order.zoneId)}`,
-      `Livraison : ${order.freeShippingReached ? "gratuite" : "standard"}`,
+      totalsText(order),
       "",
-      `Merci de confirmer votre paiement (à la livraison ou par WhatsApp) dans les ${timeoutHours} heures. Passé ce délai, la commande sera automatiquement annulée.`,
+      `Nous vous contacterons par WhatsApp pour finaliser le paiement. Merci de confirmer dans les ${timeoutHours} heures. Passé ce délai, la commande sera automatiquement annulée.`,
       "",
       "Nous vous recontacterons pour organiser la livraison.",
       "",
@@ -212,10 +225,13 @@ export async function sendCustomerPaymentReminder(
     text: [
       `Bonjour ${order.customerName.split(" ")[0] || ""},`,
       "",
-      `Votre commande ${order.id} (${formatPrice(order.subtotal, order.zoneId)}) est toujours en attente de paiement.`,
+      `Votre commande ${order.id} (${formatPrice(order.subtotal + order.shippingFee, order.zoneId)}) est toujours en attente de paiement.`,
+      "",
+      totalsText(order),
+      "",
       hoursLeft > 0
-        ? `Il vous reste environ ${hoursLeft} heures pour confirmer votre paiement (à la livraison ou par WhatsApp), sans quoi la commande sera automatiquement annulée.`
-        : `Merci de confirmer votre paiement rapidement, sans quoi la commande sera automatiquement annulée.`,
+        ? `Nous vous contacterons par WhatsApp pour finaliser le paiement. Il vous reste environ ${hoursLeft} heures pour confirmer, sans quoi la commande sera automatiquement annulée.`
+        : `Nous vous contacterons par WhatsApp pour finaliser le paiement rapidement, sans quoi la commande sera automatiquement annulée.`,
       "",
       "Répondez à cet e-mail ou contactez-nous sur WhatsApp pour confirmer.",
       "",

@@ -79,9 +79,25 @@ export default function ComptePage() {
                     </li>
                   ))}
                 </ul>
-                <div className="mt-3 flex justify-between border-t border-brand-green/10 pt-2 text-sm font-bold text-brand-green-dark">
-                  <span>Total</span>
-                  <span>{formatPrice(order.subtotal, order.zoneId)}</span>
+                <div className="mt-3 space-y-1 border-t border-brand-green/10 pt-2 text-sm">
+                  <div className="flex justify-between text-ink/60">
+                    <span>Sous-total</span>
+                    <span>{formatPrice(order.subtotal, order.zoneId)}</span>
+                  </div>
+                  <div className="flex justify-between text-ink/60">
+                    <span>Livraison</span>
+                    <span>
+                      {order.shippingFee > 0
+                        ? formatPrice(order.shippingFee, order.zoneId)
+                        : "Gratuite"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between font-bold text-brand-green-dark">
+                    <span>Total</span>
+                    <span>
+                      {formatPrice(order.subtotal + order.shippingFee, order.zoneId)}
+                    </span>
+                  </div>
                 </div>
               </li>
             ))}

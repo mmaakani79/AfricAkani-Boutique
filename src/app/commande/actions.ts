@@ -6,26 +6,58 @@ import {
   type OrderDetail,
   type OrderInput,
 } from "@/lib/orders-db";
+import { getShippingSettings } from "@/lib/shipping-settings-db";
+import { computeShippingFee, isBelowMinOrder } from "@/lib/shipping-calc";
+import { roundForZone, formatPrice } from "@/data/zones";
 import {
   formatEmailError,
   sendAdminNewOrderNotification,
   sendCustomerOrderConfirmation,
 } from "@/lib/email";
 
-export async function submitOrderAction(input: OrderInput): Promise<void> {
-  await createOrder(input);
+export type OrderDraft = Omit<OrderInput, "shippingFee" | "freeShippingReached">;
+
+export interface OrderSubmissionResult {
+  ok: boolean;
+  error?: string;
+  shippingFee?: number;
+}
+
+export async function submitOrderAction(
+  input: OrderDraft
+): Promise<OrderSubmissionResult> {
+  const settings = await getShippingSettings(input.zoneId);
+
+  if (isBelowMinOrder(input.subtotal, settings)) {
+    return {
+      ok: false,
+      error: `Montant minimum de commande pour cette zone : ${formatPrice(
+        settings.minOrderAmount!,
+        input.zoneId
+      )}.`,
+    };
+  }
+
+  const shippingFee = roundForZone(
+    computeShippingFee(input.subtotal, settings),
+    input.zoneId
+  );
+  const freeShippingReached = input.subtotal >= settings.freeShippingThreshold;
+
+  await createOrder({ ...input, shippingFee, freeShippingReached });
 
   const orderDetail: OrderDetail = {
     id: input.id,
     createdAt: new Date().toISOString(),
     zoneId: input.zoneId,
     subtotal: input.subtotal,
+    shippingFee,
     customerName: input.customer.name,
     customerPhone: input.customer.phone,
     customerEmail: input.customer.email,
     customerAddress: input.customer.address,
     customerCity: input.customer.city,
-    freeShippingReached: input.freeShippingReached,
+    freeShippingReached,
     status: "nouvelle",
     paymentStatus: "en_attente",
     paymentMethod: null,
@@ -68,4 +100,6 @@ export async function submitOrderAction(input: OrderInput): Promise<void> {
   } else {
     await setOrderEmailError(orderDetail.id, null);
   }
+
+  return { ok: true, shippingFee };
 }

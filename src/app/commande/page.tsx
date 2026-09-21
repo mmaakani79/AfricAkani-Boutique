@@ -5,12 +5,13 @@ import Link from "next/link";
 import { CheckCircle2, Truck } from "lucide-react";
 import { useCart } from "@/context/cart-context";
 import { useZone } from "@/context/zone-context";
-import { ZONES } from "@/data/zones";
+import { ZONES, formatPrice } from "@/data/zones";
 import type { ZoneId } from "@/lib/types";
 import { saveOrder, type Order } from "@/lib/orders";
-import { submitOrderAction } from "./actions";
+import { submitOrderAction, type OrderDraft } from "./actions";
 import { Container } from "@/components/layout/container";
 import { getPaymentTimeoutHours } from "@/lib/order-config";
+import { computeShippingFee, isBelowMinOrder } from "@/lib/shipping-calc";
 
 const PAYMENT_TIMEOUT_HOURS = getPaymentTimeoutHours();
 
@@ -24,18 +25,24 @@ export default function CommandePage() {
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const remaining = Math.max(zone.freeShippingThreshold - subtotal, 0);
   const reached = remaining === 0;
+  const shippingFee = computeShippingFee(subtotal, zone);
+  const total = subtotal + shippingFee;
+  const belowMinOrder = isBelowMinOrder(subtotal, zone);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const order: Order = {
+    setSubmitError(null);
+    setSubmitting(true);
+
+    const draft: OrderDraft = {
       id: `AK-${Date.now().toString(36).toUpperCase()}`,
-      createdAt: new Date().toISOString(),
       zoneId,
       subtotal,
-      freeShippingReached: reached,
       items: items.map((i) => ({
         productId: i.product.id,
         name: i.product.name,
@@ -47,12 +54,33 @@ export default function CommandePage() {
       customer: { name, email, phone, address, city },
     };
 
+    let result;
     try {
-      await submitOrderAction(order);
+      result = await submitOrderAction(draft);
     } catch {
       // The order still succeeds for the customer even if the admin-facing
-      // database write fails (e.g. no database configured yet).
+      // database write fails (e.g. no database configured yet) — estimate
+      // the shipping fee locally in that fallback case.
+      result = { ok: true as const, shippingFee };
     }
+
+    setSubmitting(false);
+
+    if (!result.ok) {
+      setSubmitError(result.error ?? "Une erreur est survenue. Merci de réessayer.");
+      return;
+    }
+
+    const order: Order = {
+      id: draft.id,
+      createdAt: new Date().toISOString(),
+      zoneId,
+      subtotal,
+      shippingFee: result.shippingFee ?? shippingFee,
+      freeShippingReached: reached,
+      items: draft.items,
+      customer: draft.customer,
+    };
 
     saveOrder(order);
     clearCart();
@@ -72,10 +100,33 @@ export default function CommandePage() {
             bien été enregistrée. Vous la retrouverez dans votre espace « Mon
             compte ».
           </p>
+          <div className="w-full max-w-xs space-y-1.5 rounded-xl bg-white p-4 text-sm">
+            <div className="flex justify-between text-ink/70">
+              <span>Sous-total</span>
+              <span>{formatPrice(confirmedOrder.subtotal, confirmedOrder.zoneId)}</span>
+            </div>
+            <div className="flex justify-between text-ink/70">
+              <span>Livraison</span>
+              <span>
+                {confirmedOrder.shippingFee > 0
+                  ? formatPrice(confirmedOrder.shippingFee, confirmedOrder.zoneId)
+                  : "Gratuite"}
+              </span>
+            </div>
+            <div className="flex justify-between border-t border-brand-green/10 pt-1.5 font-bold text-brand-green-dark">
+              <span>Total</span>
+              <span>
+                {formatPrice(
+                  confirmedOrder.subtotal + confirmedOrder.shippingFee,
+                  confirmedOrder.zoneId
+                )}
+              </span>
+            </div>
+          </div>
           <p className="rounded-xl bg-brand-gold/10 px-4 py-3 text-xs font-semibold text-brand-green-dark">
-            Merci de confirmer votre paiement (à la livraison ou par WhatsApp)
-            dans les {PAYMENT_TIMEOUT_HOURS} heures, sans quoi la commande
-            sera automatiquement annulée.
+            Nous vous contacterons par WhatsApp pour finaliser le paiement.
+            Merci de confirmer dans les {PAYMENT_TIMEOUT_HOURS} heures, sans
+            quoi la commande sera automatiquement annulée.
           </p>
           <div className="mt-4 flex gap-3">
             <Link
@@ -163,16 +214,30 @@ export default function CommandePage() {
           <Field label="Ville" value={city} onChange={setCity} required />
 
           <p className="text-xs text-ink/50">
-            Paiement à la livraison ou par WhatsApp — merci de confirmer dans
-            les {PAYMENT_TIMEOUT_HOURS} heures suivant la commande, sans quoi
-            elle sera automatiquement annulée.
+            Nous vous contacterons par WhatsApp pour finaliser le paiement —
+            merci de confirmer dans les {PAYMENT_TIMEOUT_HOURS} heures suivant
+            la commande, sans quoi elle sera automatiquement annulée.
           </p>
+
+          {belowMinOrder && (
+            <p className="rounded-xl bg-red-50 px-4 py-3 text-xs font-semibold text-red-600">
+              Montant minimum de commande pour {zone.label} :{" "}
+              {format(zone.minOrderAmount ?? 0)}. Ajoutez des articles pour
+              continuer.
+            </p>
+          )}
+          {submitError && (
+            <p className="rounded-xl bg-red-50 px-4 py-3 text-xs font-semibold text-red-600">
+              {submitError}
+            </p>
+          )}
 
           <button
             type="submit"
-            className="w-full rounded-full bg-brand-green py-3 text-sm font-bold text-ivory hover:bg-brand-green-dark"
+            disabled={belowMinOrder || submitting}
+            className="w-full rounded-full bg-brand-green py-3 text-sm font-bold text-ivory hover:bg-brand-green-dark disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Confirmer la commande
+            {submitting ? "Envoi…" : "Confirmer la commande"}
           </button>
         </form>
 
@@ -192,9 +257,19 @@ export default function CommandePage() {
               </li>
             ))}
           </ul>
-          <div className="border-t border-brand-green/10 pt-3 flex justify-between text-base font-bold text-brand-green-dark">
-            <span>Sous-total</span>
-            <span>{format(subtotal)}</span>
+          <div className="border-t border-brand-green/10 pt-3 space-y-1.5 text-sm">
+            <div className="flex justify-between text-ink/70">
+              <span>Sous-total</span>
+              <span>{format(subtotal)}</span>
+            </div>
+            <div className="flex justify-between text-ink/70">
+              <span>Livraison</span>
+              <span>{shippingFee > 0 ? format(shippingFee) : "Gratuite"}</span>
+            </div>
+            <div className="flex justify-between text-base font-bold text-brand-green-dark">
+              <span>Total</span>
+              <span>{format(total)}</span>
+            </div>
           </div>
 
           <div

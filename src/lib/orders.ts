@@ -3,6 +3,7 @@ import type { ZoneId } from "./types";
 export interface OrderItem {
   productId: string;
   name: string;
+  sku?: string | null;
   quantity: number;
   unitPrice: number;
   lineTotal: number;
@@ -13,6 +14,7 @@ export interface Order {
   createdAt: string;
   zoneId: ZoneId;
   subtotal: number;
+  shippingFee: number;
   freeShippingReached: boolean;
   items: OrderItem[];
   customer: {

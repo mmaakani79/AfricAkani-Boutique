@@ -91,7 +91,6 @@ export function OrderPaymentForm({
         className="rounded-lg border border-brand-green/20 bg-ivory px-3 py-2 text-sm outline-none focus:border-brand-green"
       >
         <option value="">Mode de paiement…</option>
-        <option value="livraison">Paiement à la livraison</option>
         <option value="whatsapp">Confirmé par WhatsApp</option>
         <option value="autre">Autre</option>
       </select>
@@ -109,7 +108,7 @@ export function OrderPaymentForm({
       {state.error && <p className="w-full text-xs text-red-600">{state.error}</p>}
       <p className="w-full text-[11px] text-ink/50">
         Un client ne peut jamais se déclarer « payé » lui-même — ce choix est
-        réservé à l&rsquo;admin, après vérification (livraison ou WhatsApp).
+        réservé à l&rsquo;admin, après vérification.
       </p>
     </form>
   );

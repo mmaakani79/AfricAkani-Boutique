@@ -8,6 +8,7 @@ import { getCategoryById } from "@/data/categories";
 import { CATEGORY_ICONS } from "@/lib/category-icons";
 import { PhotoPlaceholder } from "@/components/shop/photo-placeholder";
 import { Container } from "@/components/layout/container";
+import { computeShippingFee } from "@/lib/shipping-calc";
 
 export default function PanierPage() {
   const { items, subtotal, updateQuantity, removeItem } = useCart();
@@ -18,6 +19,8 @@ export default function PanierPage() {
     100,
     Math.round((subtotal / zone.freeShippingThreshold) * 100)
   );
+  const shippingFee = computeShippingFee(subtotal, zone);
+  const total = subtotal + shippingFee;
 
   if (items.length === 0) {
     return (
@@ -142,9 +145,19 @@ export default function PanierPage() {
       </div>
 
       <div className="mt-6 flex flex-col items-end gap-4 rounded-2xl bg-white p-5">
-        <div className="flex w-full max-w-xs items-center justify-between text-base font-bold text-brand-green-dark">
-          <span>Sous-total</span>
-          <span>{format(subtotal)}</span>
+        <div className="w-full max-w-xs space-y-1.5 text-sm">
+          <div className="flex items-center justify-between text-ink/70">
+            <span>Sous-total</span>
+            <span>{format(subtotal)}</span>
+          </div>
+          <div className="flex items-center justify-between text-ink/70">
+            <span>Livraison</span>
+            <span>{shippingFee > 0 ? format(shippingFee) : "Gratuite"}</span>
+          </div>
+          <div className="flex items-center justify-between text-base font-bold text-brand-green-dark">
+            <span>Total</span>
+            <span>{format(total)}</span>
+          </div>
         </div>
         <Link
           href="/commande"

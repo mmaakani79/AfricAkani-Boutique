@@ -83,7 +83,8 @@ CREATE TABLE IF NOT EXISTS orders (
   reminder_48h_sent_at TIMESTAMPTZ,
   status_updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   payment_status_updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  email_error TEXT
+  email_error TEXT,
+  shipping_fee NUMERIC NOT NULL DEFAULT 0
 );
 
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'nouvelle';
@@ -95,6 +96,15 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS reminder_48h_sent_at TIMESTAMPTZ;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS status_updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status_updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS email_error TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_fee NUMERIC NOT NULL DEFAULT 0;
+
+CREATE TABLE IF NOT EXISTS shipping_settings (
+  zone_id TEXT PRIMARY KEY,
+  free_shipping_threshold NUMERIC NOT NULL,
+  shipping_fee NUMERIC NOT NULL DEFAULT 0,
+  min_order_amount NUMERIC,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
 CREATE TABLE IF NOT EXISTS order_items (
   id SERIAL PRIMARY KEY,

@@ -232,7 +232,7 @@ export default async function AdminCommandesPage({
                   <div className="text-xs text-ink/50">{order.customerPhone}</div>
                 </td>
                 <td className="px-4 py-3 font-semibold text-ink">
-                  {formatPrice(order.subtotal, order.zoneId)}
+                  {formatPrice(order.subtotal + order.shippingFee, order.zoneId)}
                 </td>
                 <td className="px-4 py-3">
                   <span

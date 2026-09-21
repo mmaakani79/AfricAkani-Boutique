@@ -30,6 +30,13 @@ export const ZONES: Record<ZoneId, Zone> = {
 
 export const DEFAULT_ZONE: ZoneId = "bj";
 
+/** FCFA amounts are always whole numbers; other currencies keep 2 decimal places. */
+export function roundForZone(amount: number, zoneId: ZoneId): number {
+  return ZONES[zoneId].currency === "FCFA"
+    ? Math.round(amount)
+    : Math.round(amount * 100) / 100;
+}
+
 export function formatPrice(amount: number, zoneId: ZoneId): string {
   const zone = ZONES[zoneId];
   if (zone.currency === "FCFA") {

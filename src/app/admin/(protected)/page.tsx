@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import {
   ShoppingBag,
   TrendingUp,
+  Truck,
   Package,
   CalendarDays,
   Clock,
@@ -23,7 +24,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminDashboard() {
   const stats = await getDashboardStats();
   const revenueByZone = new Map(
-    stats.revenueByZone.map((r) => [r.zoneId, r.total])
+    stats.revenueByZone.map((r) => [r.zoneId, r])
   );
 
   return (
@@ -42,8 +43,8 @@ export default async function AdminDashboard() {
           <StatCard
             key={zoneId}
             icon={TrendingUp}
-            label={`Chiffre d'affaires — ${ZONES[zoneId].shortLabel}`}
-            value={formatPrice(revenueByZone.get(zoneId) ?? 0, zoneId)}
+            label={`Chiffre d'affaires produits — ${ZONES[zoneId].shortLabel}`}
+            value={formatPrice(revenueByZone.get(zoneId)?.productTotal ?? 0, zoneId)}
           />
         ))}
       </div>
@@ -51,6 +52,17 @@ export default async function AdminDashboard() {
         Le chiffre d&rsquo;affaires et les produits les plus vendus ne
         comptent que les commandes payées et hors commandes marquées « test ».
       </p>
+
+      <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-3">
+        {(Object.keys(ZONES) as ZoneId[]).map((zoneId) => (
+          <StatCard
+            key={zoneId}
+            icon={Truck}
+            label={`Frais de livraison encaissés — ${ZONES[zoneId].shortLabel}`}
+            value={formatPrice(revenueByZone.get(zoneId)?.shippingTotal ?? 0, zoneId)}
+          />
+        ))}
+      </div>
 
       {stats.pendingPaymentCount > 0 && (
         <Link
