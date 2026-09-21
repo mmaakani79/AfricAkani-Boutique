@@ -322,7 +322,7 @@ export default function CommandePage() {
           )}
 
           {!usingMobileMoney && (
-            <p className="text-xs text-ink/50">
+            <p className="rounded-xl bg-brand-gold/10 px-4 py-3 text-sm font-medium text-ink/80">
               Nous vous contacterons par WhatsApp pour finaliser le paiement —
               merci de confirmer dans les {PAYMENT_TIMEOUT_HOURS} heures suivant
               la commande, sans quoi elle sera automatiquement annulée.
@@ -382,23 +382,25 @@ export default function CommandePage() {
             </div>
           </div>
 
-          <div
-            className={`flex items-start gap-2 rounded-xl p-3 text-xs font-semibold ${
-              reached
-                ? "bg-brand-green/10 text-brand-green-dark"
-                : "bg-brand-gold/10 text-brand-green-dark"
-            }`}
-          >
-            <Truck className="mt-0.5 h-4 w-4 shrink-0" />
-            {reached ? (
-              <span>Livraison gratuite débloquée pour cette commande.</span>
-            ) : (
-              <span>
-                Il vous manque {format(remaining)} pour bénéficier de la
-                livraison gratuite ({zone.label}).
-              </span>
-            )}
-          </div>
+          {zone.shippingFee > 0 && (
+            <div
+              className={`flex items-start gap-2 rounded-xl p-3 text-xs font-semibold ${
+                reached
+                  ? "bg-brand-green/10 text-brand-green-dark"
+                  : "bg-brand-gold/10 text-brand-green-dark"
+              }`}
+            >
+              <Truck className="mt-0.5 h-4 w-4 shrink-0" />
+              {reached ? (
+                <span>Livraison gratuite débloquée pour cette commande.</span>
+              ) : (
+                <span>
+                  Il vous manque {format(remaining)} pour bénéficier de la
+                  livraison gratuite ({zone.label}).
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </Container>

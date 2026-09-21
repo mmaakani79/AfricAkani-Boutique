@@ -165,22 +165,22 @@ export default async function AdminCommandesPage({
           />
         </label>
 
-        <div className="flex items-end gap-2 lg:col-span-6">
+        <div className="flex flex-wrap items-end gap-2 lg:col-span-6">
           <button
             type="submit"
-            className="rounded-full bg-brand-green px-5 py-2 text-xs font-bold text-ivory hover:bg-brand-green-dark"
+            className="shrink-0 whitespace-nowrap rounded-full bg-brand-green px-5 py-2 text-xs font-bold text-ivory hover:bg-brand-green-dark"
           >
             Filtrer
           </button>
           <Link
             href="/admin/commandes"
-            className="rounded-full border border-brand-green/20 px-5 py-2 text-xs font-bold text-brand-green-dark hover:bg-ivory"
+            className="shrink-0 whitespace-nowrap rounded-full border border-brand-green/20 px-5 py-2 text-xs font-bold text-brand-green-dark hover:bg-ivory"
           >
             Réinitialiser
           </Link>
           <Link
             href="/admin/commandes?paymentStatus=en_attente"
-            className="ml-auto rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white hover:bg-orange-600"
+            className="shrink-0 whitespace-nowrap rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white hover:bg-orange-600 sm:ml-auto"
           >
             En attente de paiement
           </Link>
@@ -236,14 +236,14 @@ export default async function AdminCommandesPage({
                 </td>
                 <td className="px-4 py-3">
                   <span
-                    className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${PAYMENT_STATUS_COLORS[order.paymentStatus]}`}
+                    className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold ${PAYMENT_STATUS_COLORS[order.paymentStatus]}`}
                   >
                     {PAYMENT_STATUS_LABELS[order.paymentStatus]}
                   </span>
                 </td>
                 <td className="px-4 py-3">
                   <span
-                    className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${ORDER_STATUS_COLORS[order.status]}`}
+                    className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold ${ORDER_STATUS_COLORS[order.status]}`}
                   >
                     {ORDER_STATUS_LABELS[order.status]}
                   </span>

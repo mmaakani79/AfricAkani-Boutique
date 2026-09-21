@@ -11,6 +11,7 @@ export interface ProductRequest extends ProductRequestInput {
   id: number;
   createdAt: string;
   emailSent: boolean;
+  handled: boolean;
 }
 
 interface ProductRequestRow {
@@ -21,6 +22,7 @@ interface ProductRequestRow {
   phone: string;
   email: string;
   email_sent: boolean;
+  handled: boolean;
 }
 
 function rowToRequest(row: ProductRequestRow): ProductRequest {
@@ -32,6 +34,7 @@ function rowToRequest(row: ProductRequestRow): ProductRequest {
     phone: row.phone,
     email: row.email,
     emailSent: row.email_sent,
+    handled: row.handled,
   };
 }
 
@@ -62,4 +65,39 @@ export async function getAllProductRequests(): Promise<ProductRequest[]> {
     "SELECT * FROM product_requests ORDER BY created_at DESC"
   );
   return rows.map(rowToRequest);
+}
+
+export async function getProductRequestById(
+  id: number
+): Promise<ProductRequest | null> {
+  await ensureSchema();
+  const { rows } = await getPool().query<ProductRequestRow>(
+    "SELECT * FROM product_requests WHERE id = $1",
+    [id]
+  );
+  return rows[0] ? rowToRequest(rows[0]) : null;
+}
+
+export async function setProductRequestHandled(
+  id: number,
+  handled: boolean
+): Promise<void> {
+  await ensureSchema();
+  await getPool().query(
+    "UPDATE product_requests SET handled = $2 WHERE id = $1",
+    [id, handled]
+  );
+}
+
+export async function deleteProductRequest(id: number): Promise<void> {
+  await ensureSchema();
+  await getPool().query("DELETE FROM product_requests WHERE id = $1", [id]);
+}
+
+export async function deleteProductRequests(ids: number[]): Promise<void> {
+  if (ids.length === 0) return;
+  await ensureSchema();
+  await getPool().query("DELETE FROM product_requests WHERE id = ANY($1)", [
+    ids,
+  ]);
 }

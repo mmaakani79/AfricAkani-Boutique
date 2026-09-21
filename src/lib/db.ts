@@ -161,8 +161,11 @@ CREATE TABLE IF NOT EXISTS product_requests (
   description TEXT NOT NULL DEFAULT '',
   phone TEXT NOT NULL,
   email TEXT NOT NULL DEFAULT '',
-  email_sent BOOLEAN NOT NULL DEFAULT false
+  email_sent BOOLEAN NOT NULL DEFAULT false,
+  handled BOOLEAN NOT NULL DEFAULT false
 );
+
+ALTER TABLE product_requests ADD COLUMN IF NOT EXISTS handled BOOLEAN NOT NULL DEFAULT false;
 `;
 
 async function backfillProductSkus(): Promise<void> {

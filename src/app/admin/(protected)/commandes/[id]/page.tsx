@@ -72,12 +72,12 @@ export default async function AdminOrderDetailPage({
         </div>
         <div className="flex gap-2">
           <span
-            className={`rounded-full px-3 py-1.5 text-xs font-bold ${PAYMENT_STATUS_COLORS[order.paymentStatus]}`}
+            className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold ${PAYMENT_STATUS_COLORS[order.paymentStatus]}`}
           >
             {PAYMENT_STATUS_LABELS[order.paymentStatus]}
           </span>
           <span
-            className={`rounded-full px-3 py-1.5 text-xs font-bold ${ORDER_STATUS_COLORS[order.status]}`}
+            className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-bold ${ORDER_STATUS_COLORS[order.status]}`}
           >
             {ORDER_STATUS_LABELS[order.status]}
           </span>

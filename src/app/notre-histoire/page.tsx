@@ -50,13 +50,13 @@ export default function NotreHistoire() {
         <div className="absolute inset-0 bg-gradient-to-t from-brand-green-dark/95 via-brand-green-dark/55 to-brand-green-dark/25" />
 
         <Container className="relative pb-10 sm:pb-0">
-          <div className="mx-auto w-full max-w-2xl text-center text-white sm:mx-0 sm:w-1/2 sm:max-w-none sm:text-left">
+          <div className="mx-auto w-full max-w-2xl text-center text-white sm:mx-0 sm:w-[58%] sm:max-w-none sm:text-left">
             <p className="text-xs font-bold uppercase tracking-widest text-brand-gold-bright drop-shadow-[0_1px_3px_rgba(0,0,0,0.45)] sm:text-sm">
               Notre histoire
             </p>
-            <h1 className="mt-2 font-brand text-3xl font-extrabold sm:text-5xl">
+            <h1 className="mt-2 font-brand text-3xl font-extrabold sm:whitespace-nowrap sm:text-[clamp(1.75rem,3.4vw,3rem)]">
               Africa{" "}
-              <span className="text-4xl text-brand-gold-bright drop-shadow-[0_1px_3px_rgba(0,0,0,0.45)] sm:text-6xl">
+              <span className="text-4xl text-brand-gold-bright drop-shadow-[0_1px_3px_rgba(0,0,0,0.45)] sm:text-[clamp(2.1rem,4.1vw,3.6rem)]">
                 +
               </span>{" "}
               Akani.
