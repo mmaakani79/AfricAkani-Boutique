@@ -6,13 +6,14 @@ import {
   deleteOrder,
   getOrderById,
   recordReminder,
+  setOrderEmailError,
   setOrderTest,
   updateOrderPaymentStatus,
   updateOrderStatus,
   type OrderStatus,
   type PaymentStatus,
 } from "@/lib/orders-db";
-import { sendCustomerOrderShipped } from "@/lib/email";
+import { formatEmailError, sendCustomerOrderShipped } from "@/lib/email";
 
 export interface OrderActionState {
   error?: string;
@@ -31,9 +32,16 @@ export async function updateOrderStatusAction(
   if (status === "expediee") {
     try {
       const order = await getOrderById(id);
-      if (order) await sendCustomerOrderShipped(order);
-    } catch {
-      // Status change already saved; email failure shouldn't block the admin.
+      if (order) {
+        await sendCustomerOrderShipped(order);
+        await setOrderEmailError(id, null);
+      }
+    } catch (err) {
+      // Status change already saved; email failure shouldn't block the admin,
+      // but it must not be hidden either.
+      const message = `e-mail « expédiée » : ${formatEmailError(err)}`;
+      console.error(`[email] Commande ${id} : ${message}`);
+      await setOrderEmailError(id, message);
     }
   }
 

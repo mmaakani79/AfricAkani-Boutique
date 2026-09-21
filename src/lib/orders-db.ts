@@ -201,6 +201,7 @@ export interface OrderDetail extends OrderSummary {
   paymentMethod: string | null;
   reminder24hSentAt: string | null;
   reminder48hSentAt: string | null;
+  emailError: string | null;
   items: OrderItemRow[];
   reminders: OrderReminder[];
 }
@@ -222,6 +223,7 @@ interface OrderFullRow {
   is_test: boolean;
   reminder_24h_sent_at: string | null;
   reminder_48h_sent_at: string | null;
+  email_error: string | null;
 }
 
 export async function getOrderById(id: string): Promise<OrderDetail | null> {
@@ -274,6 +276,7 @@ export async function getOrderById(id: string): Promise<OrderDetail | null> {
     isTest: order.is_test,
     reminder24hSentAt: order.reminder_24h_sent_at,
     reminder48hSentAt: order.reminder_48h_sent_at,
+    emailError: order.email_error,
     items: itemRows.map((r) => ({
       productId: r.product_id,
       productName: r.product_name,
@@ -319,6 +322,18 @@ export async function updateOrderPaymentStatus(
     [id, paymentStatus, paymentMethod ?? null]
   );
   return (rowCount ?? 0) > 0;
+}
+
+/** Records the last e-mail send outcome for this order (null clears it on success). */
+export async function setOrderEmailError(
+  id: string,
+  message: string | null
+): Promise<void> {
+  await ensureSchema();
+  await getPool().query("UPDATE orders SET email_error = $2 WHERE id = $1", [
+    id,
+    message,
+  ]);
 }
 
 export async function setOrderTest(id: string, isTest: boolean): Promise<boolean> {

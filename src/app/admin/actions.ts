@@ -15,6 +15,7 @@ import {
   type ProductInput,
 } from "@/lib/products-db";
 import type { HalalStatus, PackagingType, StockStatus } from "@/lib/types";
+import { sendTestEmail, type TestEmailResult } from "@/lib/email";
 
 export interface ActionState {
   error?: string;
@@ -136,4 +137,8 @@ export async function updateProductAction(
 export async function deleteProductAction(id: string): Promise<void> {
   await deleteProduct(id);
   redirect("/admin/produits");
+}
+
+export async function sendTestEmailAction(): Promise<TestEmailResult> {
+  return sendTestEmail();
 }

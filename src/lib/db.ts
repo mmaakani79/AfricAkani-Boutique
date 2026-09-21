@@ -82,7 +82,8 @@ CREATE TABLE IF NOT EXISTS orders (
   reminder_24h_sent_at TIMESTAMPTZ,
   reminder_48h_sent_at TIMESTAMPTZ,
   status_updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  payment_status_updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+  payment_status_updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  email_error TEXT
 );
 
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'nouvelle';
@@ -93,6 +94,7 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS reminder_24h_sent_at TIMESTAMPTZ;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS reminder_48h_sent_at TIMESTAMPTZ;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS status_updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status_updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS email_error TEXT;
 
 CREATE TABLE IF NOT EXISTS order_items (
   id SERIAL PRIMARY KEY,

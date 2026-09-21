@@ -83,6 +83,14 @@ export default async function AdminOrderDetailPage({
         </div>
       </div>
 
+      {order.emailError && (
+        <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4">
+          <p className="text-xs font-bold text-red-600">
+            E-mail non envoyé : {order.emailError}
+          </p>
+        </div>
+      )}
+
       <div className="mt-6 grid min-w-0 gap-6 lg:grid-cols-[1.4fr_1fr]">
         <div className="min-w-0 space-y-6">
           <section className="rounded-2xl bg-white p-5 shadow-sm">

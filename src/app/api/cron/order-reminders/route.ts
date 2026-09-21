@@ -4,8 +4,10 @@ import {
   getOrdersDueForReminder,
   markReminderColumnSent,
   recordReminder,
+  setOrderEmailError,
 } from "@/lib/orders-db";
 import {
+  formatEmailError,
   sendCustomerOrderCancelled,
   sendCustomerPaymentReminder,
 } from "@/lib/email";
@@ -39,9 +41,14 @@ export async function GET(request: NextRequest) {
   for (const order of due24h) {
     try {
       await sendCustomerPaymentReminder(order, 1);
-    } catch {
+      await setOrderEmailError(order.id, null);
+    } catch (err) {
       // Still mark as attempted so we don't retry-storm a broken address;
-      // the order stays visible in /admin/commandes either way.
+      // the order stays visible in /admin/commandes either way, with the
+      // failure reason shown on its detail page.
+      const message = `rappel 24h : ${formatEmailError(err)}`;
+      console.error(`[email] Commande ${order.id} : ${message}`);
+      await setOrderEmailError(order.id, message);
     }
     await markReminderColumnSent(order.id, "reminder_24h_sent_at");
     await recordReminder(order.id, "email", "reminder_24h");
@@ -53,8 +60,12 @@ export async function GET(request: NextRequest) {
   for (const order of due48h) {
     try {
       await sendCustomerPaymentReminder(order, 2);
-    } catch {
+      await setOrderEmailError(order.id, null);
+    } catch (err) {
       /* see note above */
+      const message = `rappel 48h : ${formatEmailError(err)}`;
+      console.error(`[email] Commande ${order.id} : ${message}`);
+      await setOrderEmailError(order.id, message);
     }
     await markReminderColumnSent(order.id, "reminder_48h_sent_at");
     await recordReminder(order.id, "email", "reminder_48h");
@@ -65,8 +76,12 @@ export async function GET(request: NextRequest) {
   for (const order of cancelled) {
     try {
       await sendCustomerOrderCancelled(order);
-    } catch {
+      await setOrderEmailError(order.id, null);
+    } catch (err) {
       /* order is already cancelled either way */
+      const message = `e-mail d'annulation : ${formatEmailError(err)}`;
+      console.error(`[email] Commande ${order.id} : ${message}`);
+      await setOrderEmailError(order.id, message);
     }
     await recordReminder(order.id, "email", "cancellation");
   }

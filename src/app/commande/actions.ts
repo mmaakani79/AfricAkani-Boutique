@@ -1,7 +1,13 @@
 "use server";
 
-import { createOrder, type OrderDetail, type OrderInput } from "@/lib/orders-db";
 import {
+  createOrder,
+  setOrderEmailError,
+  type OrderDetail,
+  type OrderInput,
+} from "@/lib/orders-db";
+import {
+  formatEmailError,
   sendAdminNewOrderNotification,
   sendCustomerOrderConfirmation,
 } from "@/lib/email";
@@ -26,6 +32,7 @@ export async function submitOrderAction(input: OrderInput): Promise<void> {
     isTest: false,
     reminder24hSentAt: null,
     reminder48hSentAt: null,
+    emailError: null,
     items: input.items.map((i) => ({
       productId: i.productId,
       productName: i.name,
@@ -39,9 +46,26 @@ export async function submitOrderAction(input: OrderInput): Promise<void> {
 
   // Notification emails are best-effort: the order itself is already saved,
   // so a Resend hiccup (or no RESEND_API_KEY configured yet) must never
-  // block the customer's checkout flow.
-  await Promise.allSettled([
+  // block the customer's checkout flow. Failures are logged and surfaced
+  // on the order's admin page instead of being silently swallowed.
+  const [adminResult, customerResult] = await Promise.allSettled([
     sendAdminNewOrderNotification(orderDetail),
     sendCustomerOrderConfirmation(orderDetail),
   ]);
+
+  const failures: string[] = [];
+  if (adminResult.status === "rejected") {
+    failures.push(`notification admin : ${formatEmailError(adminResult.reason)}`);
+  }
+  if (customerResult.status === "rejected") {
+    failures.push(`confirmation client : ${formatEmailError(customerResult.reason)}`);
+  }
+
+  if (failures.length > 0) {
+    const message = failures.join(" | ");
+    console.error(`[email] Commande ${orderDetail.id} : e-mail(s) non envoyé(s) — ${message}`);
+    await setOrderEmailError(orderDetail.id, message);
+  } else {
+    await setOrderEmailError(orderDetail.id, null);
+  }
 }

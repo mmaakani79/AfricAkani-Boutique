@@ -19,6 +19,55 @@ function getFrom(): string {
   return process.env.RESEND_FROM || "AfricAkani <onboarding@resend.dev>";
 }
 
+interface ResendErrorLike {
+  name: string;
+  message: string;
+  statusCode?: number | null;
+}
+
+function resendErrorMessage(error: ResendErrorLike): string {
+  return `Resend [${error.name}${error.statusCode ? ` ${error.statusCode}` : ""}] : ${error.message}`;
+}
+
+/** Turns any thrown value (Error, Resend error, string…) into a plain, loggable message. */
+export function formatEmailError(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
+
+export interface TestEmailResult {
+  ok: boolean;
+  detail: string;
+}
+
+/** Sends a one-off diagnostic e-mail to the admin address and reports the exact outcome. */
+export async function sendTestEmail(): Promise<TestEmailResult> {
+  const to = getAdminNotifyEmail();
+  try {
+    const resend = getClient();
+    const { data, error } = await resend.emails.send({
+      from: getFrom(),
+      to,
+      subject: "Test e-mail AfricAkani",
+      text: [
+        `Ceci est un e-mail de test envoyé depuis l'admin AfricAkani.`,
+        `Horodatage : ${new Date().toLocaleString("fr-FR")}`,
+        `Adresse d'expédition (RESEND_FROM) : ${getFrom()}`,
+        `Si vous recevez ce message, l'envoi d'e-mails via Resend fonctionne correctement.`,
+      ].join("\n"),
+    });
+    if (error) {
+      return { ok: false, detail: resendErrorMessage(error) };
+    }
+    return {
+      ok: true,
+      detail: `E-mail envoyé à ${to} (id Resend : ${data?.id ?? "n/a"}).`,
+    };
+  } catch (err) {
+    return { ok: false, detail: formatEmailError(err) };
+  }
+}
+
 export async function sendProductRequestNotification(
   request: ProductRequest
 ): Promise<void> {
@@ -44,7 +93,7 @@ export async function sendProductRequestNotification(
   });
 
   if (error) {
-    throw new Error(`Resend error: ${error.message}`);
+    throw new Error(resendErrorMessage(error));
   }
 }
 
@@ -84,7 +133,7 @@ export async function sendAdminNewOrderNotification(
   });
 
   if (error) {
-    throw new Error(`Resend error: ${error.message}`);
+    throw new Error(resendErrorMessage(error));
   }
 }
 
@@ -119,7 +168,7 @@ export async function sendCustomerOrderConfirmation(
   });
 
   if (error) {
-    throw new Error(`Resend error: ${error.message}`);
+    throw new Error(resendErrorMessage(error));
   }
 }
 
@@ -142,7 +191,7 @@ export async function sendCustomerOrderShipped(order: OrderDetail): Promise<void
   });
 
   if (error) {
-    throw new Error(`Resend error: ${error.message}`);
+    throw new Error(resendErrorMessage(error));
   }
 }
 
@@ -175,7 +224,7 @@ export async function sendCustomerPaymentReminder(
   });
 
   if (error) {
-    throw new Error(`Resend error: ${error.message}`);
+    throw new Error(resendErrorMessage(error));
   }
 }
 
@@ -200,6 +249,6 @@ export async function sendCustomerOrderCancelled(
   });
 
   if (error) {
-    throw new Error(`Resend error: ${error.message}`);
+    throw new Error(resendErrorMessage(error));
   }
 }

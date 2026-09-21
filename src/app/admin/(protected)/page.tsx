@@ -6,10 +6,12 @@ import {
   Package,
   CalendarDays,
   Clock,
+  Mail,
 } from "lucide-react";
 import { getDashboardStats } from "@/lib/orders-db";
 import { ZONES, formatPrice } from "@/data/zones";
 import type { ZoneId } from "@/lib/types";
+import { TestEmailButton } from "@/components/admin/test-email-button";
 
 export const metadata: Metadata = {
   title: "Tableau de bord — Admin AfricAkani",
@@ -141,6 +143,20 @@ export default async function AdminDashboard() {
           )}
         </section>
       </div>
+
+      <section className="mt-6 rounded-2xl bg-white p-5 shadow-sm">
+        <h2 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-brand-gold">
+          <Mail className="h-4 w-4" /> Diagnostic e-mail
+        </h2>
+        <p className="mt-2 text-xs text-ink/50">
+          Envoie un e-mail à l&rsquo;adresse admin pour vérifier que Resend
+          est bien configuré et affiche le résultat exact (succès ou raison
+          précise de l&rsquo;échec).
+        </p>
+        <div className="mt-3">
+          <TestEmailButton />
+        </div>
+      </section>
     </div>
   );
 }
