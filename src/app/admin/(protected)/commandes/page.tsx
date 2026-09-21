@@ -180,7 +180,7 @@ export default async function AdminCommandesPage({
           </Link>
           <Link
             href="/admin/commandes?paymentStatus=en_attente"
-            className="ml-auto rounded-full border border-brand-gold/40 bg-brand-gold/10 px-5 py-2 text-xs font-bold text-brand-gold hover:bg-brand-gold/20"
+            className="ml-auto rounded-full bg-orange-500 px-5 py-2 text-xs font-bold text-white hover:bg-orange-600"
           >
             En attente de paiement
           </Link>

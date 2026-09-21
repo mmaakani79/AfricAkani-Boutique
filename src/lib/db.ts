@@ -84,7 +84,10 @@ CREATE TABLE IF NOT EXISTS orders (
   status_updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   payment_status_updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   email_error TEXT,
-  shipping_fee NUMERIC NOT NULL DEFAULT 0
+  shipping_fee NUMERIC NOT NULL DEFAULT 0,
+  mobile_money_operator TEXT,
+  mobile_money_phone TEXT,
+  mobile_money_transaction_id TEXT
 );
 
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'nouvelle';
@@ -97,6 +100,14 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS status_updated_at TIMESTAMPTZ NOT NU
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status_updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS email_error TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_fee NUMERIC NOT NULL DEFAULT 0;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS mobile_money_operator TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS mobile_money_phone TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS mobile_money_transaction_id TEXT;
+
+-- A transaction id can only ever be claimed by one order.
+CREATE UNIQUE INDEX IF NOT EXISTS orders_mobile_money_txn_key
+  ON orders (mobile_money_transaction_id)
+  WHERE mobile_money_transaction_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS shipping_settings (
   zone_id TEXT PRIMARY KEY,
@@ -104,6 +115,21 @@ CREATE TABLE IF NOT EXISTS shipping_settings (
   shipping_fee NUMERIC NOT NULL DEFAULT 0,
   min_order_amount NUMERIC,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS mobile_money_operators (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  merchant_number TEXT NOT NULL DEFAULT '',
+  active BOOLEAN NOT NULL DEFAULT true,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS mobile_money_settings (
+  id SMALLINT PRIMARY KEY DEFAULT 1,
+  beneficiary_name TEXT NOT NULL DEFAULT '',
+  CONSTRAINT mobile_money_settings_singleton CHECK (id = 1)
 );
 
 CREATE TABLE IF NOT EXISTS order_items (
@@ -178,6 +204,36 @@ async function seedIfEmpty(): Promise<void> {
   }
 }
 
+const DEFAULT_MOBILE_MONEY_OPERATORS = [
+  { id: "mtn", name: "MTN" },
+  { id: "moov", name: "Moov" },
+  { id: "celtiis", name: "Celtiis" },
+];
+
+async function seedMobileMoneyIfEmpty(): Promise<void> {
+  const pool = getPool();
+  await pool.query(
+    `INSERT INTO mobile_money_settings (id, beneficiary_name)
+     VALUES (1, '')
+     ON CONFLICT (id) DO NOTHING`
+  );
+
+  const { rows } = await pool.query<{ count: string }>(
+    "SELECT count(*)::text FROM mobile_money_operators"
+  );
+  if (Number(rows[0].count) > 0) return;
+
+  for (let i = 0; i < DEFAULT_MOBILE_MONEY_OPERATORS.length; i++) {
+    const op = DEFAULT_MOBILE_MONEY_OPERATORS[i];
+    await pool.query(
+      `INSERT INTO mobile_money_operators (id, name, merchant_number, sort_order)
+       VALUES ($1, $2, '', $3)
+       ON CONFLICT (id) DO NOTHING`,
+      [op.id, op.name, i]
+    );
+  }
+}
+
 export function ensureSchema(): Promise<void> {
   if (!global.__schemaReady) {
     global.__schemaReady = (async () => {
@@ -185,6 +241,7 @@ export function ensureSchema(): Promise<void> {
       await pool.query(SCHEMA_SQL);
       await seedIfEmpty();
       await backfillProductSkus();
+      await seedMobileMoneyIfEmpty();
     })();
   }
   return global.__schemaReady;

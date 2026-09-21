@@ -13,7 +13,11 @@ import {
   type OrderStatus,
   type PaymentStatus,
 } from "@/lib/orders-db";
-import { formatEmailError, sendCustomerOrderShipped } from "@/lib/email";
+import {
+  formatEmailError,
+  sendCustomerOrderShipped,
+  sendCustomerPaymentConfirmed,
+} from "@/lib/email";
 
 export interface OrderActionState {
   error?: string;
@@ -93,4 +97,31 @@ export async function setOrderTestAction(
 export async function logWhatsappReminderAction(id: string): Promise<void> {
   await recordReminder(id, "whatsapp", "whatsapp_manual", "Relance manuelle depuis l'admin");
   revalidatePath(`/admin/commandes/${id}`);
+}
+
+export async function confirmMobileMoneyPaymentAction(id: string): Promise<void> {
+  const ok = await updateOrderPaymentStatus(id, "paye", "mobile_money");
+  if (ok) {
+    try {
+      const order = await getOrderById(id);
+      if (order) {
+        await sendCustomerPaymentConfirmed(order);
+        await setOrderEmailError(id, null);
+      }
+    } catch (err) {
+      const message = `e-mail « paiement confirmé » : ${formatEmailError(err)}`;
+      console.error(`[email] Commande ${id} : ${message}`);
+      await setOrderEmailError(id, message);
+    }
+  }
+  revalidatePath(`/admin/commandes/${id}`);
+  revalidatePath("/admin/commandes");
+  revalidatePath("/admin");
+}
+
+export async function rejectMobileMoneyPaymentAction(id: string): Promise<void> {
+  await updateOrderPaymentStatus(id, "echoue", "mobile_money");
+  revalidatePath(`/admin/commandes/${id}`);
+  revalidatePath("/admin/commandes");
+  revalidatePath("/admin");
 }

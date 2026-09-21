@@ -15,6 +15,7 @@ import { WhatsappReminderButton } from "@/components/admin/whatsapp-reminder-but
 import {
   DeleteOrderButton,
   MarkTestButton,
+  MobileMoneyVerifyButtons,
   OrderPaymentForm,
   OrderStatusForm,
 } from "./order-controls";
@@ -149,9 +150,44 @@ export default async function AdminOrderDetailPage({
               Mode de paiement :{" "}
               {order.paymentMethod === "whatsapp"
                 ? "confirmé par WhatsApp"
-                : order.paymentMethod || "non renseigné"}
+                : order.paymentMethod === "mobile_money"
+                  ? "Mobile Money"
+                  : order.paymentMethod || "non renseigné"}
             </p>
           </section>
+
+          {order.paymentMethod === "mobile_money" && (
+            <section className="rounded-2xl bg-white p-5 shadow-sm">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-brand-gold">
+                Mobile Money
+              </h2>
+              <dl className="mt-3 grid gap-3 sm:grid-cols-3">
+                <div>
+                  <dt className="text-xs text-ink/50">Opérateur</dt>
+                  <dd className="text-sm font-semibold text-ink">
+                    {order.mobileMoneyOperator ?? "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-ink/50">Numéro client</dt>
+                  <dd className="text-sm font-semibold text-ink">
+                    {order.mobileMoneyPhone ?? "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-ink/50">Identifiant de transaction</dt>
+                  <dd className="text-sm font-semibold text-ink">
+                    {order.mobileMoneyTransactionId ?? "—"}
+                  </dd>
+                </div>
+              </dl>
+              {order.paymentStatus === "en_verification" && (
+                <div className="mt-4">
+                  <MobileMoneyVerifyButtons orderId={order.id} />
+                </div>
+              )}
+            </section>
+          )}
 
           <section className="rounded-2xl bg-white p-5 shadow-sm">
             <h2 className="text-sm font-bold uppercase tracking-wider text-brand-gold">

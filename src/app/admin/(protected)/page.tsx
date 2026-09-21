@@ -87,7 +87,7 @@ export default async function AdminDashboard() {
               </p>
             </div>
           </div>
-          <span className="text-xs font-bold text-brand-gold">
+          <span className="rounded-full bg-brand-gold px-4 py-2 text-xs font-bold text-brand-green-dark">
             Voir ces commandes →
           </span>
         </Link>

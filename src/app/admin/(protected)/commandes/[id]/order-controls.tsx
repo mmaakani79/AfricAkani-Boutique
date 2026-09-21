@@ -1,9 +1,11 @@
 "use client";
 
 import { useActionState, useTransition } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, Check, X } from "lucide-react";
 import {
+  confirmMobileMoneyPaymentAction,
   deleteOrderAction,
+  rejectMobileMoneyPaymentAction,
   setOrderTestAction,
   updateOrderPaymentAction,
   updateOrderStatusAction,
@@ -111,6 +113,49 @@ export function OrderPaymentForm({
         réservé à l&rsquo;admin, après vérification.
       </p>
     </form>
+  );
+}
+
+export function MobileMoneyVerifyButtons({ orderId }: { orderId: string }) {
+  const [confirmPending, startConfirm] = useTransition();
+  const [rejectPending, startReject] = useTransition();
+  const pending = confirmPending || rejectPending;
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => {
+          if (
+            window.confirm(
+              `Confirmer que le paiement de la commande ${orderId} a bien été reçu ?`
+            )
+          ) {
+            startConfirm(() => confirmMobileMoneyPaymentAction(orderId));
+          }
+        }}
+        className="flex items-center gap-1.5 rounded-full bg-brand-green px-4 py-2 text-xs font-bold text-white hover:bg-brand-green-dark disabled:opacity-60"
+      >
+        <Check className="h-3.5 w-3.5" /> Confirmer le paiement
+      </button>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => {
+          if (
+            window.confirm(
+              `Rejeter le paiement Mobile Money de la commande ${orderId} ?`
+            )
+          ) {
+            startReject(() => rejectMobileMoneyPaymentAction(orderId));
+          }
+        }}
+        className="flex items-center gap-1.5 rounded-full bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700 disabled:opacity-60"
+      >
+        <X className="h-3.5 w-3.5" /> Rejeter
+      </button>
+    </div>
   );
 }
 

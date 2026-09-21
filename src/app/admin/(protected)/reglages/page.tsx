@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { getAllShippingSettings } from "@/lib/shipping-settings-db";
+import { getAllOperators, getBeneficiaryName } from "@/lib/mobile-money-db";
 import { ShippingSettingsForm } from "./shipping-settings-form";
+import { MobileMoneyForm } from "./mobile-money-form";
 
 export const metadata: Metadata = {
   title: "Réglages — Admin AfricAkani",
@@ -10,7 +12,11 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function AdminReglagesPage() {
-  const settings = await getAllShippingSettings();
+  const [settings, operators, beneficiaryName] = await Promise.all([
+    getAllShippingSettings(),
+    getAllOperators(),
+    getBeneficiaryName(),
+  ]);
 
   return (
     <div>
@@ -25,6 +31,17 @@ export default async function AdminReglagesPage() {
       </p>
 
       <ShippingSettingsForm settings={settings} />
+
+      <h2 className="mt-10 font-brand text-xl font-bold text-brand-green-dark">
+        Paiement Mobile Money
+      </h2>
+      <p className="mt-1 text-sm text-ink/60">
+        Numéros marchands et bénéficiaire affichés au client au paiement
+        (zone Bénin &amp; Afrique de l&rsquo;Ouest).
+      </p>
+      <div className="mt-6">
+        <MobileMoneyForm beneficiaryName={beneficiaryName} operators={operators} />
+      </div>
     </div>
   );
 }

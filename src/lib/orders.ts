@@ -24,6 +24,9 @@ export interface Order {
     address: string;
     city: string;
   };
+  paymentMethod?: string | null;
+  mobileMoneyOperator?: string | null;
+  mobileMoneyTransactionId?: string | null;
 }
 
 const STORAGE_KEY = "africakani.orders";

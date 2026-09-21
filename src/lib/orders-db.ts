@@ -28,6 +28,28 @@ export interface OrderInput {
     address: string;
     city: string;
   };
+  paymentMethod?: string | null;
+  paymentStatus?: PaymentStatus;
+  mobileMoneyOperator?: string | null;
+  mobileMoneyPhone?: string | null;
+  mobileMoneyTransactionId?: string | null;
+}
+
+/** Thrown by createOrder when the mobile money transaction id is already used on another order. */
+export class DuplicateTransactionIdError extends Error {
+  constructor() {
+    super("This mobile money transaction id is already attached to another order.");
+    this.name = "DuplicateTransactionIdError";
+  }
+}
+
+function isUniqueViolation(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    (err as { code?: string }).code === "23505"
+  );
 }
 
 export async function createOrder(input: OrderInput): Promise<void> {
@@ -36,23 +58,33 @@ export async function createOrder(input: OrderInput): Promise<void> {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    await client.query(
-      `INSERT INTO orders
-        (id, zone_id, subtotal, shipping_fee, free_shipping_reached, customer_name, customer_email, customer_phone, customer_address, customer_city)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-      [
-        input.id,
-        input.zoneId,
-        input.subtotal,
-        input.shippingFee,
-        input.freeShippingReached,
-        input.customer.name,
-        input.customer.email,
-        input.customer.phone,
-        input.customer.address,
-        input.customer.city,
-      ]
-    );
+    try {
+      await client.query(
+        `INSERT INTO orders
+          (id, zone_id, subtotal, shipping_fee, free_shipping_reached, customer_name, customer_email, customer_phone, customer_address, customer_city, payment_status, payment_method, mobile_money_operator, mobile_money_phone, mobile_money_transaction_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+        [
+          input.id,
+          input.zoneId,
+          input.subtotal,
+          input.shippingFee,
+          input.freeShippingReached,
+          input.customer.name,
+          input.customer.email,
+          input.customer.phone,
+          input.customer.address,
+          input.customer.city,
+          input.paymentStatus ?? "en_attente",
+          input.paymentMethod ?? null,
+          input.mobileMoneyOperator ?? null,
+          input.mobileMoneyPhone ?? null,
+          input.mobileMoneyTransactionId ?? null,
+        ]
+      );
+    } catch (err) {
+      if (isUniqueViolation(err)) throw new DuplicateTransactionIdError();
+      throw err;
+    }
     for (const item of input.items) {
       await client.query(
         `INSERT INTO order_items (order_id, product_id, product_name, product_sku, quantity, unit_price, line_total)
@@ -207,6 +239,9 @@ export interface OrderDetail extends OrderSummary {
   reminder24hSentAt: string | null;
   reminder48hSentAt: string | null;
   emailError: string | null;
+  mobileMoneyOperator: string | null;
+  mobileMoneyPhone: string | null;
+  mobileMoneyTransactionId: string | null;
   items: OrderItemRow[];
   reminders: OrderReminder[];
 }
@@ -230,6 +265,9 @@ interface OrderFullRow {
   reminder_24h_sent_at: string | null;
   reminder_48h_sent_at: string | null;
   email_error: string | null;
+  mobile_money_operator: string | null;
+  mobile_money_phone: string | null;
+  mobile_money_transaction_id: string | null;
 }
 
 export async function getOrderById(id: string): Promise<OrderDetail | null> {
@@ -284,6 +322,9 @@ export async function getOrderById(id: string): Promise<OrderDetail | null> {
     reminder24hSentAt: order.reminder_24h_sent_at,
     reminder48hSentAt: order.reminder_48h_sent_at,
     emailError: order.email_error,
+    mobileMoneyOperator: order.mobile_money_operator,
+    mobileMoneyPhone: order.mobile_money_phone,
+    mobileMoneyTransactionId: order.mobile_money_transaction_id,
     items: itemRows.map((r) => ({
       productId: r.product_id,
       productName: r.product_name,
@@ -374,32 +415,50 @@ export async function recordReminder(
   );
 }
 
+/** Payment statuses meaning "not yet paid, still needs action" — from either the
+ *  customer (en_attente) or the admin verifying a mobile money submission
+ *  (en_verification). Reminders and auto-cancellation apply to both. */
+const UNRESOLVED_PAYMENT_STATUSES: PaymentStatus[] = ["en_attente", "en_verification"];
+
 export async function getPendingPaymentOrders(): Promise<OrderSummary[]> {
-  return getAllOrders({ paymentStatus: "en_attente", includeTest: false });
+  await ensureSchema();
+  const { rows } = await getPool().query<OrderSummaryRow>(
+    `SELECT id, created_at, zone_id, subtotal, shipping_fee, customer_name, customer_phone, status, payment_status, is_test
+     FROM orders
+     WHERE payment_status = ANY($1) AND is_test = false
+     ORDER BY created_at DESC`,
+    [UNRESOLVED_PAYMENT_STATUSES]
+  );
+  return rows.map(rowToSummary);
 }
 
 interface ReminderCandidateRow extends OrderSummaryRow {
   customer_email: string;
+  payment_method: string | null;
 }
 
-/** Orders past `sinceHours` old, still unpaid, not yet reminded via `column`. */
+/** Orders past `sinceHours` old, still unresolved, not yet reminded via `column`. */
 export async function getOrdersDueForReminder(
   sinceHours: number,
   column: "reminder_24h_sent_at" | "reminder_48h_sent_at"
-): Promise<(OrderSummary & { customerEmail: string })[]> {
+): Promise<(OrderSummary & { customerEmail: string; paymentMethod: string | null })[]> {
   await ensureSchema();
   const { rows } = await getPool().query<ReminderCandidateRow>(
-    `SELECT id, created_at, zone_id, subtotal, shipping_fee, customer_name, customer_phone, customer_email, status, payment_status, is_test
+    `SELECT id, created_at, zone_id, subtotal, shipping_fee, customer_name, customer_phone, customer_email, payment_method, status, payment_status, is_test
      FROM orders
-     WHERE payment_status = 'en_attente'
+     WHERE payment_status = ANY($2)
        AND is_test = false
        AND status != 'annulee'
        AND ${column} IS NULL
        AND created_at <= now() - ($1 || ' hours')::interval
      ORDER BY created_at ASC`,
-    [sinceHours]
+    [sinceHours, UNRESOLVED_PAYMENT_STATUSES]
   );
-  return rows.map((r) => ({ ...rowToSummary(r), customerEmail: r.customer_email }));
+  return rows.map((r) => ({
+    ...rowToSummary(r),
+    customerEmail: r.customer_email,
+    paymentMethod: r.payment_method,
+  }));
 }
 
 export async function markReminderColumnSent(
@@ -425,12 +484,12 @@ export async function cancelExpiredOrders(
   const { rows } = await getPool().query<ReminderCandidateRow>(
     `UPDATE orders
      SET status = 'annulee', status_updated_at = now()
-     WHERE payment_status = 'en_attente'
+     WHERE payment_status = ANY($2)
        AND is_test = false
        AND status != 'annulee'
        AND created_at <= now() - ($1 || ' hours')::interval
      RETURNING id, created_at, zone_id, subtotal, shipping_fee, customer_name, customer_phone, customer_email, status, payment_status, is_test`,
-    [timeoutHours]
+    [timeoutHours, UNRESOLVED_PAYMENT_STATUSES]
   );
   return rows.map((r) => ({ ...rowToSummary(r), customerEmail: r.customer_email }));
 }
@@ -489,8 +548,9 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     pool.query<{ zone_id: string; count: string; total: string }>(
       `SELECT zone_id, count(*)::text AS count, coalesce(sum(subtotal + shipping_fee), 0)::text AS total
        FROM orders
-       WHERE payment_status = 'en_attente' AND is_test = false AND status != 'annulee'
-       GROUP BY zone_id`
+       WHERE payment_status = ANY($1) AND is_test = false AND status != 'annulee'
+       GROUP BY zone_id`,
+      [UNRESOLVED_PAYMENT_STATUSES]
     ),
   ]);
 

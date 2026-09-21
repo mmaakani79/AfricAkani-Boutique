@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Truck } from "lucide-react";
 import { useCart } from "@/context/cart-context";
 import { useZone } from "@/context/zone-context";
 import { ZONES, formatPrice } from "@/data/zones";
 import type { ZoneId } from "@/lib/types";
+import type { MobileMoneyConfig } from "@/lib/mobile-money-types";
 import { saveOrder, type Order } from "@/lib/orders";
 import { submitOrderAction, type OrderDraft } from "./actions";
+import { MobileMoneyPanel } from "./mobile-money-panel";
 import { Container } from "@/components/layout/container";
 import { getPaymentTimeoutHours } from "@/lib/order-config";
 import { computeShippingFee, isBelowMinOrder } from "@/lib/shipping-calc";
@@ -19,6 +21,9 @@ export default function CommandePage() {
   const { items, subtotal, clearCart } = useCart();
   const { zoneId, zone, setZoneId, format } = useZone();
 
+  const [orderId] = useState(
+    () => `AK-${Date.now().toString(36).toUpperCase()}`
+  );
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -28,11 +33,45 @@ export default function CommandePage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const [mmConfig, setMmConfig] = useState<MobileMoneyConfig | null>(null);
+  const [paymentChoice, setPaymentChoice] = useState<"whatsapp" | "mobile_money">(
+    "whatsapp"
+  );
+  const [mmOperatorId, setMmOperatorId] = useState("");
+  const [mmPhone, setMmPhone] = useState("");
+  const [mmTransactionId, setMmTransactionId] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/mobile-money-config")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: MobileMoneyConfig | null) => {
+        if (!data || cancelled) return;
+        setMmConfig(data);
+        if (data.operators.length > 0) {
+          setMmOperatorId((current) => current || data.operators[0].id);
+        }
+      })
+      .catch(() => {
+        /* Mobile Money option simply won't be offered */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const mobileMoneyAvailable =
+    zoneId === "bj" && (mmConfig?.operators.length ?? 0) > 0;
+
   const remaining = Math.max(zone.freeShippingThreshold - subtotal, 0);
   const reached = remaining === 0;
   const shippingFee = computeShippingFee(subtotal, zone);
   const total = subtotal + shippingFee;
   const belowMinOrder = isBelowMinOrder(subtotal, zone);
+  const usingMobileMoney = mobileMoneyAvailable && paymentChoice === "mobile_money";
+  const mobileMoneyIncomplete =
+    usingMobileMoney &&
+    (!mmOperatorId || !mmPhone.trim() || !mmTransactionId.trim());
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,7 +79,7 @@ export default function CommandePage() {
     setSubmitting(true);
 
     const draft: OrderDraft = {
-      id: `AK-${Date.now().toString(36).toUpperCase()}`,
+      id: orderId,
       zoneId,
       subtotal,
       items: items.map((i) => ({
@@ -52,6 +91,14 @@ export default function CommandePage() {
         lineTotal: i.lineTotal,
       })),
       customer: { name, email, phone, address, city },
+      ...(usingMobileMoney
+        ? {
+            paymentMethod: "mobile_money",
+            mobileMoneyOperator: mmOperatorId,
+            mobileMoneyPhone: mmPhone.trim(),
+            mobileMoneyTransactionId: mmTransactionId.trim(),
+          }
+        : {}),
     };
 
     let result;
@@ -80,6 +127,11 @@ export default function CommandePage() {
       freeShippingReached: reached,
       items: draft.items,
       customer: draft.customer,
+      paymentMethod: draft.paymentMethod ?? null,
+      mobileMoneyOperator: usingMobileMoney
+        ? (mmConfig?.operators.find((op) => op.id === mmOperatorId)?.name ?? mmOperatorId)
+        : null,
+      mobileMoneyTransactionId: draft.mobileMoneyTransactionId ?? null,
     };
 
     saveOrder(order);
@@ -123,11 +175,20 @@ export default function CommandePage() {
               </span>
             </div>
           </div>
-          <p className="rounded-xl bg-brand-gold/10 px-4 py-3 text-xs font-semibold text-brand-green-dark">
-            Nous vous contacterons par WhatsApp pour finaliser le paiement.
-            Merci de confirmer dans les {PAYMENT_TIMEOUT_HOURS} heures, sans
-            quoi la commande sera automatiquement annulée.
-          </p>
+          {confirmedOrder.paymentMethod === "mobile_money" ? (
+            <p className="rounded-xl bg-brand-gold/10 px-4 py-3 text-xs font-semibold text-brand-green-dark">
+              Votre paiement Mobile Money ({confirmedOrder.mobileMoneyOperator}
+              {" — "}transaction {confirmedOrder.mobileMoneyTransactionId}) est
+              en cours de vérification. Vous recevrez un e-mail dès qu&rsquo;il
+              sera confirmé.
+            </p>
+          ) : (
+            <p className="rounded-xl bg-brand-gold/10 px-4 py-3 text-xs font-semibold text-brand-green-dark">
+              Nous vous contacterons par WhatsApp pour finaliser le paiement.
+              Merci de confirmer dans les {PAYMENT_TIMEOUT_HOURS} heures, sans
+              quoi la commande sera automatiquement annulée.
+            </p>
+          )}
           <div className="mt-4 flex gap-3">
             <Link
               href="/compte"
@@ -213,11 +274,60 @@ export default function CommandePage() {
           <Field label="Adresse de livraison" value={address} onChange={setAddress} required />
           <Field label="Ville" value={city} onChange={setCity} required />
 
-          <p className="text-xs text-ink/50">
-            Nous vous contacterons par WhatsApp pour finaliser le paiement —
-            merci de confirmer dans les {PAYMENT_TIMEOUT_HOURS} heures suivant
-            la commande, sans quoi elle sera automatiquement annulée.
-          </p>
+          {mobileMoneyAvailable && (
+            <div>
+              <label className="mb-3 block text-xs font-bold uppercase tracking-wider text-brand-gold">
+                Mode de paiement
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPaymentChoice("whatsapp")}
+                  className={`rounded-full border px-3.5 py-1.5 text-xs font-bold ${
+                    paymentChoice === "whatsapp"
+                      ? "border-brand-green bg-brand-green text-ivory"
+                      : "border-brand-green/20 text-brand-green-dark"
+                  }`}
+                >
+                  WhatsApp
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentChoice("mobile_money")}
+                  className={`rounded-full border px-3.5 py-1.5 text-xs font-bold ${
+                    paymentChoice === "mobile_money"
+                      ? "border-brand-green bg-brand-green text-ivory"
+                      : "border-brand-green/20 text-brand-green-dark"
+                  }`}
+                >
+                  Mobile Money
+                </button>
+              </div>
+            </div>
+          )}
+
+          {usingMobileMoney && mmConfig && (
+            <MobileMoneyPanel
+              config={mmConfig}
+              orderId={orderId}
+              amount={total}
+              format={format}
+              operatorId={mmOperatorId}
+              onOperatorChange={setMmOperatorId}
+              phone={mmPhone}
+              onPhoneChange={setMmPhone}
+              transactionId={mmTransactionId}
+              onTransactionIdChange={setMmTransactionId}
+            />
+          )}
+
+          {!usingMobileMoney && (
+            <p className="text-xs text-ink/50">
+              Nous vous contacterons par WhatsApp pour finaliser le paiement —
+              merci de confirmer dans les {PAYMENT_TIMEOUT_HOURS} heures suivant
+              la commande, sans quoi elle sera automatiquement annulée.
+            </p>
+          )}
 
           {belowMinOrder && (
             <p className="rounded-xl bg-red-50 px-4 py-3 text-xs font-semibold text-red-600">
@@ -234,7 +344,7 @@ export default function CommandePage() {
 
           <button
             type="submit"
-            disabled={belowMinOrder || submitting}
+            disabled={belowMinOrder || submitting || mobileMoneyIncomplete}
             className="w-full rounded-full bg-brand-green py-3 text-sm font-bold text-ivory hover:bg-brand-green-dark disabled:cursor-not-allowed disabled:opacity-50"
           >
             {submitting ? "Envoi…" : "Confirmer la commande"}

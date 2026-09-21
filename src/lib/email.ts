@@ -127,6 +127,8 @@ export async function sendAdminNewOrderNotification(
   const to = getAdminNotifyEmail();
   const siteUrl = getSiteUrl();
 
+  const isMobileMoney = order.paymentMethod === "mobile_money";
+
   const { error } = await resend.emails.send({
     from: getFrom(),
     to,
@@ -140,7 +142,14 @@ export async function sendAdminNewOrderNotification(
       itemsText(order),
       "",
       totalsText(order),
-      `État du paiement : en attente (à confirmer manuellement par l'admin)`,
+      isMobileMoney
+        ? [
+            "",
+            `Paiement : Mobile Money (${order.mobileMoneyOperator}) — en attente de vérification`,
+            `Numéro client : ${order.mobileMoneyPhone}`,
+            `Identifiant de transaction : ${order.mobileMoneyTransactionId}`,
+          ].join("\n")
+        : `État du paiement : en attente (à confirmer manuellement par l'admin)`,
       "",
       `Voir la commande : ${siteUrl}/admin/commandes/${order.id}`,
     ].join("\n"),
@@ -157,11 +166,14 @@ export async function sendCustomerOrderConfirmation(
   if (!order.customerEmail) return;
   const resend = getClient();
   const timeoutHours = getPaymentTimeoutHours();
+  const isMobileMoney = order.paymentMethod === "mobile_money";
 
   const { error } = await resend.emails.send({
     from: getFrom(),
     to: order.customerEmail,
-    subject: `Commande ${order.id} bien reçue — AfricAkani`,
+    subject: isMobileMoney
+      ? `Commande ${order.id} reçue — paiement en cours de vérification`
+      : `Commande ${order.id} bien reçue — AfricAkani`,
     text: [
       `Bonjour ${order.customerName.split(" ")[0] || ""},`,
       "",
@@ -172,7 +184,9 @@ export async function sendCustomerOrderConfirmation(
       "",
       totalsText(order),
       "",
-      `Nous vous contacterons par WhatsApp pour finaliser le paiement. Merci de confirmer dans les ${timeoutHours} heures. Passé ce délai, la commande sera automatiquement annulée.`,
+      isMobileMoney
+        ? `Nous avons bien reçu votre identifiant de transaction Mobile Money (${order.mobileMoneyTransactionId}). Votre paiement est en cours de vérification — vous recevrez un e-mail dès qu'il sera confirmé.`
+        : `Nous vous contacterons par WhatsApp pour finaliser le paiement. Merci de confirmer dans les ${timeoutHours} heures. Passé ce délai, la commande sera automatiquement annulée.`,
       "",
       "Nous vous recontacterons pour organiser la livraison.",
       "",
@@ -209,7 +223,7 @@ export async function sendCustomerOrderShipped(order: OrderDetail): Promise<void
 }
 
 export async function sendCustomerPaymentReminder(
-  order: OrderSummary & { customerEmail: string },
+  order: OrderSummary & { customerEmail: string; paymentMethod?: string | null },
   reminderNumber: 1 | 2
 ): Promise<void> {
   if (!order.customerEmail) return;
@@ -217,23 +231,60 @@ export async function sendCustomerPaymentReminder(
   const timeoutHours = getPaymentTimeoutHours();
   const hoursElapsed = reminderNumber === 1 ? 24 : 48;
   const hoursLeft = Math.max(timeoutHours - hoursElapsed, 0);
+  const isMobileMoney = order.paymentMethod === "mobile_money";
 
   const { error } = await resend.emails.send({
     from: getFrom(),
     to: order.customerEmail,
-    subject: `Rappel : paiement en attente pour votre commande ${order.id}`,
+    subject: isMobileMoney
+      ? `Votre paiement Mobile Money est toujours en cours de vérification — commande ${order.id}`
+      : `Rappel : paiement en attente pour votre commande ${order.id}`,
     text: [
       `Bonjour ${order.customerName.split(" ")[0] || ""},`,
       "",
-      `Votre commande ${order.id} (${formatPrice(order.subtotal + order.shippingFee, order.zoneId)}) est toujours en attente de paiement.`,
+      isMobileMoney
+        ? `Votre commande ${order.id} (${formatPrice(order.subtotal + order.shippingFee, order.zoneId)}) est toujours en cours de vérification.`
+        : `Votre commande ${order.id} (${formatPrice(order.subtotal + order.shippingFee, order.zoneId)}) est toujours en attente de paiement.`,
       "",
       totalsText(order),
       "",
-      hoursLeft > 0
-        ? `Nous vous contacterons par WhatsApp pour finaliser le paiement. Il vous reste environ ${hoursLeft} heures pour confirmer, sans quoi la commande sera automatiquement annulée.`
-        : `Nous vous contacterons par WhatsApp pour finaliser le paiement rapidement, sans quoi la commande sera automatiquement annulée.`,
+      isMobileMoney
+        ? hoursLeft > 0
+          ? `Nous vérifions votre paiement dès que possible. Si vous n'avez pas encore envoyé le montant, il vous reste environ ${hoursLeft} heures, sans quoi la commande sera automatiquement annulée.`
+          : `Nous vérifions votre paiement dès que possible, sans quoi la commande sera automatiquement annulée.`
+        : hoursLeft > 0
+          ? `Nous vous contacterons par WhatsApp pour finaliser le paiement. Il vous reste environ ${hoursLeft} heures pour confirmer, sans quoi la commande sera automatiquement annulée.`
+          : `Nous vous contacterons par WhatsApp pour finaliser le paiement rapidement, sans quoi la commande sera automatiquement annulée.`,
       "",
-      "Répondez à cet e-mail ou contactez-nous sur WhatsApp pour confirmer.",
+      "Répondez à cet e-mail ou contactez-nous sur WhatsApp pour toute question.",
+      "",
+      "L'équipe AfricAkani",
+    ].join("\n"),
+  });
+
+  if (error) {
+    throw new Error(resendErrorMessage(error));
+  }
+}
+
+export async function sendCustomerPaymentConfirmed(
+  order: OrderDetail
+): Promise<void> {
+  if (!order.customerEmail) return;
+  const resend = getClient();
+
+  const { error } = await resend.emails.send({
+    from: getFrom(),
+    to: order.customerEmail,
+    subject: `Paiement confirmé — commande ${order.id}`,
+    text: [
+      `Bonjour ${order.customerName.split(" ")[0] || ""},`,
+      "",
+      `Bonne nouvelle : votre paiement pour la commande ${order.id} a bien été confirmé !`,
+      "",
+      totalsText(order),
+      "",
+      "Nous préparons votre commande et vous recontacterons pour organiser la livraison.",
       "",
       "L'équipe AfricAkani",
     ].join("\n"),
