@@ -129,7 +129,10 @@ export function Footer() {
         </Container>
         <Container className="flex flex-col items-center justify-between gap-2 py-5 text-center text-xs text-ivory/60 sm:flex-row">
           <span>© 2026 AfricAkani</span>
-          <Link href="/services" className="text-[11px] text-ivory/45 hover:text-ivory/60">
+          <Link
+            href="/services"
+            className="text-xs text-ivory/70 underline decoration-transparent underline-offset-4 transition-colors hover:text-ivory hover:decoration-brand-gold-light"
+          >
             Boutique créée par AkaGestSoft
           </Link>
           <Link href="/admin" className="text-[11px] text-ivory/35 hover:text-ivory/60">

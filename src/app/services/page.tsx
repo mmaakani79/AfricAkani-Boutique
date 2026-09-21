@@ -3,18 +3,22 @@ import {
   Store,
   Globe2,
   LayoutDashboard,
-  Lightbulb,
+  Laptop,
+  ShieldCheck,
   MessageCircle,
   Mail,
 } from "lucide-react";
 import { Container } from "@/components/layout/container";
+import { CopyEmailButton } from "./copy-email-button";
 
 export const metadata: Metadata = {
   title: "Nos services — AfricAkani",
   description:
-    "Boutique en ligne, site web, application de gestion et conseil informatique pour les commerçants d'Afrique de l'Ouest et de la diaspora.",
+    "Boutique en ligne, site web, application de gestion, matériel et cybersécurité pour les commerçants d'Afrique de l'Ouest et de la diaspora.",
   alternates: { canonical: "/services" },
 };
+
+const EMAIL = "contact@africakani.com";
 
 const WHATSAPP_HREF = `https://wa.me/15148673738?text=${encodeURIComponent(
   "Bonjour, je souhaite créer ma boutique en ligne"
@@ -37,9 +41,14 @@ const SERVICES = [
     text: "Suivez vos ventes, vos stocks et vos clients depuis votre téléphone ou votre ordinateur.",
   },
   {
-    icon: Lightbulb,
-    title: "Conseil informatique",
-    text: "Un avis honnête pour choisir les bons outils et éviter les dépenses inutiles.",
+    icon: Laptop,
+    title: "Matériel et achats",
+    text: "Choix d'ordinateurs, de téléphones et d'équipements adaptés à votre activité et à votre budget, avec un accompagnement pour acheter au meilleur prix.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Réseau et cybersécurité",
+    text: "Conseils pour installer et sécuriser votre réseau, vos comptes et vos données. Installation sur place au Canada.",
   },
 ];
 
@@ -90,7 +99,7 @@ export default function ServicesPage() {
           <h2 className="text-center font-brand text-2xl font-bold text-brand-green-dark sm:text-3xl">
             Nos services
           </h2>
-          <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {SERVICES.map(({ icon: Icon, title, text }) => (
               <div
                 key={title}
@@ -104,18 +113,22 @@ export default function ServicesPage() {
               </div>
             ))}
           </div>
+          <p className="mt-6 text-center text-xs text-ink/50">
+            Conseils à distance : Bénin, Afrique de l&rsquo;Ouest et Canada.
+            Installation sur place : Canada.
+          </p>
         </Container>
       </section>
 
       <section className="bg-white">
         <Container className="py-14">
           <h2 className="text-center font-brand text-2xl font-bold text-brand-green-dark sm:text-3xl">
-            Comment ça marche
+            Comment ça marche&nbsp;?
           </h2>
           <div className="mx-auto mt-8 grid max-w-4xl grid-cols-1 gap-5 sm:grid-cols-3">
             {STEPS.map(({ number, title, text }) => (
               <div key={number} className="text-center sm:text-left">
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand-gold/15 font-brand text-base font-bold text-brand-gold">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand-green-dark font-brand text-base font-extrabold text-brand-gold-bright">
                   {number}
                 </span>
                 <p className="mt-3 text-base font-bold text-brand-green-dark">
@@ -131,7 +144,7 @@ export default function ServicesPage() {
       <section>
         <Container className="py-14">
           <h2 className="text-center font-brand text-2xl font-bold text-brand-green-dark sm:text-3xl">
-            Pourquoi nous choisir
+            Pourquoi nous choisir&nbsp;?
           </h2>
           <ul className="mx-auto mt-8 max-w-2xl space-y-4">
             {REASONS.map((reason) => (
@@ -153,7 +166,7 @@ export default function ServicesPage() {
       <section className="bg-brand-green-dark py-16 text-center text-white">
         <Container>
           <h2 className="font-brand text-3xl font-bold sm:text-4xl">
-            Parlons de votre projet.
+            Parlons de votre projet&nbsp;!
           </h2>
           <div className="mx-auto mt-7 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
             <a
@@ -165,11 +178,17 @@ export default function ServicesPage() {
               <MessageCircle className="h-4 w-4" /> Écrire sur WhatsApp
             </a>
             <a
-              href="mailto:contact@africakani.com"
+              href={`mailto:${EMAIL}`}
               className="inline-flex items-center gap-2 rounded-full border border-white/30 px-7 py-3 text-sm font-bold text-white hover:bg-white/10"
             >
-              <Mail className="h-4 w-4" /> contact@africakani.com
+              <Mail className="h-4 w-4" /> Envoyer un e-mail
             </a>
+          </div>
+          <div className="mx-auto mt-6 flex flex-col items-center gap-2">
+            <p className="font-mono text-sm font-semibold text-white sm:text-base">
+              {EMAIL}
+            </p>
+            <CopyEmailButton email={EMAIL} />
           </div>
         </Container>
       </section>
