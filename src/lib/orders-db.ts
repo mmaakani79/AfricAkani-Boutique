@@ -343,6 +343,40 @@ export async function getOrderById(id: string): Promise<OrderDetail | null> {
   };
 }
 
+function normalizeContact(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function normalizeDigits(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+/** Public order lookup: requires the order id AND a matching e-mail or phone — never leaks whether an id exists on mismatch. */
+export async function getOrderForTracking(
+  id: string,
+  contact: string
+): Promise<OrderDetail | null> {
+  const trimmedId = id.trim();
+  const trimmedContact = contact.trim();
+  if (!trimmedId || !trimmedContact) return null;
+
+  const order = await getOrderById(trimmedId);
+  if (!order) return null;
+
+  const emailMatch =
+    order.customerEmail.length > 0 &&
+    normalizeContact(order.customerEmail) === normalizeContact(trimmedContact);
+
+  const inputDigits = normalizeDigits(trimmedContact);
+  const phoneDigits = normalizeDigits(order.customerPhone);
+  const phoneMatch =
+    inputDigits.length >= 8 &&
+    phoneDigits.length >= 8 &&
+    (phoneDigits.endsWith(inputDigits) || inputDigits.endsWith(phoneDigits));
+
+  return emailMatch || phoneMatch ? order : null;
+}
+
 export async function updateOrderStatus(
   id: string,
   status: OrderStatus

@@ -75,6 +75,14 @@ export function MobileMoneyPanel({
             <span className="text-ink/60">Référence</span>
             <span className="font-semibold text-ink">{orderId}</span>
           </div>
+          {selectedOperator.displayName && (
+            <p className="border-t border-brand-green/10 pt-1.5 text-xs text-ink/60">
+              Le nom qui s&rsquo;affichera sur votre téléphone :{" "}
+              <span className="font-semibold text-ink">
+                {selectedOperator.displayName}
+              </span>
+            </p>
+          )}
         </div>
       )}
 
@@ -89,6 +97,11 @@ export function MobileMoneyPanel({
           la commande.
         </li>
       </ol>
+
+      <p className="rounded-lg bg-brand-green/10 px-3 py-2 text-xs font-semibold text-brand-green-dark">
+        Nous confirmons votre paiement sous 30 minutes en général, et au plus
+        tard sous 2 heures.
+      </p>
 
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="block">

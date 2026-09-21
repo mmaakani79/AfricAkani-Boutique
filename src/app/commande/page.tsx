@@ -179,8 +179,9 @@ export default function CommandePage() {
             <p className="rounded-xl bg-brand-gold/10 px-4 py-3 text-xs font-semibold text-brand-green-dark">
               Votre paiement Mobile Money ({confirmedOrder.mobileMoneyOperator}
               {" — "}transaction {confirmedOrder.mobileMoneyTransactionId}) est
-              en cours de vérification. Vous recevrez un e-mail dès qu&rsquo;il
-              sera confirmé.
+              en cours de vérification. Nous confirmons votre paiement sous 30
+              minutes en général, et au plus tard sous 2 heures — vous
+              recevrez un e-mail dès qu&rsquo;il sera confirmé.
             </p>
           ) : (
             <p className="rounded-xl bg-brand-gold/10 px-4 py-3 text-xs font-semibold text-brand-green-dark">
@@ -203,6 +204,12 @@ export default function CommandePage() {
               Continuer mes achats
             </Link>
           </div>
+          <Link
+            href={`/suivi?commande=${confirmedOrder.id}`}
+            className="text-xs font-semibold text-brand-green-dark underline-offset-2 hover:underline"
+          >
+            Suivre ma commande
+          </Link>
         </div>
       </Container>
     );

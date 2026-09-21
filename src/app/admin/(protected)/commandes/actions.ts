@@ -99,6 +99,16 @@ export async function logWhatsappReminderAction(id: string): Promise<void> {
   revalidatePath(`/admin/commandes/${id}`);
 }
 
+export async function logWhatsappPaymentConfirmedAction(id: string): Promise<void> {
+  await recordReminder(
+    id,
+    "whatsapp",
+    "whatsapp_payment_confirmed",
+    "Confirmation de paiement envoyée par WhatsApp depuis l'admin"
+  );
+  revalidatePath(`/admin/commandes/${id}`);
+}
+
 export async function confirmMobileMoneyPaymentAction(id: string): Promise<void> {
   const ok = await updateOrderPaymentStatus(id, "paye", "mobile_money");
   if (ok) {

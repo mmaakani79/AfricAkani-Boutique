@@ -1,7 +1,10 @@
 "use client";
 
 import { MessageCircle } from "lucide-react";
-import { logWhatsappReminderAction } from "@/app/admin/(protected)/commandes/actions";
+import {
+  logWhatsappPaymentConfirmedAction,
+  logWhatsappReminderAction,
+} from "@/app/admin/(protected)/commandes/actions";
 
 export function WhatsappReminderButton({
   orderId,
@@ -27,6 +30,30 @@ export function WhatsappReminderButton({
       className={className}
     >
       <MessageCircle className="h-3.5 w-3.5" /> {label}
+    </a>
+  );
+}
+
+export function WhatsappPaymentConfirmedButton({
+  orderId,
+  href,
+  className,
+}: {
+  orderId: string;
+  href: string;
+  className?: string;
+}) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={() => {
+        logWhatsappPaymentConfirmedAction(orderId).catch(() => {});
+      }}
+      className={className}
+    >
+      <MessageCircle className="h-3.5 w-3.5" /> Confirmer par WhatsApp
     </a>
   );
 }

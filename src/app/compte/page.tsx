@@ -7,15 +7,48 @@ import { getOrders, type Order } from "@/lib/orders";
 import { ZONES } from "@/data/zones";
 import { formatPrice } from "@/data/zones";
 import { Container } from "@/components/layout/container";
+import { getOrderLiveStatusAction } from "@/app/suivi/actions";
+import type { OrderStatus, PaymentStatus } from "@/lib/order-types";
+import {
+  ORDER_STATUS_COLORS,
+  ORDER_STATUS_LABELS,
+  PAYMENT_STATUS_COLORS,
+  PAYMENT_STATUS_LABELS,
+} from "@/lib/order-labels";
+
+type LiveStatus = { status: OrderStatus; paymentStatus: PaymentStatus };
 
 export default function ComptePage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [liveStatus, setLiveStatus] = useState<Record<string, LiveStatus>>({});
 
   useEffect(() => {
     // One-time hydration from localStorage on mount; SSR has no access to it.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setOrders(getOrders());
   }, []);
+
+  useEffect(() => {
+    if (orders.length === 0) return;
+    let cancelled = false;
+    Promise.all(
+      orders.map((o) =>
+        getOrderLiveStatusAction(o.id, o.customer.email || o.customer.phone)
+          .then((result) => [o.id, result] as const)
+          .catch(() => [o.id, null] as const)
+      )
+    ).then((results) => {
+      if (cancelled) return;
+      const next: Record<string, LiveStatus> = {};
+      for (const [id, result] of results) {
+        if (result) next[id] = result;
+      }
+      setLiveStatus(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [orders]);
 
   const addresses = Array.from(
     new Map(
@@ -63,6 +96,20 @@ export default function ComptePage() {
                     })}
                   </span>
                 </div>
+                {liveStatus[order.id] && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <span
+                      className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold ${PAYMENT_STATUS_COLORS[liveStatus[order.id].paymentStatus]}`}
+                    >
+                      {PAYMENT_STATUS_LABELS[liveStatus[order.id].paymentStatus]}
+                    </span>
+                    <span
+                      className={`whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-bold ${ORDER_STATUS_COLORS[liveStatus[order.id].status]}`}
+                    >
+                      {ORDER_STATUS_LABELS[liveStatus[order.id].status]}
+                    </span>
+                  </div>
+                )}
                 <p className="mt-1 text-xs text-ink/50">
                   {ZONES[order.zoneId].label} —{" "}
                   {order.freeShippingReached

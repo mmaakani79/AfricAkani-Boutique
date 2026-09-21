@@ -10,8 +10,11 @@ import {
   PAYMENT_STATUS_COLORS,
   PAYMENT_STATUS_LABELS,
 } from "@/lib/order-labels";
-import { whatsappReminderHref } from "@/lib/whatsapp";
-import { WhatsappReminderButton } from "@/components/admin/whatsapp-reminder-button";
+import { whatsappPaymentConfirmedHref, whatsappReminderHref } from "@/lib/whatsapp";
+import {
+  WhatsappPaymentConfirmedButton,
+  WhatsappReminderButton,
+} from "@/components/admin/whatsapp-reminder-button";
 import {
   DeleteOrderButton,
   MarkTestButton,
@@ -31,6 +34,7 @@ const REMINDER_KIND_LABELS: Record<string, string> = {
   reminder_24h: "Rappel automatique (24 h)",
   reminder_48h: "Rappel automatique (48 h)",
   whatsapp_manual: "Relance WhatsApp manuelle",
+  whatsapp_payment_confirmed: "Confirmation de paiement WhatsApp",
   cancellation: "Annulation automatique",
 };
 
@@ -210,6 +214,25 @@ export default async function AdminOrderDetailPage({
               />
             </div>
           </section>
+
+          {order.paymentStatus === "paye" && (
+            <section className="rounded-2xl border border-brand-green/20 bg-brand-green/5 p-5">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-brand-gold">
+                Confirmation client
+              </h2>
+              <p className="mt-1 text-xs text-ink/60">
+                Prévenez immédiatement le client sur WhatsApp que son
+                paiement a bien été reçu.
+              </p>
+              <div className="mt-3">
+                <WhatsappPaymentConfirmedButton
+                  orderId={order.id}
+                  href={whatsappPaymentConfirmedHref(order)}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-brand-green px-4 py-2 text-xs font-bold text-ivory hover:bg-brand-green-dark"
+                />
+              </div>
+            </section>
+          )}
 
           {order.paymentStatus === "en_attente" && (
             <section className="rounded-2xl border border-brand-gold/30 bg-brand-gold/5 p-5">

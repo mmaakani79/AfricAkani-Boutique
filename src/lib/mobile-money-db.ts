@@ -7,6 +7,7 @@ interface OperatorRow {
   id: string;
   name: string;
   merchant_number: string;
+  display_name: string;
   active: boolean;
   sort_order: number;
 }
@@ -16,6 +17,7 @@ function rowToOperator(row: OperatorRow): MobileMoneyOperator {
     id: row.id,
     name: row.name,
     merchantNumber: row.merchant_number,
+    displayName: row.display_name,
     active: row.active,
   };
 }
@@ -71,6 +73,7 @@ export async function getMobileMoneyConfig(): Promise<MobileMoneyConfig> {
 export async function createOperator(input: {
   name: string;
   merchantNumber: string;
+  displayName?: string;
 }): Promise<void> {
   await ensureSchema();
   const pool = getPool();
@@ -83,22 +86,27 @@ export async function createOperator(input: {
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   await pool.query(
-    `INSERT INTO mobile_money_operators (id, name, merchant_number, sort_order)
-     VALUES ($1, $2, $3, $4)`,
-    [id, input.name, input.merchantNumber, nextSort]
+    `INSERT INTO mobile_money_operators (id, name, merchant_number, display_name, sort_order)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [id, input.name, input.merchantNumber, input.displayName ?? "", nextSort]
   );
 }
 
 export async function updateOperator(
   id: string,
-  input: { name: string; merchantNumber: string; active: boolean }
+  input: {
+    name: string;
+    merchantNumber: string;
+    displayName: string;
+    active: boolean;
+  }
 ): Promise<void> {
   await ensureSchema();
   await getPool().query(
     `UPDATE mobile_money_operators
-     SET name = $2, merchant_number = $3, active = $4
+     SET name = $2, merchant_number = $3, display_name = $4, active = $5
      WHERE id = $1`,
-    [id, input.name, input.merchantNumber, input.active]
+    [id, input.name, input.merchantNumber, input.displayName, input.active]
   );
 }
 

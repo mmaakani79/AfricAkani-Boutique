@@ -185,7 +185,7 @@ export async function sendCustomerOrderConfirmation(
       totalsText(order),
       "",
       isMobileMoney
-        ? `Nous avons bien reçu votre identifiant de transaction Mobile Money (${order.mobileMoneyTransactionId}). Votre paiement est en cours de vérification — vous recevrez un e-mail dès qu'il sera confirmé.`
+        ? `Nous avons bien reçu votre identifiant de transaction Mobile Money (${order.mobileMoneyTransactionId}). Votre paiement est en cours de vérification. Nous confirmons votre paiement sous 30 minutes en général, et au plus tard sous 2 heures — vous recevrez un e-mail dès qu'il sera confirmé.`
         : `Nous vous contacterons par WhatsApp pour finaliser le paiement. Merci de confirmer dans les ${timeoutHours} heures. Passé ce délai, la commande sera automatiquement annulée.`,
       "",
       "Nous vous recontacterons pour organiser la livraison.",
@@ -272,6 +272,8 @@ export async function sendCustomerPaymentConfirmed(
 ): Promise<void> {
   if (!order.customerEmail) return;
   const resend = getClient();
+  const siteUrl = getSiteUrl();
+  const total = formatPrice(order.subtotal + order.shippingFee, order.zoneId);
 
   const { error } = await resend.emails.send({
     from: getFrom(),
@@ -280,11 +282,16 @@ export async function sendCustomerPaymentConfirmed(
     text: [
       `Bonjour ${order.customerName.split(" ")[0] || ""},`,
       "",
-      `Bonne nouvelle : votre paiement pour la commande ${order.id} a bien été confirmé !`,
+      `AfricAkani a bien reçu votre paiement de ${total} pour la commande ${order.id}.`,
+      "",
+      "Articles :",
+      itemsText(order),
       "",
       totalsText(order),
       "",
       "Nous préparons votre commande et vous recontacterons pour organiser la livraison.",
+      "",
+      `Suivre ma commande : ${siteUrl}/suivi?commande=${order.id}`,
       "",
       "L'équipe AfricAkani",
     ].join("\n"),

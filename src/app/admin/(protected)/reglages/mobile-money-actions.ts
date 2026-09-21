@@ -29,10 +29,11 @@ export async function createOperatorAction(
 ): Promise<MobileMoneyActionState> {
   const name = String(formData.get("name") ?? "").trim();
   const merchantNumber = String(formData.get("merchantNumber") ?? "").trim();
+  const displayName = String(formData.get("displayName") ?? "").trim();
   if (!name) {
     return { error: "Le nom de l'opérateur est obligatoire." };
   }
-  await createOperator({ name, merchantNumber });
+  await createOperator({ name, merchantNumber, displayName });
   revalidatePath("/admin/reglages");
   return { success: true };
 }
@@ -44,11 +45,12 @@ export async function updateOperatorAction(
 ): Promise<MobileMoneyActionState> {
   const name = String(formData.get("name") ?? "").trim();
   const merchantNumber = String(formData.get("merchantNumber") ?? "").trim();
+  const displayName = String(formData.get("displayName") ?? "").trim();
   const active = formData.get("active") === "on";
   if (!name) {
     return { error: "Le nom de l'opérateur est obligatoire." };
   }
-  await updateOperator(id, { name, merchantNumber, active });
+  await updateOperator(id, { name, merchantNumber, displayName, active });
   revalidatePath("/admin/reglages");
   return { success: true };
 }

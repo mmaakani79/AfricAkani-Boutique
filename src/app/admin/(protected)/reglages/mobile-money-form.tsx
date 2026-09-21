@@ -122,6 +122,18 @@ function OperatorRow({ operator }: { operator: MobileMoneyOperator }) {
           className="w-40 rounded-lg border border-brand-green/20 bg-white px-3 py-2 text-sm outline-none focus:border-brand-green"
         />
       </label>
+      <label className="block">
+        <span className="mb-1 block text-[11px] font-semibold text-ink/60">
+          Nom affiché chez l&rsquo;opérateur
+        </span>
+        <input
+          type="text"
+          name="displayName"
+          defaultValue={operator.displayName}
+          placeholder="Ex. AKANI SARL"
+          className="w-44 rounded-lg border border-brand-green/20 bg-white px-3 py-2 text-sm outline-none focus:border-brand-green"
+        />
+      </label>
       <label className="flex items-center gap-1.5 pb-2.5 text-xs font-semibold text-ink/70">
         <input
           type="checkbox"
@@ -185,6 +197,17 @@ function AddOperatorForm() {
           type="text"
           name="merchantNumber"
           className="w-40 rounded-lg border border-brand-green/20 bg-ivory px-3 py-2 text-sm outline-none focus:border-brand-green"
+        />
+      </label>
+      <label className="block">
+        <span className="mb-1 block text-[11px] font-semibold text-ink/60">
+          Nom affiché chez l&rsquo;opérateur
+        </span>
+        <input
+          type="text"
+          name="displayName"
+          placeholder="Ex. AKANI SARL"
+          className="w-44 rounded-lg border border-brand-green/20 bg-ivory px-3 py-2 text-sm outline-none focus:border-brand-green"
         />
       </label>
       <button

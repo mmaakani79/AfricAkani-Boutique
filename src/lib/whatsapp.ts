@@ -15,3 +15,10 @@ export function whatsappReminderHref(order: OrderSummary): string {
   ].join(" ");
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 }
+
+export function whatsappPaymentConfirmedHref(order: OrderSummary): string {
+  const phone = normalizePhone(order.customerPhone).replace(/^\+/, "");
+  const total = order.subtotal + order.shippingFee;
+  const message = `Bonjour ${order.customerName.split(" ")[0] || ""}, AfricAkani a bien reçu votre paiement de ${formatPrice(total, order.zoneId)} pour la commande ${order.id}. Merci !`;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+}
