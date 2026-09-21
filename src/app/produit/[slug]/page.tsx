@@ -22,6 +22,7 @@ export async function generateMetadata({
   return {
     title: `${product.name} — AfricAkani`,
     description: product.description,
+    alternates: { canonical: `/produit/${product.slug}` },
   };
 }
 

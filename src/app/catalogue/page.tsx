@@ -7,6 +7,7 @@ export const metadata: Metadata = {
   title: "Catalogue — AfricAkani",
   description:
     "Le catalogue AfricAkani : produits naturels, halal, et sélection généraliste utile au quotidien.",
+  alternates: { canonical: "/catalogue" },
 };
 
 export const dynamic = "force-dynamic";

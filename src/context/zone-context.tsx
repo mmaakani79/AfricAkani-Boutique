@@ -15,7 +15,7 @@ interface ZoneContextValue {
   zoneId: ZoneId;
   zone: (typeof ZONES)[ZoneId];
   setZoneId: (zoneId: ZoneId) => void;
-  priceFor: (product: Product) => number;
+  priceFor: (product: Product) => number | null;
   format: (amount: number) => string;
 }
 

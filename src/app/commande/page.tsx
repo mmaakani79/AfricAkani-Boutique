@@ -10,6 +10,9 @@ import type { ZoneId } from "@/lib/types";
 import { saveOrder, type Order } from "@/lib/orders";
 import { submitOrderAction } from "./actions";
 import { Container } from "@/components/layout/container";
+import { getPaymentTimeoutHours } from "@/lib/order-config";
+
+const PAYMENT_TIMEOUT_HOURS = getPaymentTimeoutHours();
 
 export default function CommandePage() {
   const { items, subtotal, clearCart } = useCart();
@@ -36,6 +39,7 @@ export default function CommandePage() {
       items: items.map((i) => ({
         productId: i.product.id,
         name: i.product.name,
+        sku: i.product.sku ?? null,
         quantity: i.quantity,
         unitPrice: i.lineTotal / i.quantity,
         lineTotal: i.lineTotal,
@@ -67,6 +71,11 @@ export default function CommandePage() {
             Votre commande <span className="font-semibold">{confirmedOrder.id}</span> a
             bien été enregistrée. Vous la retrouverez dans votre espace « Mon
             compte ».
+          </p>
+          <p className="rounded-xl bg-brand-gold/10 px-4 py-3 text-xs font-semibold text-brand-green-dark">
+            Merci de confirmer votre paiement (à la livraison ou par WhatsApp)
+            dans les {PAYMENT_TIMEOUT_HOURS} heures, sans quoi la commande
+            sera automatiquement annulée.
           </p>
           <div className="mt-4 flex gap-3">
             <Link
@@ -152,6 +161,12 @@ export default function CommandePage() {
           />
           <Field label="Adresse de livraison" value={address} onChange={setAddress} required />
           <Field label="Ville" value={city} onChange={setCity} required />
+
+          <p className="text-xs text-ink/50">
+            Paiement à la livraison ou par WhatsApp — merci de confirmer dans
+            les {PAYMENT_TIMEOUT_HOURS} heures suivant la commande, sans quoi
+            elle sera automatiquement annulée.
+          </p>
 
           <button
             type="submit"

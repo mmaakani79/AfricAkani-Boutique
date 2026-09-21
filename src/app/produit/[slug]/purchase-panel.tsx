@@ -11,13 +11,20 @@ export function ProductPurchasePanel({ product }: { product: Product }) {
   const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const price = priceFor(product);
+  const unavailable = price === null;
   const outOfStock = product.stock === "rupture";
+  const disabled = outOfStock || unavailable;
 
   return (
     <div className="mt-6">
-      <p className="font-brand text-3xl font-bold text-ink">
-        {format(priceFor(product))}
-      </p>
+      {unavailable ? (
+        <p className="font-brand text-xl font-bold text-ink/50">
+          Non disponible dans cette zone
+        </p>
+      ) : (
+        <p className="font-brand text-3xl font-bold text-ink">{format(price)}</p>
+      )}
 
       <div className="mt-4 flex items-center gap-3">
         <div className="flex items-center rounded-full border border-brand-green/20 bg-white">
@@ -26,7 +33,7 @@ export function ProductPurchasePanel({ product }: { product: Product }) {
             aria-label="Diminuer la quantité"
             onClick={() => setQuantity((q) => Math.max(1, q - 1))}
             className="p-2.5 text-brand-green-dark disabled:opacity-30"
-            disabled={outOfStock}
+            disabled={disabled}
           >
             <Minus className="h-4 w-4" />
           </button>
@@ -36,7 +43,7 @@ export function ProductPurchasePanel({ product }: { product: Product }) {
             aria-label="Augmenter la quantité"
             onClick={() => setQuantity((q) => q + 1)}
             className="p-2.5 text-brand-green-dark disabled:opacity-30"
-            disabled={outOfStock}
+            disabled={disabled}
           >
             <Plus className="h-4 w-4" />
           </button>
@@ -44,7 +51,7 @@ export function ProductPurchasePanel({ product }: { product: Product }) {
 
         <button
           type="button"
-          disabled={outOfStock}
+          disabled={disabled}
           onClick={() => {
             addItem(product, quantity);
             setAdded(true);
@@ -52,10 +59,16 @@ export function ProductPurchasePanel({ product }: { product: Product }) {
           }}
           className="flex flex-1 items-center justify-center gap-2 rounded-full bg-brand-green px-6 py-3 text-sm font-bold text-ivory transition-colors hover:bg-brand-green-dark disabled:cursor-not-allowed disabled:bg-ink/20"
         >
-          {!outOfStock && !added && (
+          {!disabled && !added && (
             <ShoppingCart className="h-4 w-4" strokeWidth={1.75} aria-hidden />
           )}
-          {outOfStock ? "Rupture de stock" : added ? "Ajouté ✓" : "Ajouter au panier"}
+          {outOfStock
+            ? "Rupture de stock"
+            : unavailable
+              ? "Indisponible ici"
+              : added
+                ? "Ajouté ✓"
+                : "Ajouter au panier"}
         </button>
       </div>
 

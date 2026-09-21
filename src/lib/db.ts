@@ -42,14 +42,27 @@ CREATE TABLE IF NOT EXISTS products (
   unit TEXT NOT NULL,
   packaging TEXT NOT NULL,
   description TEXT NOT NULL DEFAULT '',
-  price_bj NUMERIC NOT NULL,
-  price_ca NUMERIC NOT NULL,
-  price_us NUMERIC NOT NULL,
+  price_bj NUMERIC,
+  price_ca NUMERIC,
+  price_us NUMERIC,
   stock TEXT NOT NULL,
   featured BOOLEAN NOT NULL DEFAULT false,
+  sku TEXT,
+  supplier TEXT,
+  image TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- price_bj/ca/us predate the "empty price = not sold in this zone" rule and
+-- were NOT NULL; relax that for installs created before this migration.
+ALTER TABLE products ALTER COLUMN price_bj DROP NOT NULL;
+ALTER TABLE products ALTER COLUMN price_ca DROP NOT NULL;
+ALTER TABLE products ALTER COLUMN price_us DROP NOT NULL;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS sku TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS supplier TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS image TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS products_sku_key ON products (sku);
 
 CREATE TABLE IF NOT EXISTS orders (
   id TEXT PRIMARY KEY,
@@ -61,17 +74,46 @@ CREATE TABLE IF NOT EXISTS orders (
   customer_email TEXT NOT NULL,
   customer_phone TEXT NOT NULL,
   customer_address TEXT NOT NULL,
-  customer_city TEXT NOT NULL
+  customer_city TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'nouvelle',
+  payment_status TEXT NOT NULL DEFAULT 'en_attente',
+  payment_method TEXT,
+  is_test BOOLEAN NOT NULL DEFAULT false,
+  reminder_24h_sent_at TIMESTAMPTZ,
+  reminder_48h_sent_at TIMESTAMPTZ,
+  status_updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  payment_status_updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'nouvelle';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'en_attente';
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_method TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS is_test BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS reminder_24h_sent_at TIMESTAMPTZ;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS reminder_48h_sent_at TIMESTAMPTZ;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS status_updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status_updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
 
 CREATE TABLE IF NOT EXISTS order_items (
   id SERIAL PRIMARY KEY,
   order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
   product_id TEXT NOT NULL,
   product_name TEXT NOT NULL,
+  product_sku TEXT,
   quantity INTEGER NOT NULL,
   unit_price NUMERIC NOT NULL,
   line_total NUMERIC NOT NULL
+);
+
+ALTER TABLE order_items ADD COLUMN IF NOT EXISTS product_sku TEXT;
+
+CREATE TABLE IF NOT EXISTS order_reminders (
+  id SERIAL PRIMARY KEY,
+  order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  channel TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  note TEXT,
+  sent_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS product_requests (
@@ -84,6 +126,13 @@ CREATE TABLE IF NOT EXISTS product_requests (
   email_sent BOOLEAN NOT NULL DEFAULT false
 );
 `;
+
+async function backfillProductSkus(): Promise<void> {
+  const pool = getPool();
+  await pool.query(
+    `UPDATE products SET sku = 'AK-' || upper(id) WHERE sku IS NULL`
+  );
+}
 
 async function seedIfEmpty(): Promise<void> {
   const pool = getPool();
@@ -123,6 +172,7 @@ export function ensureSchema(): Promise<void> {
       const pool = getPool();
       await pool.query(SCHEMA_SQL);
       await seedIfEmpty();
+      await backfillProductSkus();
     })();
   }
   return global.__schemaReady;

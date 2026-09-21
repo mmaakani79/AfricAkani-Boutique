@@ -10,11 +10,18 @@ interface ProductRow {
   unit: string;
   packaging: string;
   description: string;
-  price_bj: string;
-  price_ca: string;
-  price_us: string;
+  price_bj: string | null;
+  price_ca: string | null;
+  price_us: string | null;
   stock: string;
   featured: boolean;
+  sku: string | null;
+  supplier: string | null;
+  image: string | null;
+}
+
+function toPriceOrNull(value: string | null): number | null {
+  return value === null ? null : Number(value);
 }
 
 function rowToProduct(row: ProductRow): Product {
@@ -28,12 +35,15 @@ function rowToProduct(row: ProductRow): Product {
     packaging: row.packaging as PackagingType,
     description: row.description,
     prices: {
-      bj: Number(row.price_bj),
-      ca: Number(row.price_ca),
-      us: Number(row.price_us),
+      bj: toPriceOrNull(row.price_bj),
+      ca: toPriceOrNull(row.price_ca),
+      us: toPriceOrNull(row.price_us),
     },
     stock: row.stock as StockStatus,
     featured: row.featured,
+    sku: row.sku ?? undefined,
+    supplier: row.supplier ?? undefined,
+    image: row.image ?? undefined,
   };
 }
 
@@ -79,17 +89,21 @@ export interface ProductInput {
   unit: string;
   packaging: PackagingType;
   description: string;
-  prices: { bj: number; ca: number; us: number };
+  prices: { bj: number | null; ca: number | null; us: number | null };
   stock: StockStatus;
   featured: boolean;
+  sku?: string;
+  supplier?: string | null;
+  image?: string | null;
 }
 
 export async function createProduct(input: ProductInput): Promise<Product> {
   await ensureSchema();
+  const sku = input.sku?.trim() || `AK-${input.slug.toUpperCase()}`;
   const { rows } = await getPool().query<ProductRow>(
     `INSERT INTO products
-      (id, slug, name, category_id, halal, unit, packaging, description, price_bj, price_ca, price_us, stock, featured)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+      (id, slug, name, category_id, halal, unit, packaging, description, price_bj, price_ca, price_us, stock, featured, sku, supplier, image)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
      RETURNING *`,
     [
       input.slug,
@@ -105,6 +119,9 @@ export async function createProduct(input: ProductInput): Promise<Product> {
       input.prices.us,
       input.stock,
       input.featured,
+      sku,
+      input.supplier ?? null,
+      input.image ?? null,
     ]
   );
   return rowToProduct(rows[0]);
@@ -119,7 +136,11 @@ export async function updateProduct(
     `UPDATE products SET
        slug = $2, name = $3, category_id = $4, halal = $5, unit = $6,
        packaging = $7, description = $8, price_bj = $9, price_ca = $10,
-       price_us = $11, stock = $12, featured = $13, updated_at = now()
+       price_us = $11, stock = $12, featured = $13,
+       sku = COALESCE(NULLIF($14, ''), sku),
+       supplier = COALESCE($15, supplier),
+       image = COALESCE($16, image),
+       updated_at = now()
      WHERE id = $1
      RETURNING *`,
     [
@@ -136,6 +157,9 @@ export async function updateProduct(
       input.prices.us,
       input.stock,
       input.featured,
+      input.sku ?? "",
+      input.supplier ?? null,
+      input.image ?? null,
     ]
   );
   return rows[0] ? rowToProduct(rows[0]) : null;
@@ -148,6 +172,24 @@ export async function deleteProduct(id: string): Promise<boolean> {
     [id]
   );
   return (rowCount ?? 0) > 0;
+}
+
+export async function getProductBySku(sku: string): Promise<Product | null> {
+  await ensureSchema();
+  const { rows } = await getPool().query<ProductRow>(
+    "SELECT * FROM products WHERE sku = $1",
+    [sku]
+  );
+  return rows[0] ? rowToProduct(rows[0]) : null;
+}
+
+export async function getProductByNameCI(name: string): Promise<Product | null> {
+  await ensureSchema();
+  const { rows } = await getPool().query<ProductRow>(
+    "SELECT * FROM products WHERE lower(name) = lower($1) LIMIT 1",
+    [name]
+  );
+  return rows[0] ? rowToProduct(rows[0]) : null;
 }
 
 export function slugify(name: string): string {

@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   title: "Notre histoire — AfricAkani",
   description:
     "Africa + Akani : l'histoire d'une boutique née d'une conviction simple, du Bénin au Canada.",
+  alternates: { canonical: "/notre-histoire" },
 };
 
 const VALUES = [

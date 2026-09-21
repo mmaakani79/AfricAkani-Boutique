@@ -17,6 +17,8 @@ export function ProductCard({ product }: { product: Product }) {
   const category = getCategoryById(product.categoryId);
   const PackagingIcon = PACKAGING_ICONS[product.packaging];
   const CategoryIcon = category ? CATEGORY_ICONS[category.id] : undefined;
+  const price = priceFor(product);
+  const unavailable = price === null;
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-brand-green/10 bg-white shadow-sm transition-shadow hover:shadow-md">
@@ -56,18 +58,26 @@ export function ProductCard({ product }: { product: Product }) {
           {product.name}
         </Link>
         <div className="mt-auto flex items-center justify-between pt-2">
-          <span className="font-brand text-base font-bold text-ink">
-            {format(priceFor(product))}
-          </span>
-          <button
-            type="button"
-            onClick={() => addItem(product)}
-            disabled={product.stock === "rupture"}
-            className="flex items-center gap-1 rounded-full bg-brand-green px-3 py-1.5 text-xs font-bold text-ivory transition-colors hover:bg-brand-green-dark disabled:cursor-not-allowed disabled:bg-ink/20"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Ajouter
-          </button>
+          {unavailable ? (
+            <span className="text-xs font-semibold text-ink/50">
+              Non disponible dans cette zone
+            </span>
+          ) : (
+            <>
+              <span className="font-brand text-base font-bold text-ink">
+                {format(price)}
+              </span>
+              <button
+                type="button"
+                onClick={() => addItem(product)}
+                disabled={product.stock === "rupture"}
+                className="flex items-center gap-1 rounded-full bg-brand-green px-3 py-1.5 text-xs font-bold text-ivory transition-colors hover:bg-brand-green-dark disabled:cursor-not-allowed disabled:bg-ink/20"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Ajouter
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

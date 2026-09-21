@@ -1,5 +1,12 @@
+import Link from "next/link";
 import type { Metadata } from "next";
-import { ShoppingBag, TrendingUp, Package, CalendarDays } from "lucide-react";
+import {
+  ShoppingBag,
+  TrendingUp,
+  Package,
+  CalendarDays,
+  Clock,
+} from "lucide-react";
 import { getDashboardStats } from "@/lib/orders-db";
 import { ZONES, formatPrice } from "@/data/zones";
 import type { ZoneId } from "@/lib/types";
@@ -26,7 +33,7 @@ export default async function AdminDashboard() {
       <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard
           icon={ShoppingBag}
-          label="Commandes"
+          label="Commandes payées"
           value={String(stats.orderCount)}
         />
         {(Object.keys(ZONES) as ZoneId[]).map((zoneId) => (
@@ -38,6 +45,39 @@ export default async function AdminDashboard() {
           />
         ))}
       </div>
+      <p className="mt-2 text-[11px] text-ink/40">
+        Le chiffre d&rsquo;affaires et les produits les plus vendus ne
+        comptent que les commandes payées et hors commandes marquées « test ».
+      </p>
+
+      {stats.pendingPaymentCount > 0 && (
+        <Link
+          href="/admin/commandes?paymentStatus=en_attente"
+          className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-gold/30 bg-brand-gold/10 p-5 hover:bg-brand-gold/15"
+        >
+          <div className="flex items-center gap-3">
+            <Clock className="h-5 w-5 text-brand-gold" />
+            <div>
+              <p className="text-sm font-bold text-brand-green-dark">
+                {stats.pendingPaymentCount} commande
+                {stats.pendingPaymentCount > 1 ? "s" : ""} en attente de
+                paiement
+              </p>
+              <p className="mt-0.5 text-xs text-ink/60">
+                {stats.pendingPaymentByZone
+                  .map(
+                    (z) =>
+                      `${z.count} en ${ZONES[z.zoneId].shortLabel} (${formatPrice(z.total, z.zoneId)})`
+                  )
+                  .join(" · ")}
+              </p>
+            </div>
+          </div>
+          <span className="text-xs font-bold text-brand-gold">
+            Voir ces commandes →
+          </span>
+        </Link>
+      )}
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <section className="rounded-2xl bg-white p-5 shadow-sm">

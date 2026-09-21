@@ -30,6 +30,11 @@ export function ProductForm({
         name="slug"
         defaultValue={product?.slug}
       />
+      <Field
+        label="SKU (code interne, visible uniquement dans l'admin) — laisser vide pour le générer"
+        name="sku"
+        defaultValue={product?.sku}
+      />
 
       <label className="block">
         <span className="mb-1 block text-xs font-semibold text-ink/60">
@@ -115,28 +120,25 @@ export function ProductForm({
 
       <div className="grid grid-cols-3 gap-4">
         <Field
-          label="Prix Bénin (FCFA)"
+          label="Prix Bénin (FCFA) — vide = non vendu dans cette zone"
           name="priceBj"
           type="number"
           step="1"
-          defaultValue={product?.prices.bj}
-          required
+          defaultValue={product?.prices.bj ?? undefined}
         />
         <Field
-          label="Prix Canada (CAD)"
+          label="Prix Canada (CAD) — vide = non vendu dans cette zone"
           name="priceCa"
           type="number"
           step="0.01"
-          defaultValue={product?.prices.ca}
-          required
+          defaultValue={product?.prices.ca ?? undefined}
         />
         <Field
-          label="Prix États-Unis (USD)"
+          label="Prix États-Unis (USD) — vide = non vendu dans cette zone"
           name="priceUs"
           type="number"
           step="0.01"
-          defaultValue={product?.prices.us}
-          required
+          defaultValue={product?.prices.us ?? undefined}
         />
       </div>
 

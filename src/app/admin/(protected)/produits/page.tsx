@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Upload, FileDown } from "lucide-react";
 import { getAllProducts } from "@/lib/products-db";
 import { getCategoryById } from "@/data/categories";
 import { formatPrice } from "@/data/zones";
@@ -18,16 +18,30 @@ export default async function AdminProductsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-brand text-2xl font-bold text-brand-green-dark">
           Produits ({products.length})
         </h1>
-        <Link
-          href="/admin/produits/nouveau"
-          className="flex items-center gap-1.5 rounded-full bg-brand-green px-4 py-2 text-sm font-bold text-ivory hover:bg-brand-green-dark"
-        >
-          <Plus className="h-4 w-4" /> Ajouter un produit
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href="/api/admin/products/template"
+            className="flex items-center gap-1.5 rounded-full border border-brand-green/20 bg-white px-4 py-2 text-sm font-bold text-brand-green-dark hover:bg-ivory"
+          >
+            <FileDown className="h-4 w-4" /> Télécharger le modèle
+          </a>
+          <Link
+            href="/admin/produits/importer"
+            className="flex items-center gap-1.5 rounded-full border border-brand-green/20 bg-white px-4 py-2 text-sm font-bold text-brand-green-dark hover:bg-ivory"
+          >
+            <Upload className="h-4 w-4" /> Importer un fichier Excel
+          </Link>
+          <Link
+            href="/admin/produits/nouveau"
+            className="flex items-center gap-1.5 rounded-full bg-brand-green px-4 py-2 text-sm font-bold text-ivory hover:bg-brand-green-dark"
+          >
+            <Plus className="h-4 w-4" /> Ajouter un produit
+          </Link>
+        </div>
       </div>
 
       <div className="mt-6 overflow-x-auto rounded-2xl bg-white shadow-sm">
@@ -52,7 +66,7 @@ export default async function AdminProductsPage() {
                   {getCategoryById(p.categoryId)?.name ?? p.categoryId}
                 </td>
                 <td className="px-4 py-3 text-ink/60">
-                  {formatPrice(p.prices.bj, "bj")}
+                  {p.prices.bj === null ? "Non vendu" : formatPrice(p.prices.bj, "bj")}
                 </td>
                 <td className="px-4 py-3 text-ink/60">
                   {p.stock === "en_stock" && "En stock"}

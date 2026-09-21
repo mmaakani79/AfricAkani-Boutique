@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { LayoutDashboard, Package, Mail, LogOut } from "lucide-react";
+import { LayoutDashboard, Package, Mail, LogOut, ClipboardList } from "lucide-react";
 import { logoutAction } from "../actions";
 
 export default function AdminProtectedLayout({
@@ -33,22 +33,28 @@ export default function AdminProtectedLayout({
             </button>
           </form>
         </div>
-        <nav className="mx-auto flex max-w-6xl gap-1 px-4 pb-2 text-sm font-semibold">
+        <nav className="mx-auto flex w-full max-w-6xl gap-1 overflow-x-auto px-4 pb-2 text-sm font-semibold">
           <Link
             href="/admin"
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-brand-green-dark hover:bg-ivory"
+            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-brand-green-dark hover:bg-ivory"
           >
             <LayoutDashboard className="h-4 w-4" /> Tableau de bord
           </Link>
           <Link
             href="/admin/produits"
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-brand-green-dark hover:bg-ivory"
+            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-brand-green-dark hover:bg-ivory"
           >
             <Package className="h-4 w-4" /> Produits
           </Link>
           <Link
+            href="/admin/commandes"
+            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-brand-green-dark hover:bg-ivory"
+          >
+            <ClipboardList className="h-4 w-4" /> Commandes
+          </Link>
+          <Link
             href="/admin/demandes"
-            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-brand-green-dark hover:bg-ivory"
+            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-brand-green-dark hover:bg-ivory"
           >
             <Mail className="h-4 w-4" /> Demandes produits
           </Link>

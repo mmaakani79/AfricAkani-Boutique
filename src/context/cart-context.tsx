@@ -95,7 +95,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     () =>
       lines.map((line) => ({
         ...line,
-        lineTotal: priceFor(line.product) * line.quantity,
+        lineTotal: (priceFor(line.product) ?? 0) * line.quantity,
       })),
     [lines, priceFor]
   );

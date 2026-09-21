@@ -59,22 +59,31 @@ export async function logoutAction(): Promise<void> {
   redirect("/admin/login");
 }
 
+function readPrice(formData: FormData, field: string): number | null {
+  const raw = String(formData.get(field) ?? "").trim();
+  if (raw === "") return null;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : null;
+}
+
 function readProductForm(formData: FormData): ProductInput {
   const name = String(formData.get("name") ?? "").trim();
   const slugRaw = String(formData.get("slug") ?? "").trim();
+  const skuRaw = String(formData.get("sku") ?? "").trim();
 
   return {
     name,
     slug: slugRaw ? slugify(slugRaw) : slugify(name),
+    sku: skuRaw || undefined,
     categoryId: String(formData.get("categoryId") ?? ""),
     halal: String(formData.get("halal") ?? "n/a") as HalalStatus,
     unit: String(formData.get("unit") ?? "").trim(),
     packaging: String(formData.get("packaging") ?? "carton_boite") as PackagingType,
     description: String(formData.get("description") ?? "").trim(),
     prices: {
-      bj: Number(formData.get("priceBj") ?? 0),
-      ca: Number(formData.get("priceCa") ?? 0),
-      us: Number(formData.get("priceUs") ?? 0),
+      bj: readPrice(formData, "priceBj"),
+      ca: readPrice(formData, "priceCa"),
+      us: readPrice(formData, "priceUs"),
     },
     stock: String(formData.get("stock") ?? "en_stock") as StockStatus,
     featured: formData.get("featured") === "on",
@@ -89,13 +98,6 @@ export async function createProductAction(
 
   if (!input.name || !input.slug || !input.categoryId || !input.unit) {
     return { error: "Merci de remplir tous les champs obligatoires." };
-  }
-  if (
-    !Number.isFinite(input.prices.bj) ||
-    !Number.isFinite(input.prices.ca) ||
-    !Number.isFinite(input.prices.us)
-  ) {
-    return { error: "Les prix doivent être des nombres valides." };
   }
 
   try {

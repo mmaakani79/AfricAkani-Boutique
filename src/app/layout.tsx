@@ -19,10 +19,27 @@ const workSans = Work_Sans({
   weight: ["400", "500", "600", "700"],
 });
 
+const SITE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL || "https://www.africakani.com"
+).replace(/\/+$/, "");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "AfricAkani — L'Afrique, c'est bon.",
   description:
     "Boutique en ligne de produits naturels et halal d'Afrique de l'Ouest, et sélection généraliste utile au quotidien. Livraison gratuite dès un certain montant, du Bénin au Canada.",
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "AfricAkani — L'Afrique, c'est bon.",
+    description:
+      "Boutique en ligne de produits naturels et halal d'Afrique de l'Ouest, et sélection généraliste utile au quotidien.",
+    url: SITE_URL,
+    siteName: "AfricAkani",
+    locale: "fr_FR",
+    type: "website",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
