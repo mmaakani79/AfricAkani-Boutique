@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { Plus, Pencil, Trash2, Upload, FileDown } from "lucide-react";
 import { getAllProducts } from "@/lib/products-db";
 import { getCategoryById } from "@/data/categories";
+import { CATEGORY_ICONS } from "@/lib/category-icons";
+import { PhotoPlaceholder } from "@/components/shop/photo-placeholder";
 import { formatPrice } from "@/data/zones";
 import { deleteProductAction } from "../../actions";
 
@@ -48,6 +50,7 @@ export default async function AdminProductsPage() {
         <table className="w-full text-left text-sm">
           <thead>
             <tr className="border-b border-brand-green/10 text-xs font-bold uppercase tracking-wider text-ink/50">
+              <th className="px-4 py-3" />
               <th className="px-4 py-3">Nom</th>
               <th className="px-4 py-3">Catégorie</th>
               <th className="px-4 py-3">Prix (Bénin)</th>
@@ -57,13 +60,32 @@ export default async function AdminProductsPage() {
             </tr>
           </thead>
           <tbody>
-            {products.map((p) => (
+            {products.map((p) => {
+              const category = getCategoryById(p.categoryId);
+              const CategoryIcon = category ? CATEGORY_ICONS[category.id] : undefined;
+              return (
               <tr key={p.id} className="border-b border-brand-green/5">
+                <td className="px-4 py-3">
+                  {p.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- product images live on Vercel Blob, not a fixed host next/image can be pre-configured for
+                    <img
+                      src={p.image}
+                      alt={p.name}
+                      className="h-10 w-10 rounded-lg object-cover"
+                    />
+                  ) : (
+                    <PhotoPlaceholder
+                      seed={category?.photoSeed ?? "emerald"}
+                      icon={CategoryIcon}
+                      className="relative h-10 w-10 rounded-lg"
+                    />
+                  )}
+                </td>
                 <td className="px-4 py-3 font-semibold text-brand-green-dark">
                   {p.name}
                 </td>
                 <td className="px-4 py-3 text-ink/60">
-                  {getCategoryById(p.categoryId)?.name ?? p.categoryId}
+                  {category?.name ?? p.categoryId}
                 </td>
                 <td className="px-4 py-3 text-ink/60">
                   {p.prices.bj === null ? "Non vendu" : formatPrice(p.prices.bj, "bj")}
@@ -99,7 +121,8 @@ export default async function AdminProductsPage() {
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

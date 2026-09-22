@@ -5,6 +5,7 @@ import { CATEGORIES } from "@/data/categories";
 import { PACKAGING_LABELS } from "@/lib/packaging";
 import type { Product } from "@/lib/types";
 import type { ActionState } from "../../actions";
+import { ImageUploadField } from "./image-upload-field";
 
 const initialState: ActionState = {};
 
@@ -35,6 +36,8 @@ export function ProductForm({
         name="sku"
         defaultValue={product?.sku}
       />
+
+      <ImageUploadField defaultValue={product?.image} />
 
       <label className="block">
         <span className="mb-1 block text-xs font-semibold text-ink/60">

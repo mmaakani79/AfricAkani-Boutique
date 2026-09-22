@@ -94,7 +94,10 @@ export interface ProductInput {
   featured: boolean;
   sku?: string;
   supplier?: string | null;
-  image?: string | null;
+  /** Omit (undefined) to leave the existing image untouched on update (e.g. a bulk
+   *  Excel edit that doesn't manage images); pass "" to explicitly clear it, or a
+   *  URL to set it. Always a definite value on create — there's nothing to keep. */
+  image?: string;
 }
 
 export async function createProduct(input: ProductInput): Promise<Product> {
@@ -121,7 +124,7 @@ export async function createProduct(input: ProductInput): Promise<Product> {
       input.featured,
       sku,
       input.supplier ?? null,
-      input.image ?? null,
+      input.image?.trim() || null,
     ]
   );
   return rowToProduct(rows[0]);
@@ -139,7 +142,7 @@ export async function updateProduct(
        price_us = $11, stock = $12, featured = $13,
        sku = COALESCE(NULLIF($14, ''), sku),
        supplier = COALESCE($15, supplier),
-       image = COALESCE($16, image),
+       image = CASE WHEN $16::text IS NULL THEN image WHEN $16 = '' THEN NULL ELSE $16 END,
        updated_at = now()
      WHERE id = $1
      RETURNING *`,

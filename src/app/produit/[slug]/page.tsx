@@ -42,11 +42,20 @@ export default async function ProductPage({
     <Container className="py-10">
       <div className="grid gap-8 md:grid-cols-2">
         <div className="relative aspect-square overflow-hidden rounded-2xl">
-          <PhotoPlaceholder
-            seed={category?.photoSeed ?? "emerald"}
-            icon={CategoryIcon}
-            className="relative h-full w-full"
-          />
+          {product.image ? (
+            // eslint-disable-next-line @next/next/no-img-element -- product images live on Vercel Blob, not a fixed host next/image can be pre-configured for
+            <img
+              src={product.image}
+              alt={product.name}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <PhotoPlaceholder
+              seed={category?.photoSeed ?? "emerald"}
+              icon={CategoryIcon}
+              className="relative h-full w-full"
+            />
+          )}
           <div className="absolute right-3 top-3">
             <HalalBadge status={product.halal} />
           </div>

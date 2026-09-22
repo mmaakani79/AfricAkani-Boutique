@@ -233,7 +233,10 @@ export async function processRows(
           featured: fresh?.featured ?? false,
           sku: row.sku || undefined,
           supplier: row.supplier || null,
-          image: row.image || null,
+          // Blank cell = leave the existing image untouched (a bulk import
+          // shouldn't wipe an image uploaded manually in the admin); a
+          // non-blank cell sets/replaces it.
+          image: row.image || undefined,
         });
         report.updated++;
       }
@@ -259,7 +262,7 @@ export async function processRows(
           featured: false,
           sku: row.sku || undefined,
           supplier: row.supplier || null,
-          image: row.image || null,
+          image: row.image || undefined,
         });
         report.created++;
       }
@@ -306,7 +309,9 @@ export async function buildTemplateWorkbook(): Promise<ExcelJS.Workbook> {
     ],
     ["- stock : en_stock, stock_limite ou rupture (en_stock par défaut)."],
     ["- halal : oui, a_verifier ou n/a (n/a par défaut)."],
-    ["- image : URL de l'image (facultatif, non affiché sur le site pour le moment)."],
+    [
+      "- image : URL de l'image (facultatif). Affichée sur le site et modifiable ensuite dans l'admin. Cellule vide = l'image déjà en place n'est pas touchée.",
+    ],
     ["- fournisseur : facultatif, visible uniquement dans l'admin."],
     [""],
     ["Le SKU reste toujours visible uniquement dans l'espace admin."],

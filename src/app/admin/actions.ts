@@ -71,6 +71,7 @@ function readProductForm(formData: FormData): ProductInput {
   const name = String(formData.get("name") ?? "").trim();
   const slugRaw = String(formData.get("slug") ?? "").trim();
   const skuRaw = String(formData.get("sku") ?? "").trim();
+  const imageRaw = String(formData.get("image") ?? "").trim();
 
   return {
     name,
@@ -88,6 +89,10 @@ function readProductForm(formData: FormData): ProductInput {
     },
     stock: String(formData.get("stock") ?? "en_stock") as StockStatus,
     featured: formData.get("featured") === "on",
+    // The form's hidden field is always present — "" means the admin
+    // explicitly removed the image, a URL means they set/kept one. Never
+    // undefined here, so this always overwrites (see ProductInput.image).
+    image: imageRaw,
   };
 }
 

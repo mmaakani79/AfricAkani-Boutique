@@ -26,11 +26,20 @@ export function ProductCard({ product }: { product: Product }) {
         href={`/produit/${product.slug}`}
         className="relative block aspect-square"
       >
-        <PhotoPlaceholder
-          seed={category?.photoSeed ?? "emerald"}
-          icon={CategoryIcon}
-          className="relative h-full w-full"
-        />
+        {product.image ? (
+          // eslint-disable-next-line @next/next/no-img-element -- product images live on Vercel Blob, not a fixed host next/image can be pre-configured for
+          <img
+            src={product.image}
+            alt={product.name}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <PhotoPlaceholder
+            seed={category?.photoSeed ?? "emerald"}
+            icon={CategoryIcon}
+            className="relative h-full w-full"
+          />
+        )}
         <div className="absolute right-2 top-2">
           <HalalBadge status={product.halal} />
         </div>
