@@ -4,8 +4,9 @@ import { MapPin, Mail, Phone } from "lucide-react";
 import { Container } from "./container";
 import { FreeShippingFooterLink } from "./free-shipping-footer-link";
 import { ProductRequestCard } from "@/components/shop/product-request-modal";
-import { PaymentBadgeRow } from "@/components/shop/payment-brand-icons";
+import { PaymentBadgeRow, MobileMoneyBadgeRow } from "@/components/shop/payment-brand-icons";
 import { isStripeConfigured } from "@/lib/stripe";
+import { getMobileMoneyConfig } from "@/lib/mobile-money-db";
 
 const LINKS = [
   { href: "/notre-histoire#benin", label: "Bénin & Afrique de l'Ouest" },
@@ -14,6 +15,9 @@ const LINKS = [
 
 export async function Footer() {
   const showPaymentBadges = isStripeConfigured();
+  const showMobileMoneyBadges = await getMobileMoneyConfig()
+    .then((config) => config.operators.length > 0)
+    .catch(() => false);
   return (
     <footer className="bg-brand-green-dark text-ivory/90">
       <Container className="grid gap-10 py-12 sm:grid-cols-2 md:grid-cols-4">
@@ -120,12 +124,24 @@ export async function Footer() {
       </Container>
 
       <div>
-        {showPaymentBadges && (
+        {(showPaymentBadges || showMobileMoneyBadges) && (
           <Container className="flex flex-wrap items-center gap-3 pb-4 text-ivory/40">
-            <span className="text-[10px] font-semibold uppercase tracking-wider">
-              Paiements sécurisés
-            </span>
-            <PaymentBadgeRow />
+            {showPaymentBadges && (
+              <>
+                <span className="text-[10px] font-semibold uppercase tracking-wider">
+                  Paiements sécurisés
+                </span>
+                <PaymentBadgeRow />
+              </>
+            )}
+            {showMobileMoneyBadges && (
+              <>
+                <span className="text-[10px] font-semibold uppercase tracking-wider">
+                  Mobile Money
+                </span>
+                <MobileMoneyBadgeRow />
+              </>
+            )}
           </Container>
         )}
         <Container>

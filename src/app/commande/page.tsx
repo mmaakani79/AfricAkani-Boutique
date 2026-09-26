@@ -11,7 +11,7 @@ import type { MobileMoneyConfig } from "@/lib/mobile-money-types";
 import { saveOrder, type Order } from "@/lib/orders";
 import { createStripeCheckoutAction, submitOrderAction, type OrderDraft } from "./actions";
 import { MobileMoneyPanel } from "./mobile-money-panel";
-import { PaymentBadgeRow } from "@/components/shop/payment-brand-icons";
+import { PaymentBadgeRow, MobileMoneyBadgeRow } from "@/components/shop/payment-brand-icons";
 import { Container } from "@/components/layout/container";
 import { getPaymentTimeoutHours } from "@/lib/order-config";
 import { computeShippingFee, isBelowMinOrder } from "@/lib/shipping-calc";
@@ -419,6 +419,7 @@ export default function CommandePage() {
                     Mobile Money
                   </button>
                 )}
+                {mobileMoneyAvailable && <MobileMoneyBadgeRow />}
                 {stripeAvailable && (
                   <button
                     type="button"

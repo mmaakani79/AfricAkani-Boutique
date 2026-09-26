@@ -10,6 +10,14 @@ const CARD_LOGOS = [
   { src: "/logos/payment/paypal.svg", alt: "PayPal" },
 ];
 
+// Mobile Money operator logos, official color, provided by AfricAkani
+// (public/logos/*.webp) — same files used in the operator picker at checkout.
+const MOBILE_MONEY_LOGOS = [
+  { src: "/logos/mtn.webp", alt: "MTN Mobile Money" },
+  { src: "/logos/moov.webp", alt: "Moov Money" },
+  { src: "/logos/celtiis.webp", alt: "Celtiis" },
+];
+
 // Stripe has no card-style badge in that set, so its wordmark is recreated
 // here in the brand's official purple. Path sourced from simple-icons
 // (https://simpleicons.org, CC0-1.0 — free for any use).
@@ -38,6 +46,26 @@ export function PaymentBadgeRow({ className = "" }: { className?: string }) {
         />
       ))}
       <StripeIcon className="h-7 w-7 text-[#635BFF]" />
+    </span>
+  );
+}
+
+/** MTN Mobile Money / Moov Money / Celtiis, in official colors, sized to
+ *  match {@link PaymentBadgeRow} — shown next to "Mobile Money" at checkout
+ *  and in the footer. */
+export function MobileMoneyBadgeRow({ className = "" }: { className?: string }) {
+  return (
+    <span className={`flex flex-wrap items-center gap-2 ${className}`}>
+      {MOBILE_MONEY_LOGOS.map((logo) => (
+        <Image
+          key={logo.alt}
+          src={logo.src}
+          alt={logo.alt}
+          width={240}
+          height={240}
+          className="h-7 w-7 rounded bg-white object-contain p-0.5 ring-1 ring-black/10"
+        />
+      ))}
     </span>
   );
 }
