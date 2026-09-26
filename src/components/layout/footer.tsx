@@ -125,22 +125,22 @@ export async function Footer() {
 
       <div>
         {(showPaymentBadges || showMobileMoneyBadges) && (
-          <Container className="flex flex-wrap items-center gap-3 pb-4 text-ivory/40">
-            {showPaymentBadges && (
-              <>
-                <span className="text-[10px] font-semibold uppercase tracking-wider">
-                  Paiements sécurisés
-                </span>
-                <PaymentBadgeRow />
-              </>
-            )}
+          <Container className="flex flex-col gap-2 pb-4 text-ivory/40">
             {showMobileMoneyBadges && (
-              <>
+              <div className="flex flex-wrap items-center gap-3">
                 <span className="text-[10px] font-semibold uppercase tracking-wider">
                   Mobile Money
                 </span>
                 <MobileMoneyBadgeRow />
-              </>
+              </div>
+            )}
+            {showPaymentBadges && (
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-[10px] font-semibold uppercase tracking-wider">
+                  Paiements sécurisés
+                </span>
+                <PaymentBadgeRow />
+              </div>
             )}
           </Container>
         )}

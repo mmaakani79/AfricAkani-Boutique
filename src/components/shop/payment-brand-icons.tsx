@@ -45,7 +45,7 @@ export function PaymentBadgeRow({ className = "" }: { className?: string }) {
           className="h-7 w-auto rounded ring-1 ring-black/10"
         />
       ))}
-      <StripeIcon className="h-7 w-7 text-[#635BFF]" />
+      <StripeIcon className="h-8 w-8 text-[#635BFF]" />
     </span>
   );
 }
