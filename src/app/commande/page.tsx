@@ -11,7 +11,7 @@ import type { MobileMoneyConfig } from "@/lib/mobile-money-types";
 import { saveOrder, type Order } from "@/lib/orders";
 import { createStripeCheckoutAction, submitOrderAction, type OrderDraft } from "./actions";
 import { MobileMoneyPanel } from "./mobile-money-panel";
-import { AmexIcon, MastercardIcon, VisaIcon } from "@/components/shop/payment-brand-icons";
+import { PaymentBadgeRow } from "@/components/shop/payment-brand-icons";
 import { Container } from "@/components/layout/container";
 import { getPaymentTimeoutHours } from "@/lib/order-config";
 import { computeShippingFee, isBelowMinOrder } from "@/lib/shipping-calc";
@@ -432,13 +432,7 @@ export default function CommandePage() {
                     Payer par carte
                   </button>
                 )}
-                {stripeAvailable && (
-                  <span className="flex items-center gap-1.5 text-ink/35">
-                    <VisaIcon className="h-5 w-5" />
-                    <MastercardIcon className="h-5 w-5" />
-                    <AmexIcon className="h-5 w-5" />
-                  </span>
-                )}
+                {stripeAvailable && <PaymentBadgeRow />}
               </div>
             </div>
           )}

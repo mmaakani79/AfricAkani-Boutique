@@ -4,12 +4,7 @@ import { MapPin, Mail, Phone } from "lucide-react";
 import { Container } from "./container";
 import { FreeShippingFooterLink } from "./free-shipping-footer-link";
 import { ProductRequestCard } from "@/components/shop/product-request-modal";
-import {
-  AmexIcon,
-  MastercardIcon,
-  StripeIcon,
-  VisaIcon,
-} from "@/components/shop/payment-brand-icons";
+import { PaymentBadgeRow } from "@/components/shop/payment-brand-icons";
 import { isStripeConfigured } from "@/lib/stripe";
 
 const LINKS = [
@@ -126,16 +121,11 @@ export async function Footer() {
 
       <div>
         {showPaymentBadges && (
-          <Container className="flex items-center gap-2 pb-4 text-ivory/40">
+          <Container className="flex flex-wrap items-center gap-3 pb-4 text-ivory/40">
             <span className="text-[10px] font-semibold uppercase tracking-wider">
               Paiements sécurisés
             </span>
-            <span className="flex items-center gap-2">
-              <VisaIcon className="h-4 w-4 text-[#1434CB]" />
-              <MastercardIcon className="h-4 w-4 text-[#EB001B]" />
-              <AmexIcon className="h-4 w-4 text-[#006FCF]" />
-              <StripeIcon className="h-4 w-4 text-[#635BFF]" />
-            </span>
+            <PaymentBadgeRow />
           </Container>
         )}
         <Container>
