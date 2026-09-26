@@ -27,6 +27,10 @@ export interface OrderInput {
     phone: string;
     address: string;
     city: string;
+    apartment?: string | null;
+    province?: string | null;
+    postalCode?: string | null;
+    country?: string | null;
   };
   paymentMethod?: string | null;
   paymentStatus?: PaymentStatus;
@@ -61,8 +65,8 @@ export async function createOrder(input: OrderInput): Promise<void> {
     try {
       await client.query(
         `INSERT INTO orders
-          (id, zone_id, subtotal, shipping_fee, free_shipping_reached, customer_name, customer_email, customer_phone, customer_address, customer_city, payment_status, payment_method, mobile_money_operator, mobile_money_phone, mobile_money_transaction_id)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+          (id, zone_id, subtotal, shipping_fee, free_shipping_reached, customer_name, customer_email, customer_phone, customer_address, customer_city, customer_apartment, customer_province, customer_postal_code, customer_country, payment_status, payment_method, mobile_money_operator, mobile_money_phone, mobile_money_transaction_id)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
         [
           input.id,
           input.zoneId,
@@ -74,6 +78,10 @@ export async function createOrder(input: OrderInput): Promise<void> {
           input.customer.phone,
           input.customer.address,
           input.customer.city,
+          input.customer.apartment ?? null,
+          input.customer.province ?? null,
+          input.customer.postalCode ?? null,
+          input.customer.country ?? null,
           input.paymentStatus ?? "en_attente",
           input.paymentMethod ?? null,
           input.mobileMoneyOperator ?? null,
@@ -234,6 +242,10 @@ export interface OrderDetail extends OrderSummary {
   customerEmail: string;
   customerAddress: string;
   customerCity: string;
+  customerApartment: string | null;
+  customerProvince: string | null;
+  customerPostalCode: string | null;
+  customerCountry: string | null;
   freeShippingReached: boolean;
   paymentMethod: string | null;
   reminder24hSentAt: string | null;
@@ -258,6 +270,10 @@ interface OrderFullRow {
   customer_phone: string;
   customer_address: string;
   customer_city: string;
+  customer_apartment: string | null;
+  customer_province: string | null;
+  customer_postal_code: string | null;
+  customer_country: string | null;
   status: string;
   payment_status: string;
   payment_method: string | null;
@@ -314,6 +330,10 @@ export async function getOrderById(id: string): Promise<OrderDetail | null> {
     customerEmail: order.customer_email,
     customerAddress: order.customer_address,
     customerCity: order.customer_city,
+    customerApartment: order.customer_apartment,
+    customerProvince: order.customer_province,
+    customerPostalCode: order.customer_postal_code,
+    customerCountry: order.customer_country,
     freeShippingReached: order.free_shipping_reached,
     status: order.status as OrderStatus,
     paymentStatus: order.payment_status as PaymentStatus,
@@ -341,6 +361,25 @@ export async function getOrderById(id: string): Promise<OrderDetail | null> {
       sentAt: r.sent_at,
     })),
   };
+}
+
+/** Full shipping address as one readable line, for e-mails and the admin order page. */
+export function formatOrderAddress(order: {
+  customerAddress: string;
+  customerApartment: string | null;
+  customerCity: string;
+  customerProvince: string | null;
+  customerPostalCode: string | null;
+  customerCountry: string | null;
+}): string {
+  return [
+    [order.customerAddress, order.customerApartment].filter(Boolean).join(", "),
+    [order.customerCity, order.customerProvince].filter(Boolean).join(", "),
+    order.customerPostalCode,
+    order.customerCountry,
+  ]
+    .filter(Boolean)
+    .join(", ");
 }
 
 function normalizeContact(value: string): string {

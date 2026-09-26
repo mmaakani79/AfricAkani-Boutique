@@ -77,6 +77,10 @@ CREATE TABLE IF NOT EXISTS orders (
   customer_phone TEXT NOT NULL,
   customer_address TEXT NOT NULL,
   customer_city TEXT NOT NULL,
+  customer_apartment TEXT,
+  customer_province TEXT,
+  customer_postal_code TEXT,
+  customer_country TEXT,
   status TEXT NOT NULL DEFAULT 'nouvelle',
   payment_status TEXT NOT NULL DEFAULT 'en_attente',
   payment_method TEXT,
@@ -105,6 +109,10 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_fee NUMERIC NOT NULL DEFAUL
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS mobile_money_operator TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS mobile_money_phone TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS mobile_money_transaction_id TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_apartment TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_province TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_postal_code TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_country TEXT;
 
 -- A transaction id can only ever be claimed by one order.
 CREATE UNIQUE INDEX IF NOT EXISTS orders_mobile_money_txn_key

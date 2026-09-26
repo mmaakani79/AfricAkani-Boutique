@@ -23,6 +23,10 @@ export interface Order {
     phone: string;
     address: string;
     city: string;
+    apartment?: string | null;
+    province?: string | null;
+    postalCode?: string | null;
+    country?: string | null;
   };
   paymentMethod?: string | null;
   mobileMoneyOperator?: string | null;

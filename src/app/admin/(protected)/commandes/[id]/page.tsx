@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
-import { getOrderById } from "@/lib/orders-db";
+import { formatOrderAddress, getOrderById } from "@/lib/orders-db";
 import { ZONES, formatPrice } from "@/data/zones";
 import {
   ORDER_STATUS_COLORS,
@@ -284,7 +284,7 @@ export default async function AdminOrderDetailPage({
               <div>
                 <dt className="text-ink/50">Adresse de livraison</dt>
                 <dd className="font-semibold text-ink">
-                  {order.customerAddress}, {order.customerCity}
+                  {formatOrderAddress(order)}
                 </dd>
               </div>
             </dl>

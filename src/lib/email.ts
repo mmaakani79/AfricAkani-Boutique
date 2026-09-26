@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 import type { ProductRequest } from "./product-requests-db";
-import type { OrderDetail, OrderSummary } from "./orders-db";
+import { formatOrderAddress, type OrderDetail, type OrderSummary } from "./orders-db";
 import { ZONES, formatPrice } from "@/data/zones";
 import { getAdminNotifyEmail, getPaymentTimeoutHours, getSiteUrl } from "./order-config";
 
@@ -136,7 +136,7 @@ export async function sendAdminNewOrderNotification(
     text: [
       `Commande ${order.id} — ${ZONES[order.zoneId].label}`,
       `Client : ${order.customerName} — ${order.customerPhone} — ${order.customerEmail}`,
-      `Adresse : ${order.customerAddress}, ${order.customerCity}`,
+      `Adresse : ${formatOrderAddress(order)}`,
       "",
       "Articles :",
       itemsText(order),
@@ -211,7 +211,7 @@ export async function sendCustomerOrderShipped(order: OrderDetail): Promise<void
       `Bonjour ${order.customerName.split(" ")[0] || ""},`,
       "",
       `Bonne nouvelle : votre commande ${order.id} vient d'être expédiée.`,
-      `Adresse de livraison : ${order.customerAddress}, ${order.customerCity}`,
+      `Adresse de livraison : ${formatOrderAddress(order)}`,
       "",
       "L'équipe AfricAkani",
     ].join("\n"),

@@ -28,7 +28,11 @@ export default function CommandePage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [apartment, setApartment] = useState("");
   const [city, setCity] = useState("");
+  const [province, setProvince] = useState("");
+  const [postalCode, setPostalCode] = useState("");
+  const [country, setCountry] = useState("");
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -60,6 +64,8 @@ export default function CommandePage() {
     };
   }, []);
 
+  const isNorthAmerica = zoneId === "ca" || zoneId === "us";
+
   const mobileMoneyAvailable =
     zoneId === "bj" && (mmConfig?.operators.length ?? 0) > 0;
 
@@ -90,7 +96,21 @@ export default function CommandePage() {
         unitPrice: i.lineTotal / i.quantity,
         lineTotal: i.lineTotal,
       })),
-      customer: { name, email, phone, address, city },
+      customer: {
+        name,
+        email,
+        phone,
+        address,
+        city,
+        country: country.trim() || null,
+        ...(isNorthAmerica
+          ? {
+              apartment: apartment.trim() || null,
+              province: province.trim() || null,
+              postalCode: postalCode.trim() || null,
+            }
+          : {}),
+      },
       ...(usingMobileMoney
         ? {
             paymentMethod: "mobile_money",
@@ -278,8 +298,48 @@ export default function CommandePage() {
             required
             type="email"
           />
-          <Field label="Adresse de livraison" value={address} onChange={setAddress} required />
-          <Field label="Ville" value={city} onChange={setCity} required />
+
+          {isNorthAmerica ? (
+            <>
+              <Field
+                label="Numéro et rue"
+                value={address}
+                onChange={setAddress}
+                required
+              />
+              <Field
+                label="Appartement, suite, etc. (optionnel)"
+                value={apartment}
+                onChange={setApartment}
+              />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Ville" value={city} onChange={setCity} required />
+                <Field
+                  label="Province / État"
+                  value={province}
+                  onChange={setProvince}
+                  required
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field
+                  label="Code postal"
+                  value={postalCode}
+                  onChange={setPostalCode}
+                  required
+                />
+                <Field label="Pays" value={country} onChange={setCountry} required />
+              </div>
+            </>
+          ) : (
+            <>
+              <Field label="Adresse de livraison" value={address} onChange={setAddress} required />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Ville" value={city} onChange={setCity} required />
+                <Field label="Pays" value={country} onChange={setCountry} required />
+              </div>
+            </>
+          )}
 
           {mobileMoneyAvailable && (
             <div>
