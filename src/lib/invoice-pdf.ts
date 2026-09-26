@@ -47,10 +47,12 @@ export async function generateInvoicePdf(order: OrderDetail): Promise<Buffer> {
     doc.image(logo, marginX, 20, { width: 68, height: 68 });
   }
   doc
-    .fillColor("#ffffff")
     .font("Helvetica-Bold")
     .fontSize(22)
-    .text("AfricAkani", marginX + 82, 32, { lineBreak: false });
+    .fillColor("#ffffff")
+    .text("Afric", marginX + 82, 32, { continued: true, lineBreak: false })
+    .fillColor(GOLD)
+    .text("Akani", { lineBreak: false });
   doc
     .fillColor(GOLD)
     .font("Helvetica")
