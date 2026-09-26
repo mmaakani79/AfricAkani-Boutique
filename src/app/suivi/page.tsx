@@ -1,8 +1,8 @@
 "use client";
 
-import { Suspense, useActionState } from "react";
+import { Suspense, useActionState, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Search, Package } from "lucide-react";
+import { Search, Package, FileText } from "lucide-react";
 import { Container } from "@/components/layout/container";
 import { trackOrderAction, type TrackingState } from "./actions";
 import {
@@ -23,6 +23,7 @@ function TrackingForm() {
     initialState
   );
   const order = state.order;
+  const [contact, setContact] = useState("");
 
   return (
     <div className="mx-auto max-w-xl">
@@ -48,6 +49,8 @@ function TrackingForm() {
             type="text"
             name="contact"
             required
+            value={contact}
+            onChange={(e) => setContact(e.target.value)}
             className="w-full rounded-xl border border-brand-green/20 bg-ivory px-3.5 py-2.5 text-sm outline-none focus:border-brand-green"
           />
         </label>
@@ -132,6 +135,15 @@ function TrackingForm() {
                 plus tard sous 2 heures.
               </p>
             )}
+
+          <a
+            href={`/api/factures/${order.id}?contact=${encodeURIComponent(contact)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex w-full items-center justify-center gap-1.5 rounded-full border border-brand-green/30 py-2.5 text-xs font-bold text-brand-green-dark hover:bg-ivory"
+          >
+            <FileText className="h-3.5 w-3.5" /> Télécharger la facture (PDF)
+          </a>
         </div>
       )}
     </div>

@@ -3,6 +3,7 @@ import type { ProductRequest } from "./product-requests-db";
 import { formatOrderAddress, type OrderDetail, type OrderSummary } from "./orders-db";
 import { ZONES, formatPrice } from "@/data/zones";
 import { getAdminNotifyEmail, getPaymentTimeoutHours, getSiteUrl } from "./order-config";
+import { renderEmailHtml } from "./email-html";
 
 function getClient(): Resend {
   const apiKey = process.env.RESEND_API_KEY;
@@ -45,16 +46,19 @@ export async function sendTestEmail(): Promise<TestEmailResult> {
   const to = getAdminNotifyEmail();
   try {
     const resend = getClient();
+    const subject = "Test e-mail AfricAkani";
+    const lines = [
+      `Ceci est un e-mail de test envoyé depuis l'admin AfricAkani.`,
+      `Horodatage : ${new Date().toLocaleString("fr-FR")}`,
+      `Adresse d'expédition (RESEND_FROM) : ${getFrom()}`,
+      `Si vous recevez ce message, l'envoi d'e-mails via Resend fonctionne correctement.`,
+    ];
     const { data, error } = await resend.emails.send({
       from: getFrom(),
       to,
-      subject: "Test e-mail AfricAkani",
-      text: [
-        `Ceci est un e-mail de test envoyé depuis l'admin AfricAkani.`,
-        `Horodatage : ${new Date().toLocaleString("fr-FR")}`,
-        `Adresse d'expédition (RESEND_FROM) : ${getFrom()}`,
-        `Si vous recevez ce message, l'envoi d'e-mails via Resend fonctionne correctement.`,
-      ].join("\n"),
+      subject,
+      text: lines.join("\n"),
+      html: renderEmailHtml(subject, lines),
     });
     if (error) {
       return { ok: false, detail: resendErrorMessage(error) };
@@ -73,23 +77,24 @@ export async function sendProductRequestNotification(
 ): Promise<void> {
   const resend = getClient();
   const to = getAdminNotifyEmail();
+  const subject = `Nouvelle demande de produit : ${request.productName}`;
+  const lines = [
+    `Produit recherché : ${request.productName}`,
+    request.description ? `Description : ${request.description}` : null,
+    `Téléphone / WhatsApp : ${request.phone}`,
+    request.email ? `Email : ${request.email}` : null,
+    "",
+    `Reçu le ${new Date(request.createdAt).toLocaleString("fr-FR")}`,
+    "Voir toutes les demandes dans l'espace admin (/admin/demandes).",
+  ].filter((line): line is string => line !== null);
 
   const { error } = await resend.emails.send({
     from: getFrom(),
     to,
     replyTo: request.email || undefined,
-    subject: `Nouvelle demande de produit : ${request.productName}`,
-    text: [
-      `Produit recherché : ${request.productName}`,
-      request.description ? `Description : ${request.description}` : null,
-      `Téléphone / WhatsApp : ${request.phone}`,
-      request.email ? `Email : ${request.email}` : null,
-      "",
-      `Reçu le ${new Date(request.createdAt).toLocaleString("fr-FR")}`,
-      "Voir toutes les demandes dans l'espace admin (/admin/demandes).",
-    ]
-      .filter(Boolean)
-      .join("\n"),
+    subject,
+    text: lines.join("\n"),
+    html: renderEmailHtml(subject, lines),
   });
 
   if (error) {
@@ -128,31 +133,34 @@ export async function sendAdminNewOrderNotification(
   const siteUrl = getSiteUrl();
 
   const isMobileMoney = order.paymentMethod === "mobile_money";
+  const subject = `Nouvelle commande ${order.id} — ${formatPrice(order.subtotal + order.shippingFee, order.zoneId)}`;
+  const lines = [
+    `Commande ${order.id} — ${ZONES[order.zoneId].label}`,
+    `Client : ${order.customerName} — ${order.customerPhone} — ${order.customerEmail}`,
+    `Adresse : ${formatOrderAddress(order)}`,
+    "",
+    "Articles :",
+    itemsText(order),
+    "",
+    totalsText(order),
+    isMobileMoney
+      ? [
+          "",
+          `Paiement : Mobile Money (${order.mobileMoneyOperator}) — en attente de vérification`,
+          `Numéro client : ${order.mobileMoneyPhone}`,
+          `Identifiant de transaction : ${order.mobileMoneyTransactionId}`,
+        ].join("\n")
+      : `État du paiement : en attente (à confirmer manuellement par l'admin)`,
+    "",
+    `Voir la commande : ${siteUrl}/admin/commandes/${order.id}`,
+  ];
 
   const { error } = await resend.emails.send({
     from: getFrom(),
     to,
-    subject: `Nouvelle commande ${order.id} — ${formatPrice(order.subtotal + order.shippingFee, order.zoneId)}`,
-    text: [
-      `Commande ${order.id} — ${ZONES[order.zoneId].label}`,
-      `Client : ${order.customerName} — ${order.customerPhone} — ${order.customerEmail}`,
-      `Adresse : ${formatOrderAddress(order)}`,
-      "",
-      "Articles :",
-      itemsText(order),
-      "",
-      totalsText(order),
-      isMobileMoney
-        ? [
-            "",
-            `Paiement : Mobile Money (${order.mobileMoneyOperator}) — en attente de vérification`,
-            `Numéro client : ${order.mobileMoneyPhone}`,
-            `Identifiant de transaction : ${order.mobileMoneyTransactionId}`,
-          ].join("\n")
-        : `État du paiement : en attente (à confirmer manuellement par l'admin)`,
-      "",
-      `Voir la commande : ${siteUrl}/admin/commandes/${order.id}`,
-    ].join("\n"),
+    subject,
+    text: lines.join("\n"),
+    html: renderEmailHtml(subject, lines),
   });
 
   if (error) {
@@ -165,33 +173,39 @@ export async function sendCustomerOrderConfirmation(
 ): Promise<void> {
   if (!order.customerEmail) return;
   const resend = getClient();
+  const siteUrl = getSiteUrl();
   const timeoutHours = getPaymentTimeoutHours();
   const isMobileMoney = order.paymentMethod === "mobile_money";
+  const subject = isMobileMoney
+    ? `Commande ${order.id} reçue — paiement en cours de vérification`
+    : `Commande ${order.id} bien reçue — AfricAkani`;
+  const lines = [
+    `Bonjour ${order.customerName.split(" ")[0] || ""},`,
+    "",
+    `Votre commande ${order.id} a bien été enregistrée. Merci pour votre confiance !`,
+    "",
+    "Articles :",
+    itemsText(order),
+    "",
+    totalsText(order),
+    "",
+    isMobileMoney
+      ? `Nous avons bien reçu votre identifiant de transaction Mobile Money (${order.mobileMoneyTransactionId}). Votre paiement est en cours de vérification. Nous confirmons votre paiement sous 30 minutes en général, et au plus tard sous 2 heures — vous recevrez un e-mail dès qu'il sera confirmé.`
+      : `Nous vous contacterons par WhatsApp pour finaliser le paiement. Merci de confirmer dans les ${timeoutHours} heures. Passé ce délai, la commande sera automatiquement annulée.`,
+    "",
+    "Nous vous recontacterons pour organiser la livraison.",
+    "",
+    `Télécharger votre facture : ${siteUrl}/api/factures/${order.id}?contact=${encodeURIComponent(order.customerEmail)}`,
+    "",
+    "L'équipe AfricAkani",
+  ];
 
   const { error } = await resend.emails.send({
     from: getFrom(),
     to: order.customerEmail,
-    subject: isMobileMoney
-      ? `Commande ${order.id} reçue — paiement en cours de vérification`
-      : `Commande ${order.id} bien reçue — AfricAkani`,
-    text: [
-      `Bonjour ${order.customerName.split(" ")[0] || ""},`,
-      "",
-      `Votre commande ${order.id} a bien été enregistrée. Merci pour votre confiance !`,
-      "",
-      "Articles :",
-      itemsText(order),
-      "",
-      totalsText(order),
-      "",
-      isMobileMoney
-        ? `Nous avons bien reçu votre identifiant de transaction Mobile Money (${order.mobileMoneyTransactionId}). Votre paiement est en cours de vérification. Nous confirmons votre paiement sous 30 minutes en général, et au plus tard sous 2 heures — vous recevrez un e-mail dès qu'il sera confirmé.`
-        : `Nous vous contacterons par WhatsApp pour finaliser le paiement. Merci de confirmer dans les ${timeoutHours} heures. Passé ce délai, la commande sera automatiquement annulée.`,
-      "",
-      "Nous vous recontacterons pour organiser la livraison.",
-      "",
-      "L'équipe AfricAkani",
-    ].join("\n"),
+    subject,
+    text: lines.join("\n"),
+    html: renderEmailHtml(subject, lines),
   });
 
   if (error) {
@@ -203,18 +217,22 @@ export async function sendCustomerOrderShipped(order: OrderDetail): Promise<void
   if (!order.customerEmail) return;
   const resend = getClient();
 
+  const subject = `Votre commande ${order.id} est en route — AfricAkani`;
+  const lines = [
+    `Bonjour ${order.customerName.split(" ")[0] || ""},`,
+    "",
+    `Bonne nouvelle : votre commande ${order.id} vient d'être expédiée.`,
+    `Adresse de livraison : ${formatOrderAddress(order)}`,
+    "",
+    "L'équipe AfricAkani",
+  ];
+
   const { error } = await resend.emails.send({
     from: getFrom(),
     to: order.customerEmail,
-    subject: `Votre commande ${order.id} est en route — AfricAkani`,
-    text: [
-      `Bonjour ${order.customerName.split(" ")[0] || ""},`,
-      "",
-      `Bonne nouvelle : votre commande ${order.id} vient d'être expédiée.`,
-      `Adresse de livraison : ${formatOrderAddress(order)}`,
-      "",
-      "L'équipe AfricAkani",
-    ].join("\n"),
+    subject,
+    text: lines.join("\n"),
+    html: renderEmailHtml(subject, lines),
   });
 
   if (error) {
@@ -232,34 +250,37 @@ export async function sendCustomerPaymentReminder(
   const hoursElapsed = reminderNumber === 1 ? 24 : 48;
   const hoursLeft = Math.max(timeoutHours - hoursElapsed, 0);
   const isMobileMoney = order.paymentMethod === "mobile_money";
+  const subject = isMobileMoney
+    ? `Votre paiement Mobile Money est toujours en cours de vérification — commande ${order.id}`
+    : `Rappel : paiement en attente pour votre commande ${order.id}`;
+  const lines = [
+    `Bonjour ${order.customerName.split(" ")[0] || ""},`,
+    "",
+    isMobileMoney
+      ? `Votre commande ${order.id} (${formatPrice(order.subtotal + order.shippingFee, order.zoneId)}) est toujours en cours de vérification.`
+      : `Votre commande ${order.id} (${formatPrice(order.subtotal + order.shippingFee, order.zoneId)}) est toujours en attente de paiement.`,
+    "",
+    totalsText(order),
+    "",
+    isMobileMoney
+      ? hoursLeft > 0
+        ? `Nous vérifions votre paiement dès que possible. Si vous n'avez pas encore envoyé le montant, il vous reste environ ${hoursLeft} heures, sans quoi la commande sera automatiquement annulée.`
+        : `Nous vérifions votre paiement dès que possible, sans quoi la commande sera automatiquement annulée.`
+      : hoursLeft > 0
+        ? `Nous vous contacterons par WhatsApp pour finaliser le paiement. Il vous reste environ ${hoursLeft} heures pour confirmer, sans quoi la commande sera automatiquement annulée.`
+        : `Nous vous contacterons par WhatsApp pour finaliser le paiement rapidement, sans quoi la commande sera automatiquement annulée.`,
+    "",
+    "Répondez à cet e-mail ou contactez-nous sur WhatsApp pour toute question.",
+    "",
+    "L'équipe AfricAkani",
+  ];
 
   const { error } = await resend.emails.send({
     from: getFrom(),
     to: order.customerEmail,
-    subject: isMobileMoney
-      ? `Votre paiement Mobile Money est toujours en cours de vérification — commande ${order.id}`
-      : `Rappel : paiement en attente pour votre commande ${order.id}`,
-    text: [
-      `Bonjour ${order.customerName.split(" ")[0] || ""},`,
-      "",
-      isMobileMoney
-        ? `Votre commande ${order.id} (${formatPrice(order.subtotal + order.shippingFee, order.zoneId)}) est toujours en cours de vérification.`
-        : `Votre commande ${order.id} (${formatPrice(order.subtotal + order.shippingFee, order.zoneId)}) est toujours en attente de paiement.`,
-      "",
-      totalsText(order),
-      "",
-      isMobileMoney
-        ? hoursLeft > 0
-          ? `Nous vérifions votre paiement dès que possible. Si vous n'avez pas encore envoyé le montant, il vous reste environ ${hoursLeft} heures, sans quoi la commande sera automatiquement annulée.`
-          : `Nous vérifions votre paiement dès que possible, sans quoi la commande sera automatiquement annulée.`
-        : hoursLeft > 0
-          ? `Nous vous contacterons par WhatsApp pour finaliser le paiement. Il vous reste environ ${hoursLeft} heures pour confirmer, sans quoi la commande sera automatiquement annulée.`
-          : `Nous vous contacterons par WhatsApp pour finaliser le paiement rapidement, sans quoi la commande sera automatiquement annulée.`,
-      "",
-      "Répondez à cet e-mail ou contactez-nous sur WhatsApp pour toute question.",
-      "",
-      "L'équipe AfricAkani",
-    ].join("\n"),
+    subject,
+    text: lines.join("\n"),
+    html: renderEmailHtml(subject, lines),
   });
 
   if (error) {
@@ -274,27 +295,31 @@ export async function sendCustomerPaymentConfirmed(
   const resend = getClient();
   const siteUrl = getSiteUrl();
   const total = formatPrice(order.subtotal + order.shippingFee, order.zoneId);
+  const subject = `Paiement confirmé — commande ${order.id}`;
+  const lines = [
+    `Bonjour ${order.customerName.split(" ")[0] || ""},`,
+    "",
+    `AfricAkani a bien reçu votre paiement de ${total} pour la commande ${order.id}.`,
+    "",
+    "Articles :",
+    itemsText(order),
+    "",
+    totalsText(order),
+    "",
+    "Nous préparons votre commande et vous recontacterons pour organiser la livraison.",
+    "",
+    `Suivre ma commande : ${siteUrl}/suivi?commande=${order.id}`,
+    `Télécharger votre facture : ${siteUrl}/api/factures/${order.id}?contact=${encodeURIComponent(order.customerEmail)}`,
+    "",
+    "L'équipe AfricAkani",
+  ];
 
   const { error } = await resend.emails.send({
     from: getFrom(),
     to: order.customerEmail,
-    subject: `Paiement confirmé — commande ${order.id}`,
-    text: [
-      `Bonjour ${order.customerName.split(" ")[0] || ""},`,
-      "",
-      `AfricAkani a bien reçu votre paiement de ${total} pour la commande ${order.id}.`,
-      "",
-      "Articles :",
-      itemsText(order),
-      "",
-      totalsText(order),
-      "",
-      "Nous préparons votre commande et vous recontacterons pour organiser la livraison.",
-      "",
-      `Suivre ma commande : ${siteUrl}/suivi?commande=${order.id}`,
-      "",
-      "L'équipe AfricAkani",
-    ].join("\n"),
+    subject,
+    text: lines.join("\n"),
+    html: renderEmailHtml(subject, lines),
   });
 
   if (error) {
@@ -308,18 +333,22 @@ export async function sendCustomerOrderCancelled(
   if (!order.customerEmail) return;
   const resend = getClient();
 
+  const subject = `Commande ${order.id} annulée — paiement non confirmé`;
+  const lines = [
+    `Bonjour ${order.customerName.split(" ")[0] || ""},`,
+    "",
+    `Votre commande ${order.id} a été automatiquement annulée faute de confirmation de paiement dans le délai imparti.`,
+    "Vous pouvez repasser commande à tout moment sur notre boutique.",
+    "",
+    "L'équipe AfricAkani",
+  ];
+
   const { error } = await resend.emails.send({
     from: getFrom(),
     to: order.customerEmail,
-    subject: `Commande ${order.id} annulée — paiement non confirmé`,
-    text: [
-      `Bonjour ${order.customerName.split(" ")[0] || ""},`,
-      "",
-      `Votre commande ${order.id} a été automatiquement annulée faute de confirmation de paiement dans le délai imparti.`,
-      "Vous pouvez repasser commande à tout moment sur notre boutique.",
-      "",
-      "L'équipe AfricAkani",
-    ].join("\n"),
+    subject,
+    text: lines.join("\n"),
+    html: renderEmailHtml(subject, lines),
   });
 
   if (error) {

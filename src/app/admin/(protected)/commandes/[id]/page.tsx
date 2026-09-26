@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileText } from "lucide-react";
 import { formatOrderAddress, getOrderById } from "@/lib/orders-db";
 import { ZONES, formatPrice } from "@/data/zones";
 import {
@@ -294,6 +294,14 @@ export default async function AdminOrderDetailPage({
             <h2 className="text-sm font-bold uppercase tracking-wider text-brand-gold">
               Actions
             </h2>
+            <a
+              href={`/api/admin/orders/${order.id}/facture`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 rounded-full border border-ink/15 px-4 py-2 text-xs font-bold text-ink/60 hover:bg-ivory"
+            >
+              <FileText className="h-3.5 w-3.5" /> Télécharger la facture (PDF)
+            </a>
             <MarkTestButton orderId={order.id} isTest={order.isTest} />
             <DeleteOrderButton orderId={order.id} />
           </section>

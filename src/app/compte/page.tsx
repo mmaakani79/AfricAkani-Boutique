@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Package, MapPin } from "lucide-react";
+import { Package, MapPin, FileText } from "lucide-react";
 import { getOrders, type Order } from "@/lib/orders";
 import { ZONES } from "@/data/zones";
 import { formatPrice } from "@/data/zones";
@@ -146,6 +146,16 @@ export default function ComptePage() {
                     </span>
                   </div>
                 </div>
+                <a
+                  href={`/api/factures/${order.id}?contact=${encodeURIComponent(
+                    order.customer.email || order.customer.phone
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 flex items-center justify-center gap-1.5 rounded-full border border-brand-green/20 py-2 text-xs font-bold text-brand-green-dark hover:bg-ivory"
+                >
+                  <FileText className="h-3.5 w-3.5" /> Télécharger la facture (PDF)
+                </a>
               </li>
             ))}
           </ul>
