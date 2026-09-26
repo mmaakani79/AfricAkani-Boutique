@@ -45,6 +45,8 @@ export interface Product {
   unit: string;
   packaging: PackagingType;
   description: string;
+  /** Longer write-up shown in its own "Description complète" section on the product page. */
+  longDescription?: string;
   /** null for a zone means "not sold in that zone". */
   prices: Record<ZoneId, number | null>;
   stock: StockStatus;

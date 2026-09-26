@@ -15,6 +15,7 @@ export const IMPORT_COLUMNS = [
   "nom",
   "categorie",
   "description",
+  "description_longue",
   "prix_fcfa",
   "prix_cad",
   "prix_usd",
@@ -30,6 +31,7 @@ export interface ParsedRow {
   name: string;
   categorie: string;
   description: string;
+  longDescription: string;
   priceBj: number | null;
   priceCa: number | null;
   priceUs: number | null;
@@ -150,6 +152,7 @@ export async function parseWorkbook(buffer: Buffer): Promise<ParseResult> {
       name,
       categorie: get("categorie"),
       description: get("description"),
+      longDescription: get("description_longue"),
       priceBj: cellNumberOrNull(row.getCell(headerMap.get("prix_fcfa")!).value),
       priceCa: cellNumberOrNull(row.getCell(headerMap.get("prix_cad")!).value),
       priceUs: cellNumberOrNull(row.getCell(headerMap.get("prix_usd")!).value),
@@ -228,6 +231,7 @@ export async function processRows(
           unit: fresh?.unit ?? "pièce",
           packaging: fresh?.packaging ?? "carton_boite",
           description: row.description,
+          longDescription: row.longDescription,
           prices,
           stock: row.stock,
           featured: fresh?.featured ?? false,
@@ -257,6 +261,7 @@ export async function processRows(
           unit: "pièce",
           packaging: "carton_boite",
           description: row.description,
+          longDescription: row.longDescription,
           prices,
           stock: row.stock,
           featured: false,
@@ -282,6 +287,7 @@ export async function buildTemplateWorkbook(): Promise<ExcelJS.Workbook> {
     nom: "Beurre de karité pur (non raffiné)",
     categorie: "Huiles & Cosmétiques naturels",
     description: "Beurre de karité 100% naturel, non raffiné.",
+    description_longue: "",
     prix_fcfa: 3000,
     prix_cad: 12.5,
     prix_usd: "",
@@ -301,6 +307,9 @@ export async function buildTemplateWorkbook(): Promise<ExcelJS.Workbook> {
       "- sku : identifie le produit. S'il existe déjà, la ligne met à jour ce produit au lieu d'en créer un doublon. Si vide, le nom est utilisé pour retrouver le produit.",
     ],
     ["- categorie : doit correspondre exactement au nom d'une catégorie existante."],
+    [
+      "- description_longue : facultatif. Texte plus détaillé affiché dans sa propre section « Description complète » en bas de la fiche produit — distinct de la description courte.",
+    ],
     [
       `- Catégories disponibles : ${CATEGORIES.map((c) => c.name).join(", ")}`,
     ],

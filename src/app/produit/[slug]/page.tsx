@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getProductBySlug } from "@/lib/products-db";
+import { getProductBySlug, getRelatedProducts } from "@/lib/products-db";
 import { getCategoryById } from "@/data/categories";
 import { CATEGORY_ICONS } from "@/lib/category-icons";
 import { PhotoPlaceholder } from "@/components/shop/photo-placeholder";
 import { HalalBadge } from "@/components/shop/halal-badge";
+import { ProductCard } from "@/components/shop/product-card";
 import { PACKAGING_LABELS, HALAL_LABELS } from "@/lib/packaging";
 import { ProductPurchasePanel } from "./purchase-panel";
 import { Container } from "@/components/layout/container";
@@ -37,6 +38,7 @@ export default async function ProductPage({
 
   const category = getCategoryById(product.categoryId);
   const CategoryIcon = category ? CATEGORY_ICONS[category.id] : undefined;
+  const relatedProducts = await getRelatedProducts(product.id, product.categoryId);
 
   return (
     <Container className="py-10">
@@ -106,6 +108,30 @@ export default async function ProductPage({
           <ProductPurchasePanel product={product} />
         </div>
       </div>
+
+      {product.longDescription && product.longDescription.trim() && (
+        <div className="mt-10 rounded-2xl bg-white p-6">
+          <h2 className="font-brand text-xl font-bold text-brand-green-dark">
+            Description complète
+          </h2>
+          <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-ink/70">
+            {product.longDescription}
+          </p>
+        </div>
+      )}
+
+      {relatedProducts.length > 0 && (
+        <div className="mt-10">
+          <h2 className="font-brand text-xl font-bold text-brand-green-dark">
+            Vous aimerez aussi
+          </h2>
+          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {relatedProducts.map((p) => (
+              <ProductCard key={p.id} product={p} />
+            ))}
+          </div>
+        </div>
+      )}
     </Container>
   );
 }

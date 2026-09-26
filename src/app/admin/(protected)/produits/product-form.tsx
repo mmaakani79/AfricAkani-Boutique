@@ -111,12 +111,25 @@ export function ProductForm({
 
       <label className="block">
         <span className="mb-1 block text-xs font-semibold text-ink/60">
-          Description
+          Description courte (affichée à côté de l&rsquo;image sur la fiche produit)
         </span>
         <textarea
           name="description"
           defaultValue={product?.description}
           rows={3}
+          className="w-full rounded-xl border border-brand-green/20 bg-ivory px-3.5 py-2.5 text-sm outline-none focus:border-brand-green"
+        />
+      </label>
+
+      <label className="block">
+        <span className="mb-1 block text-xs font-semibold text-ink/60">
+          Description complète (optionnelle — affichée dans sa propre section
+          en bas de la fiche produit)
+        </span>
+        <textarea
+          name="longDescription"
+          defaultValue={product?.longDescription}
+          rows={6}
           className="w-full rounded-xl border border-brand-green/20 bg-ivory px-3.5 py-2.5 text-sm outline-none focus:border-brand-green"
         />
       </label>

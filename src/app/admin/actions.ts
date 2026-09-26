@@ -82,6 +82,7 @@ function readProductForm(formData: FormData): ProductInput {
     unit: String(formData.get("unit") ?? "").trim(),
     packaging: String(formData.get("packaging") ?? "carton_boite") as PackagingType,
     description: String(formData.get("description") ?? "").trim(),
+    longDescription: String(formData.get("longDescription") ?? "").trim(),
     prices: {
       bj: readPrice(formData, "priceBj"),
       ca: readPrice(formData, "priceCa"),

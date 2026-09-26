@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS products (
   unit TEXT NOT NULL,
   packaging TEXT NOT NULL,
   description TEXT NOT NULL DEFAULT '',
+  long_description TEXT NOT NULL DEFAULT '',
   price_bj NUMERIC,
   price_ca NUMERIC,
   price_us NUMERIC,
@@ -62,6 +63,7 @@ ALTER TABLE products ALTER COLUMN price_us DROP NOT NULL;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS sku TEXT;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS supplier TEXT;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS image TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS long_description TEXT NOT NULL DEFAULT '';
 CREATE UNIQUE INDEX IF NOT EXISTS products_sku_key ON products (sku);
 
 CREATE TABLE IF NOT EXISTS orders (
