@@ -125,6 +125,19 @@ export async function Footer() {
       </Container>
 
       <div>
+        {showPaymentBadges && (
+          <Container className="flex items-center gap-2 pb-4 text-ivory/40">
+            <span className="text-[10px] font-semibold uppercase tracking-wider">
+              Paiements sécurisés
+            </span>
+            <span className="flex items-center gap-2">
+              <VisaIcon className="h-4 w-4 text-[#1434CB]" />
+              <MastercardIcon className="h-4 w-4 text-[#EB001B]" />
+              <AmexIcon className="h-4 w-4 text-[#006FCF]" />
+              <StripeIcon className="h-4 w-4 text-[#635BFF]" />
+            </span>
+          </Container>
+        )}
         <Container>
           <div
             className="h-px w-full"
@@ -135,19 +148,6 @@ export async function Footer() {
             }}
           />
         </Container>
-        {showPaymentBadges && (
-          <Container className="flex flex-wrap items-center justify-center gap-2.5 pt-5 text-ivory/45">
-            <span className="text-[11px] font-semibold uppercase tracking-wider">
-              Paiements sécurisés
-            </span>
-            <span className="flex items-center gap-2.5">
-              <VisaIcon className="h-5 w-5" />
-              <MastercardIcon className="h-5 w-5" />
-              <AmexIcon className="h-5 w-5" />
-              <StripeIcon className="h-5 w-5" />
-            </span>
-          </Container>
-        )}
         <Container className="flex flex-col items-center justify-between gap-2 py-5 text-center text-xs text-ivory/60 sm:flex-row">
           <span>© 2026 AfricAkani</span>
           <Link
