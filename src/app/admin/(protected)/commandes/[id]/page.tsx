@@ -156,9 +156,43 @@ export default async function AdminOrderDetailPage({
                 ? "confirmé par WhatsApp"
                 : order.paymentMethod === "mobile_money"
                   ? "Mobile Money"
-                  : order.paymentMethod || "non renseigné"}
+                  : order.paymentMethod === "stripe"
+                    ? "Carte bancaire (Stripe)"
+                    : order.paymentMethod || "non renseigné"}
             </p>
           </section>
+
+          {order.paymentMethod === "stripe" && (
+            <section className="rounded-2xl bg-white p-5 shadow-sm">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-brand-gold">
+                Stripe
+              </h2>
+              <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <dt className="text-xs text-ink/50">Session Checkout</dt>
+                  <dd className="break-all text-sm font-semibold text-ink">
+                    {order.stripeCheckoutSessionId ?? "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-ink/50">Paiement (payment intent)</dt>
+                  <dd className="break-all text-sm font-semibold text-ink">
+                    {order.stripePaymentIntentId ?? "—"}
+                  </dd>
+                </div>
+              </dl>
+              {order.stripePaymentIntentId && (
+                <a
+                  href={`https://dashboard.stripe.com/payments/${order.stripePaymentIntentId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-block text-xs font-semibold text-brand-green-dark underline-offset-2 hover:underline"
+                >
+                  Voir sur le tableau de bord Stripe →
+                </a>
+              )}
+            </section>
+          )}
 
           {order.paymentMethod === "mobile_money" && (
             <section className="rounded-2xl bg-white p-5 shadow-sm">

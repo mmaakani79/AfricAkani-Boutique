@@ -9,7 +9,7 @@ import { ZONES, formatPrice } from "@/data/zones";
 import type { ZoneId } from "@/lib/types";
 import type { MobileMoneyConfig } from "@/lib/mobile-money-types";
 import { saveOrder, type Order } from "@/lib/orders";
-import { submitOrderAction, type OrderDraft } from "./actions";
+import { createStripeCheckoutAction, submitOrderAction, type OrderDraft } from "./actions";
 import { MobileMoneyPanel } from "./mobile-money-panel";
 import { Container } from "@/components/layout/container";
 import { getPaymentTimeoutHours } from "@/lib/order-config";
@@ -38,9 +38,10 @@ export default function CommandePage() {
   const [submitting, setSubmitting] = useState(false);
 
   const [mmConfig, setMmConfig] = useState<MobileMoneyConfig | null>(null);
-  const [paymentChoice, setPaymentChoice] = useState<"whatsapp" | "mobile_money">(
-    "whatsapp"
-  );
+  const [stripeConfigured, setStripeConfigured] = useState(false);
+  const [paymentChoice, setPaymentChoice] = useState<
+    "whatsapp" | "mobile_money" | "stripe"
+  >("whatsapp");
   const [mmOperatorId, setMmOperatorId] = useState("");
   const [mmPhone, setMmPhone] = useState("");
   const [mmTransactionId, setMmTransactionId] = useState("");
@@ -59,6 +60,14 @@ export default function CommandePage() {
       .catch(() => {
         /* Mobile Money option simply won't be offered */
       });
+    fetch("/api/stripe-config")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { configured: boolean } | null) => {
+        if (!cancelled && data) setStripeConfigured(data.configured);
+      })
+      .catch(() => {
+        /* Card payment option simply won't be offered */
+      });
     return () => {
       cancelled = true;
     };
@@ -68,6 +77,7 @@ export default function CommandePage() {
 
   const mobileMoneyAvailable =
     zoneId === "bj" && (mmConfig?.operators.length ?? 0) > 0;
+  const stripeAvailable = isNorthAmerica && stripeConfigured;
 
   const remaining = Math.max(zone.freeShippingThreshold - subtotal, 0);
   const reached = remaining === 0;
@@ -75,6 +85,7 @@ export default function CommandePage() {
   const total = subtotal + shippingFee;
   const belowMinOrder = isBelowMinOrder(subtotal, zone);
   const usingMobileMoney = mobileMoneyAvailable && paymentChoice === "mobile_money";
+  const usingStripe = stripeAvailable && paymentChoice === "stripe";
   const mobileMoneyIncomplete =
     usingMobileMoney &&
     (!mmOperatorId || !mmPhone.trim() || !mmTransactionId.trim());
@@ -119,7 +130,43 @@ export default function CommandePage() {
             mobileMoneyTransactionId: mmTransactionId.trim(),
           }
         : {}),
+      ...(usingStripe ? { paymentMethod: "stripe" } : {}),
     };
+
+    if (usingStripe) {
+      let stripeResult;
+      try {
+        stripeResult = await createStripeCheckoutAction(draft);
+      } catch {
+        setSubmitting(false);
+        setSubmitError("Une erreur est survenue. Merci de réessayer.");
+        return;
+      }
+
+      setSubmitting(false);
+
+      if (!stripeResult.ok || !stripeResult.url) {
+        setSubmitError(stripeResult.error ?? "Une erreur est survenue. Merci de réessayer.");
+        return;
+      }
+
+      saveOrder({
+        id: draft.id,
+        createdAt: new Date().toISOString(),
+        zoneId,
+        subtotal,
+        shippingFee: stripeResult.shippingFee ?? shippingFee,
+        freeShippingReached: reached,
+        items: draft.items,
+        customer: draft.customer,
+        paymentMethod: "stripe",
+        mobileMoneyOperator: null,
+        mobileMoneyTransactionId: null,
+      });
+      clearCart();
+      window.location.href = stripeResult.url;
+      return;
+    }
 
     let result;
     try {
@@ -341,7 +388,7 @@ export default function CommandePage() {
             </>
           )}
 
-          {mobileMoneyAvailable && (
+          {(mobileMoneyAvailable || stripeAvailable) && (
             <div>
               <label className="mb-3 block text-xs font-bold uppercase tracking-wider text-brand-gold">
                 Mode de paiement
@@ -358,17 +405,32 @@ export default function CommandePage() {
                 >
                   WhatsApp
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setPaymentChoice("mobile_money")}
-                  className={`rounded-full border px-3.5 py-1.5 text-xs font-bold ${
-                    paymentChoice === "mobile_money"
-                      ? "border-brand-green bg-brand-green text-ivory"
-                      : "border-brand-green/20 text-brand-green-dark"
-                  }`}
-                >
-                  Mobile Money
-                </button>
+                {mobileMoneyAvailable && (
+                  <button
+                    type="button"
+                    onClick={() => setPaymentChoice("mobile_money")}
+                    className={`rounded-full border px-3.5 py-1.5 text-xs font-bold ${
+                      paymentChoice === "mobile_money"
+                        ? "border-brand-green bg-brand-green text-ivory"
+                        : "border-brand-green/20 text-brand-green-dark"
+                    }`}
+                  >
+                    Mobile Money
+                  </button>
+                )}
+                {stripeAvailable && (
+                  <button
+                    type="button"
+                    onClick={() => setPaymentChoice("stripe")}
+                    className={`rounded-full border px-3.5 py-1.5 text-xs font-bold ${
+                      paymentChoice === "stripe"
+                        ? "border-brand-green bg-brand-green text-ivory"
+                        : "border-brand-green/20 text-brand-green-dark"
+                    }`}
+                  >
+                    Payer par carte
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -388,7 +450,14 @@ export default function CommandePage() {
             />
           )}
 
-          {!usingMobileMoney && (
+          {usingStripe && (
+            <p className="rounded-xl bg-brand-gold/10 px-4 py-3 text-sm font-medium text-ink/80">
+              Vous allez être redirigé(e) vers une page de paiement sécurisée
+              Stripe pour régler {format(total)} par carte.
+            </p>
+          )}
+
+          {!usingMobileMoney && !usingStripe && (
             <p className="rounded-xl bg-brand-gold/10 px-4 py-3 text-sm font-medium text-ink/80">
               Nous vous contacterons par WhatsApp pour finaliser le paiement —
               merci de confirmer dans les {PAYMENT_TIMEOUT_HOURS} heures suivant
@@ -414,7 +483,11 @@ export default function CommandePage() {
             disabled={belowMinOrder || submitting || mobileMoneyIncomplete}
             className="w-full rounded-full bg-brand-green py-3 text-sm font-bold text-ivory hover:bg-brand-green-dark disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {submitting ? "Envoi…" : "Confirmer la commande"}
+            {submitting
+              ? "Envoi…"
+              : usingStripe
+                ? "Payer par carte"
+                : "Confirmer la commande"}
           </button>
         </form>
 

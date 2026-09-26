@@ -37,7 +37,11 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (pathname.startsWith("/api/cron") || pathname.startsWith("/api/admin")) {
+  if (
+    pathname.startsWith("/api/cron") ||
+    pathname.startsWith("/api/admin") ||
+    pathname.startsWith("/api/webhooks")
+  ) {
     return NextResponse.next();
   }
 

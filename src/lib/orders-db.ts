@@ -254,6 +254,8 @@ export interface OrderDetail extends OrderSummary {
   mobileMoneyOperator: string | null;
   mobileMoneyPhone: string | null;
   mobileMoneyTransactionId: string | null;
+  stripeCheckoutSessionId: string | null;
+  stripePaymentIntentId: string | null;
   items: OrderItemRow[];
   reminders: OrderReminder[];
 }
@@ -284,6 +286,8 @@ interface OrderFullRow {
   mobile_money_operator: string | null;
   mobile_money_phone: string | null;
   mobile_money_transaction_id: string | null;
+  stripe_checkout_session_id: string | null;
+  stripe_payment_intent_id: string | null;
 }
 
 export async function getOrderById(id: string): Promise<OrderDetail | null> {
@@ -345,6 +349,8 @@ export async function getOrderById(id: string): Promise<OrderDetail | null> {
     mobileMoneyOperator: order.mobile_money_operator,
     mobileMoneyPhone: order.mobile_money_phone,
     mobileMoneyTransactionId: order.mobile_money_transaction_id,
+    stripeCheckoutSessionId: order.stripe_checkout_session_id,
+    stripePaymentIntentId: order.stripe_payment_intent_id,
     items: itemRows.map((r) => ({
       productId: r.product_id,
       productName: r.product_name,
@@ -441,6 +447,37 @@ export async function updateOrderPaymentStatus(
          payment_status_updated_at = now()
      WHERE id = $1`,
     [id, paymentStatus, paymentMethod ?? null]
+  );
+  return (rowCount ?? 0) > 0;
+}
+
+export async function setOrderStripeSession(
+  id: string,
+  checkoutSessionId: string
+): Promise<void> {
+  await ensureSchema();
+  await getPool().query(
+    "UPDATE orders SET stripe_checkout_session_id = $2 WHERE id = $1",
+    [id, checkoutSessionId]
+  );
+}
+
+/** Marks an order paid via Stripe. Only the first call (per order) returns
+ *  true — the webhook that delivers this can retry/duplicate, and this
+ *  guards against sending the "payment confirmed" e-mail more than once. */
+export async function markStripeOrderPaid(
+  id: string,
+  paymentIntentId: string | null
+): Promise<boolean> {
+  await ensureSchema();
+  const { rowCount } = await getPool().query(
+    `UPDATE orders
+     SET payment_status = 'paye',
+         payment_method = 'stripe',
+         stripe_payment_intent_id = COALESCE($2, stripe_payment_intent_id),
+         payment_status_updated_at = now()
+     WHERE id = $1 AND payment_status != 'paye'`,
+    [id, paymentIntentId]
   );
   return (rowCount ?? 0) > 0;
 }
