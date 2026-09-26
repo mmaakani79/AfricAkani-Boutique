@@ -117,6 +117,7 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_postal_code TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_country TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS stripe_checkout_session_id TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS stripe_payment_intent_id TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS review_invite_sent_at TIMESTAMPTZ;
 
 -- A transaction id can only ever be claimed by one order.
 CREATE UNIQUE INDEX IF NOT EXISTS orders_mobile_money_txn_key
@@ -191,6 +192,28 @@ CREATE TABLE IF NOT EXISTS product_requests (
 );
 
 ALTER TABLE product_requests ADD COLUMN IF NOT EXISTS handled BOOLEAN NOT NULL DEFAULT false;
+
+-- One review per (order, product): the customer can resubmit before it's
+-- moderated (ON CONFLICT ... DO UPDATE), but never leave two for the same
+-- purchase. order_id is nullable so a review survives its order being
+-- deleted (moderation history shouldn't vanish with it).
+CREATE TABLE IF NOT EXISTS product_reviews (
+  id SERIAL PRIMARY KEY,
+  product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  order_id TEXT REFERENCES orders(id) ON DELETE SET NULL,
+  customer_name TEXT NOT NULL,
+  customer_email TEXT NOT NULL DEFAULT '',
+  rating SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  comment TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'en_attente',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS product_reviews_order_product_key
+  ON product_reviews (order_id, product_id)
+  WHERE order_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS product_reviews_product_idx ON product_reviews (product_id);
+CREATE INDEX IF NOT EXISTS product_reviews_status_idx ON product_reviews (status);
 `;
 
 async function backfillProductSkus(): Promise<void> {

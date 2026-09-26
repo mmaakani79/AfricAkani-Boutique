@@ -19,7 +19,19 @@ interface ProductRow {
   sku: string | null;
   supplier: string | null;
   image: string | null;
+  /** Only present when the query joins the rating/sold aggregates below. */
+  avg_rating?: string | null;
+  review_count?: string | null;
+  sold_count?: string | null;
 }
+
+// Joined onto "products p" for customer-facing listings (catalogue, home,
+// product detail, related products) so ProductCard can show stars/avis/vendus
+// without a separate round trip per product.
+const RATING_JOIN_SELECT = `p.*,
+  (SELECT COALESCE(AVG(rating), 0) FROM product_reviews WHERE product_id = p.id AND status = 'approuvee') AS avg_rating,
+  (SELECT COUNT(*) FROM product_reviews WHERE product_id = p.id AND status = 'approuvee') AS review_count,
+  (SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi JOIN orders o ON o.id = oi.order_id WHERE oi.product_id = p.id AND o.payment_status = 'paye') AS sold_count`;
 
 function toPriceOrNull(value: string | null): number | null {
   return value === null ? null : Number(value);
@@ -46,13 +58,18 @@ function rowToProduct(row: ProductRow): Product {
     sku: row.sku ?? undefined,
     supplier: row.supplier ?? undefined,
     image: row.image ?? undefined,
+    rating:
+      row.avg_rating !== undefined
+        ? { average: Number(row.avg_rating ?? 0), count: Number(row.review_count ?? 0) }
+        : undefined,
+    soldCount: row.sold_count !== undefined ? Number(row.sold_count) : undefined,
   };
 }
 
 export async function getAllProducts(): Promise<Product[]> {
   await ensureSchema();
   const { rows } = await getPool().query<ProductRow>(
-    "SELECT * FROM products ORDER BY name ASC"
+    `SELECT ${RATING_JOIN_SELECT} FROM products p ORDER BY p.name ASC`
   );
   return rows.map(rowToProduct);
 }
@@ -60,7 +77,7 @@ export async function getAllProducts(): Promise<Product[]> {
 export async function getFeaturedProducts(): Promise<Product[]> {
   await ensureSchema();
   const { rows } = await getPool().query<ProductRow>(
-    "SELECT * FROM products WHERE featured = true ORDER BY name ASC"
+    `SELECT ${RATING_JOIN_SELECT} FROM products p WHERE p.featured = true ORDER BY p.name ASC`
   );
   return rows.map(rowToProduct);
 }
@@ -68,7 +85,7 @@ export async function getFeaturedProducts(): Promise<Product[]> {
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   await ensureSchema();
   const { rows } = await getPool().query<ProductRow>(
-    "SELECT * FROM products WHERE slug = $1",
+    `SELECT ${RATING_JOIN_SELECT} FROM products p WHERE p.slug = $1`,
     [slug]
   );
   return rows[0] ? rowToProduct(rows[0]) : null;
@@ -91,9 +108,9 @@ export async function getRelatedProducts(
 ): Promise<Product[]> {
   await ensureSchema();
   const { rows } = await getPool().query<ProductRow>(
-    `SELECT * FROM products
-     WHERE id != $1
-     ORDER BY (category_id = $2) DESC, random()
+    `SELECT ${RATING_JOIN_SELECT} FROM products p
+     WHERE p.id != $1
+     ORDER BY (p.category_id = $2) DESC, random()
      LIMIT $3`,
     [excludeId, categoryId, limit]
   );

@@ -54,7 +54,8 @@ export function OrderStatusForm({
       </button>
       {state.error && <p className="w-full text-xs text-red-600">{state.error}</p>}
       <p className="w-full text-[11px] text-ink/50">
-        Passer à « Expédiée » envoie automatiquement un e-mail au client.
+        Passer à « Expédiée » envoie automatiquement un e-mail au client, et
+        passer à « Livrée » lui envoie une invitation à noter ses achats.
       </p>
     </form>
   );

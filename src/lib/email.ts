@@ -327,6 +327,40 @@ export async function sendCustomerPaymentConfirmed(
   }
 }
 
+export async function sendCustomerReviewInvite(order: OrderDetail): Promise<void> {
+  if (!order.customerEmail) return;
+  const resend = getClient();
+  const siteUrl = getSiteUrl();
+
+  const subject = `Votre avis compte — commande ${order.id} livrée`;
+  const lines = [
+    `Bonjour ${order.customerName.split(" ")[0] || ""},`,
+    "",
+    `Votre commande ${order.id} a bien été livrée. Nous espérons que les produits vous plaisent !`,
+    "",
+    "Articles :",
+    itemsText(order),
+    "",
+    "Prenez une minute pour noter vos achats et aider les autres clients :",
+    `${siteUrl}/noter?commande=${order.id}`,
+    "",
+    "Merci pour votre confiance,",
+    "L'équipe AfricAkani",
+  ];
+
+  const { error } = await resend.emails.send({
+    from: getFrom(),
+    to: order.customerEmail,
+    subject,
+    text: lines.join("\n"),
+    html: renderEmailHtml(subject, lines),
+  });
+
+  if (error) {
+    throw new Error(resendErrorMessage(error));
+  }
+}
+
 export async function sendCustomerOrderCancelled(
   order: OrderSummary & { customerEmail: string }
 ): Promise<void> {

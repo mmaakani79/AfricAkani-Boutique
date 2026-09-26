@@ -8,6 +8,7 @@ import {
   ClipboardList,
   Settings,
   KeyRound,
+  Star,
 } from "lucide-react";
 import { logoutAction } from "../actions";
 
@@ -65,6 +66,12 @@ export default function AdminProtectedLayout({
             className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-brand-green-dark hover:bg-ivory"
           >
             <Mail className="h-4 w-4" /> Demandes produits
+          </Link>
+          <Link
+            href="/admin/avis"
+            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-brand-green-dark hover:bg-ivory"
+          >
+            <Star className="h-4 w-4" /> Avis
           </Link>
           <Link
             href="/admin/reglages"

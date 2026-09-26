@@ -482,6 +482,18 @@ export async function markStripeOrderPaid(
   return (rowCount ?? 0) > 0;
 }
 
+/** Marks the review-invite e-mail sent. Only the first call (per order) returns
+ *  true — guards against re-sending it if the order is set back to "livree"
+ *  again later (e.g. an admin correction). */
+export async function markReviewInviteSent(id: string): Promise<boolean> {
+  await ensureSchema();
+  const { rowCount } = await getPool().query(
+    "UPDATE orders SET review_invite_sent_at = now() WHERE id = $1 AND review_invite_sent_at IS NULL",
+    [id]
+  );
+  return (rowCount ?? 0) > 0;
+}
+
 /** Records the last e-mail send outcome for this order (null clears it on success). */
 export async function setOrderEmailError(
   id: string,

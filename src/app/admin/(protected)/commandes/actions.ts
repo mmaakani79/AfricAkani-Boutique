@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import {
   deleteOrder,
   getOrderById,
+  markReviewInviteSent,
   recordReminder,
   setOrderEmailError,
   setOrderTest,
@@ -17,6 +18,7 @@ import {
   formatEmailError,
   sendCustomerOrderShipped,
   sendCustomerPaymentConfirmed,
+  sendCustomerReviewInvite,
 } from "@/lib/email";
 
 export interface OrderActionState {
@@ -44,6 +46,20 @@ export async function updateOrderStatusAction(
       // Status change already saved; email failure shouldn't block the admin,
       // but it must not be hidden either.
       const message = `e-mail « expédiée » : ${formatEmailError(err)}`;
+      console.error(`[email] Commande ${id} : ${message}`);
+      await setOrderEmailError(id, message);
+    }
+  }
+
+  if (status === "livree" && (await markReviewInviteSent(id))) {
+    try {
+      const order = await getOrderById(id);
+      if (order) {
+        await sendCustomerReviewInvite(order);
+        await setOrderEmailError(id, null);
+      }
+    } catch (err) {
+      const message = `e-mail « invitation à noter » : ${formatEmailError(err)}`;
       console.error(`[email] Commande ${id} : ${message}`);
       await setOrderEmailError(id, message);
     }

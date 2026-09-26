@@ -10,6 +10,7 @@ import { CATEGORY_ICONS } from "@/lib/category-icons";
 import { PACKAGING_ICONS, PACKAGING_LABELS } from "@/lib/packaging";
 import { PhotoPlaceholder } from "./photo-placeholder";
 import { HalalBadge } from "./halal-badge";
+import { StarRatingDisplay } from "./star-rating";
 
 export function ProductCard({ product }: { product: Product }) {
   const { priceFor, format } = useZone();
@@ -66,6 +67,14 @@ export function ProductCard({ product }: { product: Product }) {
         >
           {product.name}
         </Link>
+        {product.rating && (
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <StarRatingDisplay average={product.rating.average} count={product.rating.count} />
+            {!!product.soldCount && (
+              <span className="text-xs text-ink/50">· {product.soldCount} vendus</span>
+            )}
+          </div>
+        )}
         <div className="mt-auto flex items-center justify-between pt-2">
           {unavailable ? (
             <span className="text-xs font-semibold text-ink/50">

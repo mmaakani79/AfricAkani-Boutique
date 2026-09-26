@@ -1,11 +1,13 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getProductBySlug, getRelatedProducts } from "@/lib/products-db";
+import { getApprovedReviewsForProduct } from "@/lib/reviews-db";
 import { getCategoryById } from "@/data/categories";
 import { CATEGORY_ICONS } from "@/lib/category-icons";
 import { PhotoPlaceholder } from "@/components/shop/photo-placeholder";
 import { HalalBadge } from "@/components/shop/halal-badge";
 import { ProductCard } from "@/components/shop/product-card";
+import { StarRatingDisplay } from "@/components/shop/star-rating";
 import { PACKAGING_LABELS, HALAL_LABELS } from "@/lib/packaging";
 import { ProductPurchasePanel } from "./purchase-panel";
 import { Container } from "@/components/layout/container";
@@ -39,6 +41,7 @@ export default async function ProductPage({
   const category = getCategoryById(product.categoryId);
   const CategoryIcon = category ? CATEGORY_ICONS[category.id] : undefined;
   const relatedProducts = await getRelatedProducts(product.id, product.categoryId);
+  const reviews = await getApprovedReviewsForProduct(product.id);
 
   return (
     <Container className="py-10">
@@ -72,6 +75,18 @@ export default async function ProductPage({
           <h1 className="mt-1 font-brand text-3xl font-bold text-brand-green-dark">
             {product.name}
           </h1>
+          {product.rating && (
+            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <StarRatingDisplay
+                average={product.rating.average}
+                count={product.rating.count}
+                size="md"
+              />
+              {!!product.soldCount && (
+                <span className="text-xs text-ink/50">· {product.soldCount} vendus</span>
+              )}
+            </div>
+          )}
           <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-ink/70">
             {product.description}
           </p>
@@ -119,6 +134,51 @@ export default async function ProductPage({
           </p>
         </div>
       )}
+
+      <div className="mt-10 rounded-2xl bg-white p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-brand text-xl font-bold text-brand-green-dark">
+            Avis clients
+          </h2>
+          {product.rating && product.rating.count > 0 && (
+            <StarRatingDisplay average={product.rating.average} count={product.rating.count} size="md" />
+          )}
+        </div>
+
+        {reviews.length === 0 ? (
+          <p className="mt-4 text-sm text-ink/50">
+            Aucun avis publié pour ce produit pour le moment.
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-4">
+            {reviews.map((review) => (
+              <li
+                key={review.id}
+                className="border-t border-brand-green/10 pt-4 first:border-t-0 first:pt-0"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-sm font-semibold text-brand-green-dark">
+                    {review.customerName}
+                  </span>
+                  <StarRatingDisplay average={review.rating} count={1} showCount={false} />
+                </div>
+                <p className="mt-1 text-xs text-ink/40">
+                  {new Date(review.createdAt).toLocaleDateString("fr-FR", {
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </p>
+                {review.comment && (
+                  <p className="mt-2 whitespace-pre-line text-sm text-ink/70">
+                    {review.comment}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {relatedProducts.length > 0 && (
         <div className="mt-10">
