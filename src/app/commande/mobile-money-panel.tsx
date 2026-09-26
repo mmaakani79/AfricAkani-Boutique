@@ -1,6 +1,7 @@
 "use client";
 
 import type { MobileMoneyConfig } from "@/lib/mobile-money-types";
+import { operatorLogoSrc } from "@/lib/mobile-money-logos";
 
 export function MobileMoneyPanel({
   config,
@@ -34,27 +35,38 @@ export function MobileMoneyPanel({
           Opérateur
         </span>
         <div className="flex flex-wrap gap-2">
-          {config.operators.map((op) => (
-            <button
-              key={op.id}
-              type="button"
-              onClick={() => onOperatorChange(op.id)}
-              className={`rounded-full border px-3.5 py-1.5 text-xs font-bold ${
-                operatorId === op.id
-                  ? "border-brand-green bg-brand-green text-ivory"
-                  : "border-brand-green/20 bg-white text-brand-green-dark"
-              }`}
-            >
-              {op.name}
-            </button>
-          ))}
+          {config.operators.map((op) => {
+            const logoSrc = operatorLogoSrc(op.name);
+            return (
+              <button
+                key={op.id}
+                type="button"
+                onClick={() => onOperatorChange(op.id)}
+                className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-bold ${
+                  operatorId === op.id
+                    ? "border-brand-green bg-brand-green text-ivory"
+                    : "border-brand-green/20 bg-white text-brand-green-dark"
+                }`}
+              >
+                {logoSrc && (
+                  // eslint-disable-next-line @next/next/no-img-element -- official operator logo, must render exactly as provided
+                  <img
+                    src={logoSrc}
+                    alt=""
+                    className="h-5 w-5 shrink-0 rounded bg-white object-contain p-0.5"
+                  />
+                )}
+                {op.name}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {selectedOperator && (
         <div className="space-y-1.5 rounded-xl bg-white p-3.5 text-sm">
           <div className="flex justify-between gap-2">
-            <span className="text-ink/60">Numéro marchand</span>
+            <span className="text-ink/60">Code de transfert marchand</span>
             <span className="font-bold text-brand-green-dark">
               {selectedOperator.merchantNumber || "—"}
             </span>
@@ -88,8 +100,9 @@ export function MobileMoneyPanel({
 
       <ol className="list-decimal space-y-1 pl-4 text-xs text-ink/70">
         <li>
-          Envoyez le montant exact au numéro marchand ci-dessus via{" "}
-          {selectedOperator?.name || "votre opérateur"} Mobile Money.
+          Sur votre téléphone, saisissez le code de transfert ci-dessus dans{" "}
+          {selectedOperator?.name || "votre opérateur"} Mobile Money pour
+          envoyer le montant exact.
         </li>
         <li>Notez l&rsquo;identifiant de transaction reçu par SMS.</li>
         <li>

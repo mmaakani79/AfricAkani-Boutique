@@ -3,6 +3,7 @@
 import { useActionState, useTransition } from "react";
 import { Trash2, Plus } from "lucide-react";
 import type { MobileMoneyOperator } from "@/lib/mobile-money-types";
+import { operatorLogoSrc } from "@/lib/mobile-money-logos";
 import {
   createOperatorAction,
   deleteOperatorAction,
@@ -34,9 +35,9 @@ export function MobileMoneyForm({
           Mobile Money — opérateurs
         </h2>
         <p className="mt-1 text-xs text-ink/50">
-          Numéros marchands affichés au client au moment du paiement. Liste
-          entièrement configurable — ajoutez, modifiez ou retirez un
-          opérateur à tout moment.
+          Codes de transfert marchand affichés au client au moment du
+          paiement. Liste entièrement configurable — ajoutez, modifiez ou
+          retirez un opérateur à tout moment.
         </p>
         <div className="mt-4 space-y-3">
           {operators.map((op) => (
@@ -93,12 +94,21 @@ function OperatorRow({ operator }: { operator: MobileMoneyOperator }) {
   const action = updateOperatorAction.bind(null, operator.id);
   const [state, formAction, pending] = useActionState(action, initialState);
   const [deleting, startDelete] = useTransition();
+  const logoSrc = operatorLogoSrc(operator.name);
 
   return (
     <form
       action={formAction}
       className="flex flex-wrap items-end gap-2 rounded-xl border border-brand-green/10 bg-ivory p-3"
     >
+      {logoSrc && (
+        // eslint-disable-next-line @next/next/no-img-element -- official operator logo, must render exactly as provided
+        <img
+          src={logoSrc}
+          alt=""
+          className="h-9 w-9 shrink-0 self-center rounded bg-white object-contain p-0.5"
+        />
+      )}
       <label className="block">
         <span className="mb-1 block text-[11px] font-semibold text-ink/60">
           Nom
@@ -113,12 +123,13 @@ function OperatorRow({ operator }: { operator: MobileMoneyOperator }) {
       </label>
       <label className="block">
         <span className="mb-1 block text-[11px] font-semibold text-ink/60">
-          Numéro marchand
+          Code de transfert marchand (pas un numéro de téléphone)
         </span>
         <input
           type="text"
           name="merchantNumber"
           defaultValue={operator.merchantNumber}
+          placeholder="Ex. *880*1*12345#"
           className="w-40 rounded-lg border border-brand-green/20 bg-white px-3 py-2 text-sm outline-none focus:border-brand-green"
         />
       </label>
@@ -191,11 +202,12 @@ function AddOperatorForm() {
       </label>
       <label className="block">
         <span className="mb-1 block text-[11px] font-semibold text-ink/60">
-          Numéro marchand
+          Code de transfert marchand
         </span>
         <input
           type="text"
           name="merchantNumber"
+          placeholder="Ex. *880*1*12345#"
           className="w-40 rounded-lg border border-brand-green/20 bg-ivory px-3 py-2 text-sm outline-none focus:border-brand-green"
         />
       </label>

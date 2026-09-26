@@ -36,8 +36,8 @@ export default async function AdminReglagesPage() {
         Paiement Mobile Money
       </h2>
       <p className="mt-1 text-sm text-ink/60">
-        Numéros marchands et bénéficiaire affichés au client au paiement
-        (zone Bénin &amp; Afrique de l&rsquo;Ouest).
+        Codes de transfert marchand et bénéficiaire affichés au client au
+        paiement (zone Bénin &amp; Afrique de l&rsquo;Ouest).
       </p>
       <div className="mt-6">
         <MobileMoneyForm beneficiaryName={beneficiaryName} operators={operators} />
