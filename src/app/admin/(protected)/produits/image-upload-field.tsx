@@ -1,11 +1,16 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { upload } from "@vercel/blob/client";
-import { ImagePlus, Loader2, X } from "lucide-react";
+import { ImagePlus, Loader2, TriangleAlert, X } from "lucide-react";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const MAX_SIZE_BYTES = 5 * 1024 * 1024;
+
+const NOT_CONFIGURED_MESSAGE =
+  "Stockage d'images non configuré sur ce déploiement (Vercel Blob). " +
+  "Dans le tableau de bord Vercel : Storage → Create Database → Blob, " +
+  "puis redéployez. Voir le README pour le détail.";
 
 export function ImageUploadField({
   defaultValue,
@@ -16,11 +21,32 @@ export function ImageUploadField({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  // null = not checked yet, true = ready, false = BLOB_READ_WRITE_TOKEN missing.
+  const [storageConfigured, setStorageConfigured] = useState<boolean | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/admin/upload")
+      .then((res) => (res.ok ? res.json() : { configured: true }))
+      .then((data: { configured: boolean }) => {
+        if (!cancelled) setStorageConfigured(data.configured);
+      })
+      .catch(() => {
+        if (!cancelled) setStorageConfigured(true); // don't block the form on a status-check failure
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleFile(file: File) {
     setError(null);
 
+    if (storageConfigured === false) {
+      setError(NOT_CONFIGURED_MESSAGE);
+      return;
+    }
     if (!ALLOWED_TYPES.includes(file.type)) {
       setError("Format non supporté. Utilisez une image JPG, PNG ou WebP.");
       return;
@@ -38,7 +64,19 @@ export function ImageUploadField({
       });
       setUrl(blob.url);
     } catch {
-      setError("Le téléversement a échoué. Merci de réessayer.");
+      // The SDK discards the server's actual error message on failure (see
+      // /api/admin/upload's GET handler comment), so re-check configuration
+      // to give a specific cause when we can, rather than always guessing.
+      const res = await fetch("/api/admin/upload").catch(() => null);
+      const data = res?.ok ? ((await res.json()) as { configured: boolean }) : null;
+      if (data && !data.configured) {
+        setStorageConfigured(false);
+        setError(NOT_CONFIGURED_MESSAGE);
+      } else {
+        setError(
+          "Le téléversement a échoué. Réessayez, ou contactez l'administrateur technique si le problème persiste."
+        );
+      }
     } finally {
       setUploading(false);
     }
@@ -61,6 +99,13 @@ export function ImageUploadField({
         }}
       />
       <input type="hidden" name="image" value={url} />
+
+      {storageConfigured === false && (
+        <p className="mb-2 flex items-start gap-1.5 rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+          <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          {NOT_CONFIGURED_MESSAGE}
+        </p>
+      )}
 
       {url ? (
         <div className="flex items-center gap-4 rounded-xl border border-brand-green/20 bg-ivory p-3">
