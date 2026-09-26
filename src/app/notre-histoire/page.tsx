@@ -37,16 +37,23 @@ const VALUES = [
 export default function NotreHistoire() {
   return (
     <div>
-      {/* Hero : photo pleine largeur avec voile vert */}
-      <section className="relative flex min-h-[560px] items-end overflow-hidden sm:min-h-0 sm:items-center sm:py-24">
-        <Image
-          src="/photos/notre-histoire.webp"
-          alt="Femme en tenue wax vert et or, en extérieur au coucher du soleil"
-          fill
-          priority
-          sizes="100vw"
-          className="object-cover object-[62%_18%]"
-        />
+      {/* Hero : photo avec voile vert. La photo source (1073×805) est plus
+          petite que la largeur des grands écrans — on la plafonne à la
+          largeur de contenu du site (max-w-6xl) plutôt que de l'étirer en
+          plein écran, pour éviter qu'elle apparaisse floue en HD/Retina. */}
+      <section className="relative flex min-h-[560px] items-end overflow-hidden bg-brand-green-dark sm:min-h-0 sm:items-center sm:py-24">
+        <div className="absolute inset-0 flex justify-center">
+          <div className="relative h-full w-full max-w-6xl">
+            <Image
+              src="/photos/notre-histoire.webp"
+              alt="Femme en tenue wax vert et or, en extérieur au coucher du soleil"
+              fill
+              priority
+              sizes="(min-width: 1152px) 1152px, 100vw"
+              className="object-cover object-[62%_18%]"
+            />
+          </div>
+        </div>
         <div className="absolute inset-0 bg-gradient-to-t from-brand-green-dark/95 via-brand-green-dark/55 to-brand-green-dark/25" />
 
         <Container className="relative pb-10 sm:pb-0">
@@ -107,13 +114,17 @@ export default function NotreHistoire() {
 
       {/* Valeurs — même photo réutilisée en filigrane discret */}
       <section id="benin" className="relative overflow-hidden bg-white py-14">
-        <Image
-          src="/photos/notre-histoire.webp"
-          alt=""
-          fill
-          sizes="100vw"
-          className="object-cover object-[50%_25%] opacity-[0.08] grayscale"
-        />
+        <div className="absolute inset-0 flex justify-center">
+          <div className="relative h-full w-full max-w-6xl">
+            <Image
+              src="/photos/notre-histoire.webp"
+              alt=""
+              fill
+              sizes="(min-width: 1152px) 1152px, 100vw"
+              className="object-cover object-[50%_25%] opacity-[0.08] grayscale"
+            />
+          </div>
+        </div>
         <div className="absolute inset-0 bg-white/85" />
         <Container className="relative grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {VALUES.map(({ icon: Icon, title, text }) => (
