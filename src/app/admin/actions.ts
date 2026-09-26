@@ -4,9 +4,9 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
   ADMIN_SESSION_COOKIE,
-  checkPassword,
   createSessionToken,
 } from "@/lib/admin-auth";
+import { verifyAdminPassword } from "@/lib/admin-password-db";
 import {
   createProduct,
   deleteProduct,
@@ -29,7 +29,7 @@ export async function loginAction(
 
   let ok: boolean;
   try {
-    ok = checkPassword(password);
+    ok = await verifyAdminPassword(password);
   } catch {
     return {
       error:

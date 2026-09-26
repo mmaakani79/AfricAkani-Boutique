@@ -135,6 +135,14 @@ CREATE TABLE IF NOT EXISTS mobile_money_settings (
   CONSTRAINT mobile_money_settings_singleton CHECK (id = 1)
 );
 
+-- password_hash overrides ADMIN_PASSWORD once an admin changes it from the
+-- UI; NULL means "still using the ADMIN_PASSWORD environment variable".
+CREATE TABLE IF NOT EXISTS admin_settings (
+  id SMALLINT PRIMARY KEY DEFAULT 1,
+  password_hash TEXT,
+  CONSTRAINT admin_settings_singleton CHECK (id = 1)
+);
+
 CREATE TABLE IF NOT EXISTS order_items (
   id SERIAL PRIMARY KEY,
   order_id TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,

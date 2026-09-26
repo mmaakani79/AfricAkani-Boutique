@@ -71,6 +71,15 @@ export function renderMaintenancePage(): string {
   .btn-primary:hover { background: #e0b65a; }
   .btn-secondary { border: 1px solid rgba(255, 255, 255, 0.3); color: #f4f1e9; }
   .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); }
+  .bottom-glow {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, #c9962c 20%, #0e5a44 50%, #c9962c 80%, transparent 100%);
+    box-shadow: 0 0 8px 0 rgba(201, 150, 44, 0.35);
+  }
 </style>
 </head>
 <body>
@@ -91,6 +100,7 @@ export function renderMaintenancePage(): string {
       </a>
     </div>
   </div>
+  <div class="bottom-glow"></div>
 </body>
 </html>`;
 }

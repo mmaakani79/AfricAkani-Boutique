@@ -7,6 +7,7 @@ import {
   LogOut,
   ClipboardList,
   Settings,
+  KeyRound,
 } from "lucide-react";
 import { logoutAction } from "../actions";
 
@@ -70,6 +71,12 @@ export default function AdminProtectedLayout({
             className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-brand-green-dark hover:bg-ivory"
           >
             <Settings className="h-4 w-4" /> Réglages
+          </Link>
+          <Link
+            href="/admin/mot-de-passe"
+            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-brand-green-dark hover:bg-ivory"
+          >
+            <KeyRound className="h-4 w-4" /> Mot de passe
           </Link>
         </nav>
       </header>
