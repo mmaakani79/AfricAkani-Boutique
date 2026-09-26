@@ -9,10 +9,11 @@ import {
   Clock,
   Mail,
 } from "lucide-react";
-import { getDashboardStats } from "@/lib/orders-db";
+import { getDashboardStats, getSalesOverTime } from "@/lib/orders-db";
 import { ZONES, formatPrice } from "@/data/zones";
 import type { ZoneId } from "@/lib/types";
 import { TestEmailButton } from "@/components/admin/test-email-button";
+import { SalesChartSection } from "@/components/admin/sales-chart";
 
 export const metadata: Metadata = {
   title: "Tableau de bord — Admin AfricAkani",
@@ -22,7 +23,10 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboard() {
-  const stats = await getDashboardStats();
+  const [stats, initialSales] = await Promise.all([
+    getDashboardStats(),
+    getSalesOverTime("day"),
+  ]);
   const revenueByZone = new Map(
     stats.revenueByZone.map((r) => [r.zoneId, r])
   );
@@ -92,6 +96,8 @@ export default async function AdminDashboard() {
           </span>
         </Link>
       )}
+
+      <SalesChartSection initialSeries={initialSales} />
 
       <div className="mt-8 grid gap-6 lg:grid-cols-2">
         <section className="rounded-2xl bg-white p-5 shadow-sm">

@@ -214,6 +214,32 @@ CREATE UNIQUE INDEX IF NOT EXISTS product_reviews_order_product_key
   WHERE order_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS product_reviews_product_idx ON product_reviews (product_id);
 CREATE INDEX IF NOT EXISTS product_reviews_status_idx ON product_reviews (status);
+
+-- contract_text is admin-editable from /admin/contrats — never hardcoded,
+-- since only AkaGestSoft can supply the real, legally-reviewed wording.
+CREATE TABLE IF NOT EXISTS contract_settings (
+  id SMALLINT PRIMARY KEY DEFAULT 1,
+  contract_text TEXT NOT NULL DEFAULT '',
+  CONSTRAINT contract_settings_singleton CHECK (id = 1)
+);
+
+-- contract_text_snapshot freezes the wording the client actually read and
+-- signed, so a later edit to contract_settings never rewrites history.
+CREATE TABLE IF NOT EXISTS signed_contracts (
+  id TEXT PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  client_name TEXT NOT NULL,
+  client_email TEXT NOT NULL,
+  client_phone TEXT NOT NULL,
+  company_name TEXT,
+  services TEXT[] NOT NULL DEFAULT '{}',
+  project_description TEXT NOT NULL DEFAULT '',
+  budget TEXT,
+  timeline TEXT,
+  notes TEXT,
+  contract_text_snapshot TEXT NOT NULL,
+  signature_data_url TEXT NOT NULL
+);
 `;
 
 async function backfillProductSkus(): Promise<void> {
@@ -285,6 +311,46 @@ async function seedMobileMoneyIfEmpty(): Promise<void> {
   }
 }
 
+// Generic starting-point wording, editable any time from /admin/contrats —
+// AkaGestSoft should review/customize it (ideally with a lawyer) before
+// relying on it as a real, binding contract.
+const DEFAULT_CONTRACT_TEXT = `CONTRAT DE PRESTATION DE SERVICES — AKAGESTSOFT
+
+Entre AkaGestSoft (« le Prestataire ») et le client identifié dans le formulaire ci-dessous (« le Client »), il est convenu ce qui suit :
+
+1. Objet
+Le présent contrat a pour objet la réalisation par le Prestataire des services décrits dans le cahier des charges rempli par le Client (boutique en ligne, site web, application de gestion, matériel et achats, réseau et cybersécurité, ou toute combinaison de ces services).
+
+2. Déroulement de la prestation
+Le Prestataire échange avec le Client pour préciser ses besoins, réalise la prestation convenue, puis forme le Client à l'utilisation des outils livrés et reste disponible pour un accompagnement après livraison.
+
+3. Prix et modalités de paiement
+Le prix de la prestation est établi d'un commun accord sur la base du budget et des besoins décrits dans le cahier des charges, et fait l'objet d'un devis ou d'une facture distincte. Les modalités de paiement (acompte, échéancier) sont précisées avec le Client avant le démarrage des travaux.
+
+4. Délais
+Les délais de réalisation sont estimés d'un commun accord et communiqués au Client ; ils peuvent être ajustés en cas de modification du périmètre du projet en cours de réalisation.
+
+5. Propriété et livrables
+Sauf accord contraire, les livrables (code, contenus, configurations) sont remis au Client à l'issue du projet et après règlement intégral du prix convenu.
+
+6. Confidentialité
+Chaque partie s'engage à garder confidentielles les informations échangées dans le cadre de cette prestation.
+
+7. Résiliation
+Le présent contrat peut être résilié par l'une ou l'autre des parties moyennant un préavis écrit raisonnable, sans préjudice des sommes dues pour les travaux déjà réalisés.
+
+8. Acceptation
+En signant électroniquement ci-dessous, le Client reconnaît avoir lu, compris et accepté les termes du présent contrat ainsi que les informations qu'il a fournies dans le cahier des charges ci-joint.`;
+
+async function seedContractTextIfEmpty(): Promise<void> {
+  await getPool().query(
+    `INSERT INTO contract_settings (id, contract_text)
+     VALUES (1, $1)
+     ON CONFLICT (id) DO NOTHING`,
+    [DEFAULT_CONTRACT_TEXT]
+  );
+}
+
 export function ensureSchema(): Promise<void> {
   if (!global.__schemaReady) {
     global.__schemaReady = (async () => {
@@ -293,6 +359,7 @@ export function ensureSchema(): Promise<void> {
       await seedIfEmpty();
       await backfillProductSkus();
       await seedMobileMoneyIfEmpty();
+      await seedContractTextIfEmpty();
     })();
   }
   return global.__schemaReady;

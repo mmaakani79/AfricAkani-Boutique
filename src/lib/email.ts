@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import type { ProductRequest } from "./product-requests-db";
 import { formatOrderAddress, type OrderDetail, type OrderSummary } from "./orders-db";
+import type { SignedContract } from "./contracts-db";
 import { ZONES, formatPrice } from "@/data/zones";
 import { getAdminNotifyEmail, getPaymentTimeoutHours, getSiteUrl } from "./order-config";
 import { renderEmailHtml } from "./email-html";
@@ -351,6 +352,42 @@ export async function sendCustomerReviewInvite(order: OrderDetail): Promise<void
   const { error } = await resend.emails.send({
     from: getFrom(),
     to: order.customerEmail,
+    subject,
+    text: lines.join("\n"),
+    html: renderEmailHtml(subject, lines),
+  });
+
+  if (error) {
+    throw new Error(resendErrorMessage(error));
+  }
+}
+
+export async function sendAdminNewContractNotification(
+  contract: SignedContract
+): Promise<void> {
+  const resend = getClient();
+  const to = getAdminNotifyEmail();
+  const siteUrl = getSiteUrl();
+
+  const subject = `Nouveau contrat signé : ${contract.id} — ${contract.clientName}`;
+  const lines = [
+    `Contrat ${contract.id} signé électroniquement par ${contract.clientName}.`,
+    contract.companyName ? `Entreprise : ${contract.companyName}` : null,
+    `Contact : ${contract.clientPhone} — ${contract.clientEmail}`,
+    `Service(s) : ${contract.services.join(", ") || "—"}`,
+    contract.budget ? `Budget estimé : ${contract.budget}` : null,
+    contract.timeline ? `Délai souhaité : ${contract.timeline}` : null,
+    "",
+    "Description du besoin :",
+    contract.projectDescription || "—",
+    "",
+    `Voir dans l'admin : ${siteUrl}/admin/contrats`,
+  ].filter((line): line is string => line !== null);
+
+  const { error } = await resend.emails.send({
+    from: getFrom(),
+    to,
+    replyTo: contract.clientEmail || undefined,
     subject,
     text: lines.join("\n"),
     html: renderEmailHtml(subject, lines),

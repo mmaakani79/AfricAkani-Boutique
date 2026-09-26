@@ -190,6 +190,12 @@ export default function ServicesPage() {
             </p>
             <CopyEmailButton email={EMAIL} />
           </div>
+          <p className="mt-8 text-xs text-white/60">
+            Projet déjà cadré ?{" "}
+            <a href="/contrat" className="font-semibold text-brand-gold-light underline-offset-2 hover:underline">
+              Remplir le cahier des charges et signer le contrat
+            </a>
+          </p>
         </Container>
       </section>
     </div>

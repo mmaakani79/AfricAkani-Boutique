@@ -9,6 +9,7 @@ import {
   Settings,
   KeyRound,
   Star,
+  FileSignature,
 } from "lucide-react";
 import { logoutAction } from "../actions";
 
@@ -72,6 +73,12 @@ export default function AdminProtectedLayout({
             className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-brand-green-dark hover:bg-ivory"
           >
             <Star className="h-4 w-4" /> Avis
+          </Link>
+          <Link
+            href="/admin/contrats"
+            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-brand-green-dark hover:bg-ivory"
+          >
+            <FileSignature className="h-4 w-4" /> Contrats signés
           </Link>
           <Link
             href="/admin/reglages"

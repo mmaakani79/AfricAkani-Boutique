@@ -700,3 +700,107 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     pendingPaymentByZone,
   };
 }
+
+export type SalesPeriod = "day" | "week" | "month";
+
+export interface SalesPoint {
+  key: string;
+  label: string;
+  total: number;
+}
+
+export interface SalesSeries {
+  zoneId: ZoneId;
+  points: SalesPoint[];
+}
+
+const SALES_PERIOD_WINDOW_DAYS: Record<SalesPeriod, number> = {
+  day: 30,
+  week: 84,
+  month: 365,
+};
+
+const SALES_PERIOD_BUCKET_COUNT: Record<SalesPeriod, number> = {
+  day: 30,
+  week: 12,
+  month: 12,
+};
+
+/** UTC bucket key/label for a date, at the given period's granularity — "week"
+ *  buckets snap back to that week's Monday (ISO week), matching how readers
+ *  expect a weekly chart to group. */
+function salesBucketKeyAndLabel(
+  date: Date,
+  period: SalesPeriod
+): { key: string; label: string } {
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  if (period === "month") {
+    const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+    const label = d.toLocaleDateString("fr-FR", { month: "short", year: "2-digit", timeZone: "UTC" });
+    return { key, label };
+  }
+  if (period === "week") {
+    const dayOfWeek = (d.getUTCDay() + 6) % 7; // 0 = Monday
+    d.setUTCDate(d.getUTCDate() - dayOfWeek);
+  }
+  const key = d.toISOString().slice(0, 10);
+  const label = d.toLocaleDateString("fr-FR", { day: "2-digit", month: "short", timeZone: "UTC" });
+  return { key, label };
+}
+
+/** Sales evolution per zone (own currency, never summed across zones) for the
+ *  admin dashboard's "courbe des ventes" — paid, non-test orders only, one
+ *  point per day/week/month, zero-filled so the chart never has gaps. */
+export async function getSalesOverTime(period: SalesPeriod): Promise<SalesSeries[]> {
+  await ensureSchema();
+  const windowDays = SALES_PERIOD_WINDOW_DAYS[period];
+  const { rows } = await getPool().query<{
+    zone_id: string;
+    created_at: string;
+    subtotal: string;
+    shipping_fee: string;
+  }>(
+    `SELECT zone_id, created_at, subtotal, shipping_fee
+     FROM orders
+     WHERE payment_status = 'paye' AND is_test = false
+       AND created_at >= now() - ($1 || ' days')::interval
+     ORDER BY created_at ASC`,
+    [windowDays]
+  );
+
+  const bucketCount = SALES_PERIOD_BUCKET_COUNT[period];
+  const stepDays = period === "day" ? 1 : period === "week" ? 7 : 30;
+  const now = new Date();
+  const orderedBuckets: { key: string; label: string }[] = [];
+  const seenKeys = new Set<string>();
+  for (let i = bucketCount - 1; i >= 0; i--) {
+    const d = new Date(now);
+    if (period === "month") {
+      d.setUTCMonth(d.getUTCMonth() - i);
+    } else {
+      d.setUTCDate(d.getUTCDate() - i * stepDays);
+    }
+    const bucket = salesBucketKeyAndLabel(d, period);
+    if (!seenKeys.has(bucket.key)) {
+      seenKeys.add(bucket.key);
+      orderedBuckets.push(bucket);
+    }
+  }
+
+  const totalsByZoneAndBucket = new Map<string, number>();
+  for (const row of rows) {
+    const { key } = salesBucketKeyAndLabel(new Date(row.created_at), period);
+    const mapKey = `${row.zone_id}|${key}`;
+    const amount = Number(row.subtotal) + Number(row.shipping_fee);
+    totalsByZoneAndBucket.set(mapKey, (totalsByZoneAndBucket.get(mapKey) ?? 0) + amount);
+  }
+
+  return (["bj", "ca", "us"] as ZoneId[]).map((zoneId) => ({
+    zoneId,
+    points: orderedBuckets.map(({ key, label }) => ({
+      key,
+      label,
+      total: totalsByZoneAndBucket.get(`${zoneId}|${key}`) ?? 0,
+    })),
+  }));
+}
