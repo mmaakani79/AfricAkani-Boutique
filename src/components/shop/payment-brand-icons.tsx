@@ -63,7 +63,7 @@ export function MobileMoneyBadgeRow({ className = "" }: { className?: string }) 
           alt={logo.alt}
           width={240}
           height={240}
-          className="h-7 w-7 rounded bg-white object-contain p-0.5 ring-1 ring-black/10"
+          className="h-8 w-8 rounded bg-white object-contain p-0.5 ring-1 ring-black/10"
         />
       ))}
     </span>
