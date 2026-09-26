@@ -84,11 +84,20 @@ export default function PanierPage() {
                 href={`/produit/${item.product.slug}`}
                 className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl"
               >
-                <PhotoPlaceholder
-                  seed={category?.photoSeed ?? "emerald"}
-                  icon={Icon}
-                  className="relative h-full w-full"
-                />
+                {item.product.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- product images live on Vercel Blob, not a fixed host next/image can be pre-configured for
+                  <img
+                    src={item.product.image}
+                    alt={item.product.name}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <PhotoPlaceholder
+                    seed={category?.photoSeed ?? "emerald"}
+                    icon={Icon}
+                    className="relative h-full w-full"
+                  />
+                )}
               </Link>
 
               <div className="min-w-0 flex-1">

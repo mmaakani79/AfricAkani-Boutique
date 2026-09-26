@@ -4,13 +4,21 @@ import { MapPin, Mail, Phone } from "lucide-react";
 import { Container } from "./container";
 import { FreeShippingFooterLink } from "./free-shipping-footer-link";
 import { ProductRequestCard } from "@/components/shop/product-request-modal";
+import {
+  AmexIcon,
+  MastercardIcon,
+  StripeIcon,
+  VisaIcon,
+} from "@/components/shop/payment-brand-icons";
+import { isStripeConfigured } from "@/lib/stripe";
 
 const LINKS = [
   { href: "/notre-histoire#benin", label: "Bénin & Afrique de l'Ouest" },
   { href: "/notre-histoire#diaspora", label: "Diaspora — Canada" },
 ];
 
-export function Footer() {
+export async function Footer() {
+  const showPaymentBadges = isStripeConfigured();
   return (
     <footer className="bg-brand-green-dark text-ivory/90">
       <Container className="grid gap-10 py-12 sm:grid-cols-2 md:grid-cols-4">
@@ -127,6 +135,19 @@ export function Footer() {
             }}
           />
         </Container>
+        {showPaymentBadges && (
+          <Container className="flex flex-wrap items-center justify-center gap-2.5 pt-5 text-ivory/45">
+            <span className="text-[11px] font-semibold uppercase tracking-wider">
+              Paiements sécurisés
+            </span>
+            <span className="flex items-center gap-2.5">
+              <VisaIcon className="h-5 w-5" />
+              <MastercardIcon className="h-5 w-5" />
+              <AmexIcon className="h-5 w-5" />
+              <StripeIcon className="h-5 w-5" />
+            </span>
+          </Container>
+        )}
         <Container className="flex flex-col items-center justify-between gap-2 py-5 text-center text-xs text-ivory/60 sm:flex-row">
           <span>© 2026 AfricAkani</span>
           <Link

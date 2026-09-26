@@ -232,7 +232,8 @@ export async function createStripeCheckoutAction(
       paymentStatus: "en_attente",
       paymentMethod: "stripe",
     });
-  } catch {
+  } catch (err) {
+    console.error(`[stripe] Commande ${input.id} : échec de création en base.`, err);
     return { ok: false, error: "Erreur lors de la création de la commande." };
   }
 
@@ -273,6 +274,10 @@ export async function createStripeCheckoutAction(
   try {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
+      // Explicit rather than relying on the Stripe account's "automatic
+      // payment methods" dashboard setting — that setting being off is a
+      // common cause of session creation failing outright in production.
+      payment_method_types: ["card"],
       line_items: lineItems,
       customer_email: input.customer.email || undefined,
       success_url: `${siteUrl}/commande/succes?session_id={CHECKOUT_SESSION_ID}`,
@@ -282,13 +287,18 @@ export async function createStripeCheckoutAction(
     });
 
     if (!session.url) {
+      console.error(`[stripe] Commande ${input.id} : session créée sans URL.`, session.id);
       return { ok: false, error: "Erreur lors de la création de la session de paiement." };
     }
 
     await setOrderStripeSession(input.id, session.id);
 
     return { ok: true, url: session.url, shippingFee };
-  } catch {
+  } catch (err) {
+    // Logged (not surfaced to the customer) so the real cause is visible in
+    // the server logs — the generic Stripe SDK error otherwise gives no clue
+    // why session creation actually failed.
+    console.error(`[stripe] Commande ${input.id} : échec de création de la session Stripe.`, err);
     return { ok: false, error: "Erreur lors de la connexion à Stripe. Réessayez." };
   }
 }

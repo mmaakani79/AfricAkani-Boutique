@@ -46,7 +46,8 @@ export default async function CommandeSuccesPage({
     const session = await stripe.checkout.sessions.retrieve(sessionId);
     orderId = typeof session.metadata?.orderId === "string" ? session.metadata.orderId : null;
     paid = session.payment_status === "paid";
-  } catch {
+  } catch (err) {
+    console.error(`[stripe] Impossible de récupérer la session ${sessionId}.`, err);
     orderId = null;
   }
 
