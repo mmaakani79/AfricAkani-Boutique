@@ -6,6 +6,7 @@ import { FreeShippingFooterLink } from "./free-shipping-footer-link";
 import { ProductRequestCard } from "@/components/shop/product-request-modal";
 import { PaymentBadgeRow, MobileMoneyBadgeRow } from "@/components/shop/payment-brand-icons";
 import { isStripeConfigured } from "@/lib/stripe";
+import { isPaypalConfigured } from "@/lib/paypal";
 import { getMobileMoneyConfig } from "@/lib/mobile-money-db";
 
 const LINKS = [
@@ -14,7 +15,7 @@ const LINKS = [
 ];
 
 export async function Footer() {
-  const showPaymentBadges = isStripeConfigured();
+  const showPaymentBadges = isStripeConfigured() || isPaypalConfigured();
   const showMobileMoneyBadges = await getMobileMoneyConfig()
     .then((config) => config.operators.length > 0)
     .catch(() => false);

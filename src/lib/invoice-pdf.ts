@@ -196,6 +196,23 @@ export async function generateInvoicePdf(order: OrderDetail): Promise<Buffer> {
         y,
         { width: contentWidth }
       );
+  } else if (order.paymentMethod === "stripe") {
+    doc
+      .font("Helvetica")
+      .fontSize(9)
+      .fillColor(MUTED)
+      .text("Paiement : Carte bancaire (Stripe)", marginX, y, { width: contentWidth });
+  } else if (order.paymentMethod === "paypal") {
+    doc
+      .font("Helvetica")
+      .fontSize(9)
+      .fillColor(MUTED)
+      .text(
+        `Paiement : PayPal${order.paypalCaptureId ? ` — capture ${order.paypalCaptureId}` : ""}`,
+        marginX,
+        y,
+        { width: contentWidth }
+      );
   }
 
   // --- Footer ---

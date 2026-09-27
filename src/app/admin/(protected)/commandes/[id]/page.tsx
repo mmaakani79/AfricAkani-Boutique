@@ -158,7 +158,9 @@ export default async function AdminOrderDetailPage({
                   ? "Mobile Money"
                   : order.paymentMethod === "stripe"
                     ? "Carte bancaire (Stripe)"
-                    : order.paymentMethod || "non renseigné"}
+                    : order.paymentMethod === "paypal"
+                      ? "PayPal"
+                      : order.paymentMethod || "non renseigné"}
             </p>
           </section>
 
@@ -189,6 +191,38 @@ export default async function AdminOrderDetailPage({
                   className="mt-3 inline-block text-xs font-semibold text-brand-green-dark underline-offset-2 hover:underline"
                 >
                   Voir sur le tableau de bord Stripe →
+                </a>
+              )}
+            </section>
+          )}
+
+          {order.paymentMethod === "paypal" && (
+            <section className="rounded-2xl bg-white p-5 shadow-sm">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-brand-gold">
+                PayPal
+              </h2>
+              <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                <div>
+                  <dt className="text-xs text-ink/50">Commande PayPal</dt>
+                  <dd className="break-all text-sm font-semibold text-ink">
+                    {order.paypalOrderId ?? "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-ink/50">Capture</dt>
+                  <dd className="break-all text-sm font-semibold text-ink">
+                    {order.paypalCaptureId ?? "—"}
+                  </dd>
+                </div>
+              </dl>
+              {order.paypalCaptureId && (
+                <a
+                  href={`https://www.paypal.com/activity/payment/${order.paypalCaptureId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-block text-xs font-semibold text-brand-green-dark underline-offset-2 hover:underline"
+                >
+                  Voir sur le tableau de bord PayPal →
                 </a>
               )}
             </section>

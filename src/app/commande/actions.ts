@@ -4,6 +4,7 @@ import {
   createOrder,
   setOrderEmailError,
   setOrderStripeSession,
+  setOrderPaypalOrderId,
   DuplicateTransactionIdError,
   type OrderDetail,
   type OrderInput,
@@ -14,6 +15,7 @@ import { getOperator, isTransactionIdTaken } from "@/lib/mobile-money-db";
 import { roundForZone, formatPrice, ZONES } from "@/data/zones";
 import { getSiteUrl } from "@/lib/order-config";
 import { getStripeClient } from "@/lib/stripe";
+import { createPaypalOrder, isPaypalConfigured } from "@/lib/paypal";
 import {
   formatEmailError,
   sendAdminNewOrderNotification,
@@ -92,6 +94,8 @@ function buildOrderDetail(
     mobileMoneyTransactionId: input.mobileMoneyTransactionId ?? null,
     stripeCheckoutSessionId: null,
     stripePaymentIntentId: null,
+    paypalOrderId: null,
+    paypalCaptureId: null,
     items: input.items.map((i) => ({
       productId: i.productId,
       productName: i.name,
@@ -300,5 +304,74 @@ export async function createStripeCheckoutAction(
     // why session creation actually failed.
     console.error(`[stripe] Commande ${input.id} : échec de création de la session Stripe.`, err);
     return { ok: false, error: "Erreur lors de la connexion à Stripe. Réessayez." };
+  }
+}
+
+export interface PaypalCheckoutResult {
+  ok: boolean;
+  error?: string;
+  url?: string;
+  shippingFee?: number;
+}
+
+/** PayPal Checkout — Canada/US zones only, alongside Stripe (Bénin keeps
+ *  Mobile Money + WhatsApp). Creates the order, then redirects the customer
+ *  to PayPal's hosted approval page; the actual capture happens when they
+ *  return to /commande/succes. */
+export async function createPaypalOrderAction(
+  input: OrderDraft
+): Promise<PaypalCheckoutResult> {
+  if (input.zoneId !== "ca" && input.zoneId !== "us") {
+    return { ok: false, error: "PayPal n'est pas disponible pour cette zone." };
+  }
+
+  if (!isPaypalConfigured()) {
+    return { ok: false, error: "PayPal n'est pas configuré pour le moment." };
+  }
+
+  const pricing = await computeOrderPricing(input);
+  if (!pricing.ok) return pricing;
+  const { shippingFee, freeShippingReached } = pricing;
+
+  try {
+    await createOrder({
+      ...input,
+      shippingFee,
+      freeShippingReached,
+      paymentStatus: "en_attente",
+      paymentMethod: "paypal",
+    });
+  } catch (err) {
+    console.error(`[paypal] Commande ${input.id} : échec de création en base.`, err);
+    return { ok: false, error: "Erreur lors de la création de la commande." };
+  }
+
+  await sendOrderReceivedNotifications(
+    buildOrderDetail(input, {
+      shippingFee,
+      freeShippingReached,
+      paymentStatus: "en_attente",
+    })
+  );
+
+  const currency = ZONES[input.zoneId].currency;
+  const siteUrl = getSiteUrl();
+  const total = input.subtotal + shippingFee;
+
+  try {
+    const order = await createPaypalOrder({
+      orderId: input.id,
+      currency,
+      amount: total,
+      returnUrl: `${siteUrl}/commande/succes?order_id=${input.id}`,
+      cancelUrl: `${siteUrl}/commande`,
+    });
+
+    await setOrderPaypalOrderId(input.id, order.id);
+
+    return { ok: true, url: order.approveUrl, shippingFee };
+  } catch (err) {
+    console.error(`[paypal] Commande ${input.id} : échec de création de la commande PayPal.`, err);
+    return { ok: false, error: "Erreur lors de la connexion à PayPal. Réessayez." };
   }
 }

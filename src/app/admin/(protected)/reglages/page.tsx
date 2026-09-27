@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getAllShippingSettings } from "@/lib/shipping-settings-db";
 import { getAllOperators, getBeneficiaryName } from "@/lib/mobile-money-db";
 import { getStripeKeyMode, isStripeWebhookConfigured } from "@/lib/stripe";
+import { getPaypalMode, isPaypalWebhookConfigured } from "@/lib/paypal";
 import { ShippingSettingsForm } from "./shipping-settings-form";
 import { MobileMoneyForm } from "./mobile-money-form";
 
@@ -30,6 +31,8 @@ export default async function AdminReglagesPage() {
 
   const stripeMode = getStripeKeyMode();
   const webhookOk = isStripeWebhookConfigured();
+  const paypalMode = getPaypalMode();
+  const paypalWebhookOk = isPaypalWebhookConfigured();
 
   return (
     <div>
@@ -64,6 +67,38 @@ export default async function AdminReglagesPage() {
             <StatusPill>
               Non configuré — les commandes payées ne passeront jamais
               automatiquement à « Payé »
+            </StatusPill>
+          )}
+        </div>
+      </div>
+
+      <h2 className="mt-10 font-brand text-xl font-bold text-brand-green-dark">
+        Paiement PayPal
+      </h2>
+      <p className="mt-1 text-sm text-ink/60">
+        « Payer avec PayPal » est proposé aux côtés de Stripe, uniquement
+        pour les zones Canada et États-Unis.
+      </p>
+      <div className="mt-4 space-y-3 rounded-2xl bg-white p-4 text-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="font-semibold text-ink/70">Clés API :</span>
+          {paypalMode === "live" && <StatusPill ok>Mode LIVE</StatusPill>}
+          {paypalMode === "sandbox" && (
+            <StatusPill warn>Mode SANDBOX — paiements réels non facturés</StatusPill>
+          )}
+          {paypalMode === "non_configuree" && (
+            <StatusPill>Non configurées — « Payer avec PayPal » masqué</StatusPill>
+          )}
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="font-semibold text-ink/70">Webhook :</span>
+          {paypalWebhookOk ? (
+            <StatusPill ok>Configuré</StatusPill>
+          ) : (
+            <StatusPill warn>
+              Non configuré — la commande est tout de même marquée « Payé »
+              au retour du client depuis PayPal ; le webhook n&rsquo;est
+              qu&rsquo;une sécurité en plus si ce retour échoue
             </StatusPill>
           )}
         </div>

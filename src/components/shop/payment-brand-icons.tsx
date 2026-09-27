@@ -50,6 +50,20 @@ export function PaymentBadgeRow({ className = "" }: { className?: string }) {
   );
 }
 
+/** The PayPal logo alone, sized to match {@link PaymentBadgeRow} — shown
+ *  next to "Payer avec PayPal" at checkout. */
+export function PaypalBadge({ className = "" }: { className?: string }) {
+  return (
+    <Image
+      src="/logos/payment/paypal.svg"
+      alt="PayPal"
+      width={750}
+      height={471}
+      className={`h-7 w-auto rounded ring-1 ring-black/10 ${className}`}
+    />
+  );
+}
+
 /** MTN Mobile Money / Moov Money / Celtiis, in official colors, sized to
  *  match {@link PaymentBadgeRow} — shown next to "Mobile Money" at checkout
  *  and in the footer. */

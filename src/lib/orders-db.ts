@@ -256,6 +256,8 @@ export interface OrderDetail extends OrderSummary {
   mobileMoneyTransactionId: string | null;
   stripeCheckoutSessionId: string | null;
   stripePaymentIntentId: string | null;
+  paypalOrderId: string | null;
+  paypalCaptureId: string | null;
   items: OrderItemRow[];
   reminders: OrderReminder[];
 }
@@ -288,6 +290,8 @@ interface OrderFullRow {
   mobile_money_transaction_id: string | null;
   stripe_checkout_session_id: string | null;
   stripe_payment_intent_id: string | null;
+  paypal_order_id: string | null;
+  paypal_capture_id: string | null;
 }
 
 export async function getOrderById(id: string): Promise<OrderDetail | null> {
@@ -351,6 +355,8 @@ export async function getOrderById(id: string): Promise<OrderDetail | null> {
     mobileMoneyTransactionId: order.mobile_money_transaction_id,
     stripeCheckoutSessionId: order.stripe_checkout_session_id,
     stripePaymentIntentId: order.stripe_payment_intent_id,
+    paypalOrderId: order.paypal_order_id,
+    paypalCaptureId: order.paypal_capture_id,
     items: itemRows.map((r) => ({
       productId: r.product_id,
       productName: r.product_name,
@@ -478,6 +484,37 @@ export async function markStripeOrderPaid(
          payment_status_updated_at = now()
      WHERE id = $1 AND payment_status != 'paye'`,
     [id, paymentIntentId]
+  );
+  return (rowCount ?? 0) > 0;
+}
+
+export async function setOrderPaypalOrderId(
+  id: string,
+  paypalOrderId: string
+): Promise<void> {
+  await ensureSchema();
+  await getPool().query(
+    "UPDATE orders SET paypal_order_id = $2 WHERE id = $1",
+    [id, paypalOrderId]
+  );
+}
+
+/** Marks an order paid via PayPal. Only the first call (per order) returns
+ *  true — a retried capture (or a later webhook confirming the same
+ *  capture) must not re-send the "payment confirmed" e-mail. */
+export async function markPaypalOrderPaid(
+  id: string,
+  captureId: string | null
+): Promise<boolean> {
+  await ensureSchema();
+  const { rowCount } = await getPool().query(
+    `UPDATE orders
+     SET payment_status = 'paye',
+         payment_method = 'paypal',
+         paypal_capture_id = COALESCE($2, paypal_capture_id),
+         payment_status_updated_at = now()
+     WHERE id = $1 AND payment_status != 'paye'`,
+    [id, captureId]
   );
   return (rowCount ?? 0) > 0;
 }

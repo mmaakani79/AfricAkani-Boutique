@@ -121,7 +121,9 @@ CREATE TABLE IF NOT EXISTS orders (
   mobile_money_phone TEXT,
   mobile_money_transaction_id TEXT,
   stripe_checkout_session_id TEXT,
-  stripe_payment_intent_id TEXT
+  stripe_payment_intent_id TEXT,
+  paypal_order_id TEXT,
+  paypal_capture_id TEXT
 );
 
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'nouvelle';
@@ -143,6 +145,8 @@ ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_postal_code TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_country TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS stripe_checkout_session_id TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS stripe_payment_intent_id TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS paypal_order_id TEXT;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS paypal_capture_id TEXT;
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS review_invite_sent_at TIMESTAMPTZ;
 
 -- A transaction id can only ever be claimed by one order.

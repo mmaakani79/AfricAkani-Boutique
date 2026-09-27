@@ -3,7 +3,9 @@ import type { Metadata } from "next";
 import { CheckCircle2 } from "lucide-react";
 import { Container } from "@/components/layout/container";
 import { getStripeClient } from "@/lib/stripe";
-import { getOrderById } from "@/lib/orders-db";
+import { capturePaypalOrder } from "@/lib/paypal";
+import { getOrderById, markPaypalOrderPaid, setOrderEmailError } from "@/lib/orders-db";
+import { formatEmailError, sendCustomerPaymentConfirmed } from "@/lib/email";
 import { formatPrice } from "@/data/zones";
 
 export const metadata: Metadata = {
@@ -31,27 +33,71 @@ function UnknownStatus() {
   );
 }
 
+/** PayPal has no guaranteed webhook configured (that needs a webhook id set
+ *  up separately in the PayPal dashboard), so this return page is the
+ *  primary place the capture happens and the order gets marked paid —
+ *  unlike Stripe, which relies on /api/webhooks/stripe for that. */
+async function capturePaypalReturn(paypalOrderId: string, orderId: string): Promise<boolean> {
+  const order = await getOrderById(orderId);
+  if (!order || order.paypalOrderId !== paypalOrderId) return false;
+
+  let captureId: string | null = null;
+  try {
+    const result = await capturePaypalOrder(paypalOrderId);
+    if (!result.ok) return false;
+    captureId = result.captureId;
+  } catch (err) {
+    console.error(`[paypal] Échec de la capture pour la commande ${orderId}.`, err);
+    return false;
+  }
+
+  const justPaid = await markPaypalOrderPaid(orderId, captureId);
+  if (justPaid) {
+    try {
+      const paidOrder = await getOrderById(orderId);
+      if (paidOrder) {
+        await sendCustomerPaymentConfirmed(paidOrder);
+        await setOrderEmailError(orderId, null);
+      }
+    } catch (err) {
+      const message = `e-mail « paiement confirmé » : ${formatEmailError(err)}`;
+      console.error(`[email] Commande ${orderId} : ${message}`);
+      await setOrderEmailError(orderId, message);
+    }
+  }
+
+  return true;
+}
+
 export default async function CommandeSuccesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ session_id?: string }>;
+  searchParams: Promise<{ session_id?: string; token?: string; order_id?: string }>;
 }) {
-  const { session_id: sessionId } = await searchParams;
-  if (!sessionId) return <UnknownStatus />;
+  const { session_id: sessionId, token: paypalOrderId, order_id: paypalOrderRef } =
+    await searchParams;
 
   let orderId: string | null = null;
   let paid = false;
-  try {
-    const stripe = getStripeClient();
-    const session = await stripe.checkout.sessions.retrieve(sessionId);
-    orderId = typeof session.metadata?.orderId === "string" ? session.metadata.orderId : null;
-    paid = session.payment_status === "paid";
-  } catch (err) {
-    console.error(`[stripe] Impossible de récupérer la session ${sessionId}.`, err);
-    orderId = null;
+
+  if (sessionId) {
+    try {
+      const stripe = getStripeClient();
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+      orderId = typeof session.metadata?.orderId === "string" ? session.metadata.orderId : null;
+      paid = session.payment_status === "paid";
+    } catch (err) {
+      console.error(`[stripe] Impossible de récupérer la session ${sessionId}.`, err);
+      orderId = null;
+    }
+  } else if (paypalOrderId && paypalOrderRef) {
+    orderId = paypalOrderRef;
+    paid = await capturePaypalReturn(paypalOrderId, paypalOrderRef);
   }
 
-  const order = orderId ? await getOrderById(orderId) : null;
+  if (!orderId) return <UnknownStatus />;
+
+  const order = await getOrderById(orderId);
   if (!order || !paid) return <UnknownStatus />;
 
   return (

@@ -96,6 +96,7 @@ export function OrderPaymentForm({
         <option value="">Mode de paiement…</option>
         <option value="whatsapp">Confirmé par WhatsApp</option>
         <option value="stripe">Carte bancaire (Stripe)</option>
+        <option value="paypal">PayPal</option>
         <option value="autre">Autre</option>
       </select>
       <label className="flex items-center gap-1.5 text-xs font-semibold text-ink/70">

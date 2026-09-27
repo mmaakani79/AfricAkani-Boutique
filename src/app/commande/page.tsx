@@ -9,9 +9,18 @@ import { ZONES, formatPrice } from "@/data/zones";
 import type { ZoneId } from "@/lib/types";
 import type { MobileMoneyConfig } from "@/lib/mobile-money-types";
 import { saveOrder, type Order } from "@/lib/orders";
-import { createStripeCheckoutAction, submitOrderAction, type OrderDraft } from "./actions";
+import {
+  createStripeCheckoutAction,
+  createPaypalOrderAction,
+  submitOrderAction,
+  type OrderDraft,
+} from "./actions";
 import { MobileMoneyPanel } from "./mobile-money-panel";
-import { PaymentBadgeRow, MobileMoneyBadgeRow } from "@/components/shop/payment-brand-icons";
+import {
+  PaymentBadgeRow,
+  MobileMoneyBadgeRow,
+  PaypalBadge,
+} from "@/components/shop/payment-brand-icons";
 import { Container } from "@/components/layout/container";
 import { getPaymentTimeoutHours } from "@/lib/order-config";
 import { computeShippingFee, isBelowMinOrder } from "@/lib/shipping-calc";
@@ -40,8 +49,9 @@ export default function CommandePage() {
 
   const [mmConfig, setMmConfig] = useState<MobileMoneyConfig | null>(null);
   const [stripeConfigured, setStripeConfigured] = useState(false);
+  const [paypalConfigured, setPaypalConfigured] = useState(false);
   const [paymentChoice, setPaymentChoice] = useState<
-    "whatsapp" | "mobile_money" | "stripe"
+    "whatsapp" | "mobile_money" | "stripe" | "paypal"
   >("whatsapp");
   const [mmOperatorId, setMmOperatorId] = useState("");
   const [mmPhone, setMmPhone] = useState("");
@@ -69,6 +79,14 @@ export default function CommandePage() {
       .catch(() => {
         /* Card payment option simply won't be offered */
       });
+    fetch("/api/paypal-config")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { configured: boolean } | null) => {
+        if (!cancelled && data) setPaypalConfigured(data.configured);
+      })
+      .catch(() => {
+        /* PayPal option simply won't be offered */
+      });
     return () => {
       cancelled = true;
     };
@@ -79,6 +97,7 @@ export default function CommandePage() {
   const mobileMoneyAvailable =
     zoneId === "bj" && (mmConfig?.operators.length ?? 0) > 0;
   const stripeAvailable = isNorthAmerica && stripeConfigured;
+  const paypalAvailable = isNorthAmerica && paypalConfigured;
 
   const remaining = Math.max(zone.freeShippingThreshold - subtotal, 0);
   const reached = remaining === 0;
@@ -87,6 +106,7 @@ export default function CommandePage() {
   const belowMinOrder = isBelowMinOrder(subtotal, zone);
   const usingMobileMoney = mobileMoneyAvailable && paymentChoice === "mobile_money";
   const usingStripe = stripeAvailable && paymentChoice === "stripe";
+  const usingPaypal = paypalAvailable && paymentChoice === "paypal";
   const mobileMoneyIncomplete =
     usingMobileMoney &&
     (!mmOperatorId || !mmPhone.trim() || !mmTransactionId.trim());
@@ -132,12 +152,15 @@ export default function CommandePage() {
           }
         : {}),
       ...(usingStripe ? { paymentMethod: "stripe" } : {}),
+      ...(usingPaypal ? { paymentMethod: "paypal" } : {}),
     };
 
-    if (usingStripe) {
-      let stripeResult;
+    if (usingStripe || usingPaypal) {
+      let redirectResult;
       try {
-        stripeResult = await createStripeCheckoutAction(draft);
+        redirectResult = usingStripe
+          ? await createStripeCheckoutAction(draft)
+          : await createPaypalOrderAction(draft);
       } catch {
         setSubmitting(false);
         setSubmitError("Une erreur est survenue. Merci de réessayer.");
@@ -146,8 +169,8 @@ export default function CommandePage() {
 
       setSubmitting(false);
 
-      if (!stripeResult.ok || !stripeResult.url) {
-        setSubmitError(stripeResult.error ?? "Une erreur est survenue. Merci de réessayer.");
+      if (!redirectResult.ok || !redirectResult.url) {
+        setSubmitError(redirectResult.error ?? "Une erreur est survenue. Merci de réessayer.");
         return;
       }
 
@@ -156,16 +179,16 @@ export default function CommandePage() {
         createdAt: new Date().toISOString(),
         zoneId,
         subtotal,
-        shippingFee: stripeResult.shippingFee ?? shippingFee,
+        shippingFee: redirectResult.shippingFee ?? shippingFee,
         freeShippingReached: reached,
         items: draft.items,
         customer: draft.customer,
-        paymentMethod: "stripe",
+        paymentMethod: usingStripe ? "stripe" : "paypal",
         mobileMoneyOperator: null,
         mobileMoneyTransactionId: null,
       });
       clearCart();
-      window.location.href = stripeResult.url;
+      window.location.href = redirectResult.url;
       return;
     }
 
@@ -389,7 +412,7 @@ export default function CommandePage() {
             </>
           )}
 
-          {(mobileMoneyAvailable || stripeAvailable) && (
+          {(mobileMoneyAvailable || stripeAvailable || paypalAvailable) && (
             <div>
               <label className="mb-3 block text-xs font-bold uppercase tracking-wider text-brand-gold">
                 Mode de paiement
@@ -434,6 +457,20 @@ export default function CommandePage() {
                   </button>
                 )}
                 {stripeAvailable && <PaymentBadgeRow />}
+                {paypalAvailable && (
+                  <button
+                    type="button"
+                    onClick={() => setPaymentChoice("paypal")}
+                    className={`rounded-full border px-3.5 py-1.5 text-xs font-bold ${
+                      paymentChoice === "paypal"
+                        ? "border-brand-green bg-brand-green text-ivory"
+                        : "border-brand-green/20 text-brand-green-dark"
+                    }`}
+                  >
+                    Payer avec PayPal
+                  </button>
+                )}
+                {paypalAvailable && <PaypalBadge />}
               </div>
             </div>
           )}
@@ -460,7 +497,14 @@ export default function CommandePage() {
             </p>
           )}
 
-          {!usingMobileMoney && !usingStripe && (
+          {usingPaypal && (
+            <p className="rounded-xl bg-brand-gold/10 px-4 py-3 text-sm font-medium text-ink/80">
+              Vous allez être redirigé(e) vers PayPal pour régler {format(total)}
+              , par votre compte PayPal ou par carte.
+            </p>
+          )}
+
+          {!usingMobileMoney && !usingStripe && !usingPaypal && (
             <p className="rounded-xl bg-brand-gold/10 px-4 py-3 text-sm font-medium text-ink/80">
               Nous vous contacterons par WhatsApp pour finaliser le paiement —
               merci de confirmer dans les {PAYMENT_TIMEOUT_HOURS} heures suivant
@@ -490,7 +534,9 @@ export default function CommandePage() {
               ? "Envoi…"
               : usingStripe
                 ? "Payer par carte"
-                : "Confirmer la commande"}
+                : usingPaypal
+                  ? "Payer avec PayPal"
+                  : "Confirmer la commande"}
           </button>
         </form>
 
