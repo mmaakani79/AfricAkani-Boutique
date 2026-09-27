@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Leaf, Truck, ShieldCheck, Globe2 } from "lucide-react";
-import { CATEGORIES } from "@/data/categories";
+import { getAllCategories } from "@/lib/categories-db";
 import { getFeaturedProducts } from "@/lib/products-db";
 import { ProductCard } from "@/components/shop/product-card";
 import { CategoryCard } from "@/components/shop/category-card";
@@ -33,7 +33,8 @@ const REASSURANCE = [
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
-  const featuredCategories = CATEGORIES.filter((c) => c.featuredHome);
+  const categories = await getAllCategories();
+  const featuredCategories = categories.filter((c) => c.featuredHome);
   const featuredProducts = await getFeaturedProducts();
 
   return (

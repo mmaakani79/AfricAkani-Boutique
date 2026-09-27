@@ -3,10 +3,9 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
-import { CATEGORIES } from "@/data/categories";
 import { ProductCard } from "@/components/shop/product-card";
 import { Container } from "@/components/layout/container";
-import type { HalalStatus, Product } from "@/lib/types";
+import type { Category, HalalStatus, Product } from "@/lib/types";
 
 const HALAL_FILTERS: { value: HalalStatus | "tous"; label: string }[] = [
   { value: "tous", label: "Tous" },
@@ -14,7 +13,13 @@ const HALAL_FILTERS: { value: HalalStatus | "tous"; label: string }[] = [
   { value: "a_verifier", label: "À vérifier" },
 ];
 
-export function CatalogueClient({ products }: { products: Product[] }) {
+export function CatalogueClient({
+  products,
+  categories,
+}: {
+  products: Product[];
+  categories: Category[];
+}) {
   const searchParams = useSearchParams();
 
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
@@ -85,7 +90,7 @@ export function CatalogueClient({ products }: { products: Product[] }) {
         >
           Toutes les catégories
         </button>
-        {CATEGORIES.map((c) => (
+        {categories.map((c) => (
           <button
             key={c.id}
             type="button"

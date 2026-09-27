@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { getAllProducts } from "@/lib/products-db";
+import { getAllCategories } from "@/lib/categories-db";
 import { CatalogueClient } from "./catalogue-client";
 
 export const metadata: Metadata = {
@@ -13,11 +14,14 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function CataloguePage() {
-  const products = await getAllProducts();
+  const [products, categories] = await Promise.all([
+    getAllProducts(),
+    getAllCategories(),
+  ]);
 
   return (
     <Suspense fallback={null}>
-      <CatalogueClient products={products} />
+      <CatalogueClient products={products} categories={categories} />
     </Suspense>
   );
 }

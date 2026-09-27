@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Minus, Plus, Trash2, ShoppingCart } from "lucide-react";
 import { useCart } from "@/context/cart-context";
 import { useZone } from "@/context/zone-context";
-import { getCategoryById } from "@/data/categories";
+import { useCategories } from "@/context/category-context";
 import { CATEGORY_ICONS } from "@/lib/category-icons";
 import { PhotoPlaceholder } from "@/components/shop/photo-placeholder";
 import { Container } from "@/components/layout/container";
@@ -13,6 +13,7 @@ import { computeShippingFee } from "@/lib/shipping-calc";
 export default function PanierPage() {
   const { items, subtotal, updateQuantity, removeItem } = useCart();
   const { zone, format } = useZone();
+  const { getCategoryById } = useCategories();
 
   const remaining = Math.max(zone.freeShippingThreshold - subtotal, 0);
   const progress = Math.min(

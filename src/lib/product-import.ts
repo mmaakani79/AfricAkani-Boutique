@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import { CATEGORIES } from "@/data/categories";
+import { getAllCategories } from "./categories-db";
 import {
   createProduct,
   getProductById,
@@ -8,7 +8,7 @@ import {
   slugify,
   updateProduct,
 } from "./products-db";
-import type { HalalStatus, StockStatus } from "./types";
+import type { Category, HalalStatus, StockStatus } from "./types";
 
 export const IMPORT_COLUMNS = [
   "sku",
@@ -93,10 +93,10 @@ function normalizeStock(text: string): StockStatus {
   return "en_stock";
 }
 
-function findCategoryId(text: string): string | null {
+function findCategoryId(text: string, categories: Category[]): string | null {
   const t = text.trim().toLowerCase();
   if (!t) return null;
-  const match = CATEGORIES.find(
+  const match = categories.find(
     (c) =>
       c.name.toLowerCase() === t ||
       c.id.toLowerCase() === t ||
@@ -177,6 +177,7 @@ export async function processRows(
   commit: boolean
 ): Promise<ImportReport> {
   const report: ImportReport = { created: 0, updated: 0, errors: [], rows: [] };
+  const categories = await getAllCategories();
 
   for (const row of rows) {
     if (!row.name) {
@@ -192,7 +193,7 @@ export async function processRows(
       continue;
     }
 
-    const categoryId = findCategoryId(row.categorie);
+    const categoryId = findCategoryId(row.categorie, categories);
     if (!categoryId) {
       const reason = `Catégorie introuvable : « ${row.categorie || "(vide)"} ».`;
       report.errors.push({ row: row.row, reason });
@@ -278,6 +279,7 @@ export async function processRows(
 }
 
 export async function buildTemplateWorkbook(): Promise<ExcelJS.Workbook> {
+  const categories = await getAllCategories();
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet("Produits");
   sheet.columns = IMPORT_COLUMNS.map((key) => ({ header: key, key, width: 18 }));
@@ -311,7 +313,7 @@ export async function buildTemplateWorkbook(): Promise<ExcelJS.Workbook> {
       "- description_longue : facultatif. Texte plus détaillé affiché dans sa propre section « Description complète » en bas de la fiche produit — distinct de la description courte.",
     ],
     [
-      `- Catégories disponibles : ${CATEGORIES.map((c) => c.name).join(", ")}`,
+      `- Catégories disponibles : ${categories.map((c) => c.name).join(", ")}`,
     ],
     [
       "- prix_fcfa / prix_cad / prix_usd : laissez la cellule vide si le produit n'est pas vendu dans cette zone. Aucune conversion automatique n'est faite entre devises.",

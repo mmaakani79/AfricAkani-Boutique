@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getProductBySlug, getRelatedProducts } from "@/lib/products-db";
 import { getApprovedReviewsForProduct } from "@/lib/reviews-db";
-import { getCategoryById } from "@/data/categories";
+import { getCategoryById } from "@/lib/categories-db";
 import { ProductGallery } from "@/components/shop/product-gallery";
 import { ProductCard } from "@/components/shop/product-card";
 import { StarRatingDisplay } from "@/components/shop/star-rating";
@@ -36,7 +36,7 @@ export default async function ProductPage({
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const category = getCategoryById(product.categoryId);
+  const category = await getCategoryById(product.categoryId);
   const relatedProducts = await getRelatedProducts(product.id, product.categoryId);
   const reviews = await getApprovedReviewsForProduct(product.id);
 

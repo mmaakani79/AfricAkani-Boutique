@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getProductById } from "@/lib/products-db";
+import { getAllCategories } from "@/lib/categories-db";
 import { ProductForm } from "../product-form";
 import { updateProductAction } from "../../../actions";
 
@@ -17,7 +18,10 @@ export default async function EditProductPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const product = await getProductById(id);
+  const [product, categories] = await Promise.all([
+    getProductById(id),
+    getAllCategories(),
+  ]);
   if (!product) notFound();
 
   return (
@@ -27,6 +31,7 @@ export default async function EditProductPage({
       </h1>
       <ProductForm
         product={product}
+        categories={categories}
         action={updateProductAction.bind(null, id)}
         submitLabel="Enregistrer les modifications"
       />

@@ -1,5 +1,6 @@
 import { Pool } from "pg";
 import { SEED_PRODUCTS } from "./seed-products";
+import { SEED_CATEGORIES } from "./seed-categories";
 
 declare global {
   var __pgPool: Pool | undefined;
@@ -33,6 +34,17 @@ export function getPool(): Pool {
 }
 
 const SCHEMA_SQL = `
+CREATE TABLE IF NOT EXISTS categories (
+  id TEXT PRIMARY KEY,
+  slug TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  featured_home BOOLEAN NOT NULL DEFAULT false,
+  photo_seed TEXT NOT NULL DEFAULT 'emerald',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS products (
   id TEXT PRIMARY KEY,
   slug TEXT UNIQUE NOT NULL,
@@ -263,6 +275,24 @@ async function backfillProductSkus(): Promise<void> {
   );
 }
 
+async function seedCategoriesIfEmpty(): Promise<void> {
+  const pool = getPool();
+  const { rows } = await pool.query<{ count: string }>(
+    "SELECT count(*)::text FROM categories"
+  );
+  if (Number(rows[0].count) > 0) return;
+
+  for (let i = 0; i < SEED_CATEGORIES.length; i++) {
+    const c = SEED_CATEGORIES[i];
+    await pool.query(
+      `INSERT INTO categories (id, slug, name, description, featured_home, photo_seed, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
+       ON CONFLICT (id) DO NOTHING`,
+      [c.id, c.slug, c.name, c.description, c.featuredHome ?? false, c.photoSeed, i]
+    );
+  }
+}
+
 async function seedIfEmpty(): Promise<void> {
   const pool = getPool();
   const { rows } = await pool.query<{ count: string }>(
@@ -370,6 +400,7 @@ export function ensureSchema(): Promise<void> {
     global.__schemaReady = (async () => {
       const pool = getPool();
       await pool.query(SCHEMA_SQL);
+      await seedCategoriesIfEmpty();
       await seedIfEmpty();
       await backfillProductSkus();
       await seedMobileMoneyIfEmpty();

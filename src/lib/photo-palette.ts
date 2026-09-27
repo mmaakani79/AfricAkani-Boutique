@@ -25,3 +25,6 @@ export function seedGradient(seed: string): string {
   const [from, to] = PALETTE[seed] ?? PALETTE.emerald;
   return `linear-gradient(135deg, ${from} 0%, ${to} 100%)`;
 }
+
+/** Named seeds available for the admin's category color picker. */
+export const PHOTO_SEEDS = Object.keys(PALETTE);

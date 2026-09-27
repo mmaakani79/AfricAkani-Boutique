@@ -1,6 +1,9 @@
 import type { Category } from "@/lib/types";
 
-export const CATEGORIES: Category[] = [
+// One-time seed for the `categories` table (see db.ts) — after the first
+// run, categories are fully managed from /admin/categories and this list is
+// never read again. Kept here (not deleted) purely as the historical seed.
+export const SEED_CATEGORIES: Category[] = [
   {
     id: "huiles-cosmetiques",
     slug: "huiles-cosmetiques-naturels",
@@ -114,11 +117,3 @@ export const CATEGORIES: Category[] = [
     photoSeed: "straw",
   },
 ];
-
-export function getCategoryById(id: string): Category | undefined {
-  return CATEGORIES.find((c) => c.id === id);
-}
-
-export function getCategoryBySlug(slug: string): Category | undefined {
-  return CATEGORIES.find((c) => c.slug === slug);
-}

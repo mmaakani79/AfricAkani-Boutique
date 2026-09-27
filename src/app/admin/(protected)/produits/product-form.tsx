@@ -1,9 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
-import { CATEGORIES } from "@/data/categories";
 import { PACKAGING_LABELS } from "@/lib/packaging";
-import type { Product } from "@/lib/types";
+import type { Category, Product } from "@/lib/types";
 import type { ActionState } from "../../actions";
 import { ImageUploadField } from "./image-upload-field";
 import { GalleryUploadField } from "./gallery-upload-field";
@@ -14,10 +13,12 @@ const initialState: ActionState = {};
 
 export function ProductForm({
   product,
+  categories,
   action,
   submitLabel,
 }: {
   product?: Product;
+  categories: Category[];
   action: (prevState: ActionState, formData: FormData) => Promise<ActionState>;
   submitLabel: string;
 }) {
@@ -50,11 +51,11 @@ export function ProductForm({
         </span>
         <select
           name="categoryId"
-          defaultValue={product?.categoryId ?? CATEGORIES[0].id}
+          defaultValue={product?.categoryId ?? categories[0]?.id}
           required
           className="w-full rounded-xl border border-brand-green/20 bg-ivory px-3.5 py-2.5 text-sm outline-none focus:border-brand-green"
         >
-          {CATEGORIES.map((c) => (
+          {categories.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
             </option>

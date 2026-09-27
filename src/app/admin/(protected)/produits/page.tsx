@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Plus, Pencil, Trash2, Upload, FileDown } from "lucide-react";
 import { getAllProducts } from "@/lib/products-db";
-import { getCategoryById } from "@/data/categories";
+import { getAllCategories } from "@/lib/categories-db";
 import { CATEGORY_ICONS } from "@/lib/category-icons";
 import { PhotoPlaceholder } from "@/components/shop/photo-placeholder";
 import { formatPrice } from "@/data/zones";
@@ -16,7 +16,11 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function AdminProductsPage() {
-  const products = await getAllProducts();
+  const [products, categories] = await Promise.all([
+    getAllProducts(),
+    getAllCategories(),
+  ]);
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
 
   return (
     <div>
@@ -61,7 +65,7 @@ export default async function AdminProductsPage() {
           </thead>
           <tbody>
             {products.map((p) => {
-              const category = getCategoryById(p.categoryId);
+              const category = categoryById.get(p.categoryId);
               const CategoryIcon = category ? CATEGORY_ICONS[category.id] : undefined;
               return (
               <tr key={p.id} className="border-b border-brand-green/5">

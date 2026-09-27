@@ -5,7 +5,7 @@ import { Plus } from "lucide-react";
 import type { Product } from "@/lib/types";
 import { useZone } from "@/context/zone-context";
 import { useCart } from "@/context/cart-context";
-import { getCategoryById } from "@/data/categories";
+import { useCategories } from "@/context/category-context";
 import { CATEGORY_ICONS } from "@/lib/category-icons";
 import { PACKAGING_ICONS, PACKAGING_LABELS } from "@/lib/packaging";
 import { PhotoPlaceholder } from "./photo-placeholder";
@@ -15,6 +15,7 @@ import { StarRatingDisplay } from "./star-rating";
 export function ProductCard({ product }: { product: Product }) {
   const { priceFor, format } = useZone();
   const { addItem } = useCart();
+  const { getCategoryById } = useCategories();
   const category = getCategoryById(product.categoryId);
   const PackagingIcon = PACKAGING_ICONS[product.packaging];
   const CategoryIcon = category ? CATEGORY_ICONS[category.id] : undefined;

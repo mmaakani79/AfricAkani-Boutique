@@ -10,6 +10,7 @@ import {
   KeyRound,
   Star,
   FileSignature,
+  Tags,
 } from "lucide-react";
 import { logoutAction } from "../actions";
 
@@ -55,6 +56,12 @@ export default function AdminProtectedLayout({
             className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-brand-green-dark hover:bg-ivory"
           >
             <Package className="h-4 w-4" /> Produits
+          </Link>
+          <Link
+            href="/admin/categories"
+            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-brand-green-dark hover:bg-ivory"
+          >
+            <Tags className="h-4 w-4" /> Catégories
           </Link>
           <Link
             href="/admin/commandes"

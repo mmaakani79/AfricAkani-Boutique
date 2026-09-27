@@ -1,0 +1,134 @@
+import { ensureSchema, getPool } from "./db";
+import { slugify } from "./products-db";
+import type { Category } from "./types";
+
+interface CategoryRow {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  featured_home: boolean;
+  photo_seed: string;
+  sort_order: number;
+}
+
+function rowToCategory(row: CategoryRow): Category {
+  return {
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    description: row.description,
+    featuredHome: row.featured_home,
+    photoSeed: row.photo_seed,
+  };
+}
+
+export async function getAllCategories(): Promise<Category[]> {
+  await ensureSchema();
+  const { rows } = await getPool().query<CategoryRow>(
+    "SELECT * FROM categories ORDER BY sort_order ASC, name ASC"
+  );
+  return rows.map(rowToCategory);
+}
+
+export async function getCategoryById(id: string): Promise<Category | null> {
+  await ensureSchema();
+  const { rows } = await getPool().query<CategoryRow>(
+    "SELECT * FROM categories WHERE id = $1",
+    [id]
+  );
+  return rows[0] ? rowToCategory(rows[0]) : null;
+}
+
+export async function getCategoryBySlug(slug: string): Promise<Category | null> {
+  await ensureSchema();
+  const { rows } = await getPool().query<CategoryRow>(
+    "SELECT * FROM categories WHERE slug = $1",
+    [slug]
+  );
+  return rows[0] ? rowToCategory(rows[0]) : null;
+}
+
+export interface CategoryInput {
+  name: string;
+  slug?: string;
+  description: string;
+  featuredHome: boolean;
+  photoSeed: string;
+}
+
+/** Thrown by deleteCategory when products still reference it. */
+export class CategoryInUseError extends Error {
+  constructor(public productCount: number) {
+    super(
+      `Cette catégorie est utilisée par ${productCount} produit${productCount > 1 ? "s" : ""}.`
+    );
+    this.name = "CategoryInUseError";
+  }
+}
+
+export async function createCategory(input: CategoryInput): Promise<Category> {
+  await ensureSchema();
+  const slug = input.slug?.trim() ? slugify(input.slug) : slugify(input.name);
+  const pool = getPool();
+  const { rows: countRows } = await pool.query<{ count: string }>(
+    "SELECT count(*)::text FROM categories"
+  );
+  const { rows } = await pool.query<CategoryRow>(
+    `INSERT INTO categories (id, slug, name, description, featured_home, photo_seed, sort_order)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)
+     RETURNING *`,
+    [
+      slug,
+      slug,
+      input.name,
+      input.description,
+      input.featuredHome,
+      input.photoSeed,
+      Number(countRows[0].count),
+    ]
+  );
+  return rowToCategory(rows[0]);
+}
+
+export async function updateCategory(
+  id: string,
+  input: CategoryInput
+): Promise<Category | null> {
+  await ensureSchema();
+  const slug = input.slug?.trim() ? slugify(input.slug) : slugify(input.name);
+  const { rows } = await getPool().query<CategoryRow>(
+    `UPDATE categories SET
+       slug = $2, name = $3, description = $4, featured_home = $5, photo_seed = $6
+     WHERE id = $1
+     RETURNING *`,
+    [id, slug, input.name, input.description, input.featuredHome, input.photoSeed]
+  );
+  return rows[0] ? rowToCategory(rows[0]) : null;
+}
+
+/** Refuses to delete a category still assigned to at least one product —
+ *  there's no FK to enforce this, so the check happens here. */
+export async function deleteCategory(id: string): Promise<boolean> {
+  await ensureSchema();
+  const pool = getPool();
+  const { rows } = await pool.query<{ count: string }>(
+    "SELECT count(*)::text FROM products WHERE category_id = $1",
+    [id]
+  );
+  const productCount = Number(rows[0].count);
+  if (productCount > 0) {
+    throw new CategoryInUseError(productCount);
+  }
+  const { rowCount } = await pool.query("DELETE FROM categories WHERE id = $1", [id]);
+  return (rowCount ?? 0) > 0;
+}
+
+/** Product counts per category, for the admin list. */
+export async function getProductCountsByCategory(): Promise<Record<string, number>> {
+  await ensureSchema();
+  const { rows } = await getPool().query<{ category_id: string; count: string }>(
+    "SELECT category_id, count(*)::text AS count FROM products GROUP BY category_id"
+  );
+  return Object.fromEntries(rows.map((r) => [r.category_id, Number(r.count)]));
+}
