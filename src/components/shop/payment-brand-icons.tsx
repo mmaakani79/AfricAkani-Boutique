@@ -3,11 +3,14 @@ import type { SVGProps } from "react";
 
 // Card network badges: official flat-color SVGs from the `payment-icons`
 // package (public/logos/payment/, MPL-2.0 — https://github.com/muffinresearch/payment-icons).
+// PayPal is deliberately not in this list — it's its own separate payment
+// method with its own button (see PaypalButton below), not a card network
+// processed through Stripe, so listing it here as a generic trust badge
+// was misleading once real PayPal checkout existed.
 const CARD_LOGOS = [
   { src: "/logos/payment/visa.svg", alt: "Visa" },
   { src: "/logos/payment/mastercard.svg", alt: "Mastercard" },
   { src: "/logos/payment/amex.svg", alt: "American Express" },
-  { src: "/logos/payment/paypal.svg", alt: "PayPal" },
 ];
 
 // Mobile Money operator logos, official color, provided by AfricAkani
@@ -50,17 +53,37 @@ export function PaymentBadgeRow({ className = "" }: { className?: string }) {
   );
 }
 
-/** The PayPal logo alone, sized to match {@link PaymentBadgeRow} — shown
- *  next to "Payer avec PayPal" at checkout. */
-export function PaypalBadge({ className = "" }: { className?: string }) {
+/** A full-width, PayPal-branded button (their signature gold pill) — shown
+ *  as its own distinct payment option at checkout, separate from the
+ *  WhatsApp / Mobile Money / Stripe toggle row so it reads as a genuinely
+ *  different way to pay rather than another small pill in that row. */
+export function PaypalButton({
+  selected,
+  onClick,
+}: {
+  selected: boolean;
+  onClick: () => void;
+}) {
   return (
-    <Image
-      src="/logos/payment/paypal.svg"
-      alt="PayPal"
-      width={750}
-      height={471}
-      className={`h-7 w-auto rounded ring-1 ring-black/10 ${className}`}
-    />
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`flex w-full items-center justify-center gap-2 rounded-full border-2 px-5 py-3.5 text-sm font-bold transition-colors ${
+        selected
+          ? "border-[#ffc439] bg-[#ffc439] text-[#003087] shadow-md"
+          : "border-[#ffc439] bg-[#ffc439]/25 text-[#003087] hover:bg-[#ffc439]/50"
+      }`}
+    >
+      <Image
+        src="/logos/payment/paypal.svg"
+        alt=""
+        width={750}
+        height={471}
+        className="h-6 w-auto"
+      />
+      Payer avec PayPal
+    </button>
   );
 }
 

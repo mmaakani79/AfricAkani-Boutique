@@ -19,7 +19,7 @@ import { MobileMoneyPanel } from "./mobile-money-panel";
 import {
   PaymentBadgeRow,
   MobileMoneyBadgeRow,
-  PaypalBadge,
+  PaypalButton,
 } from "@/components/shop/payment-brand-icons";
 import { Container } from "@/components/layout/container";
 import { getPaymentTimeoutHours } from "@/lib/order-config";
@@ -457,21 +457,19 @@ export default function CommandePage() {
                   </button>
                 )}
                 {stripeAvailable && <PaymentBadgeRow />}
-                {paypalAvailable && (
-                  <button
-                    type="button"
-                    onClick={() => setPaymentChoice("paypal")}
-                    className={`rounded-full border px-3.5 py-1.5 text-xs font-bold ${
-                      paymentChoice === "paypal"
-                        ? "border-brand-green bg-brand-green text-ivory"
-                        : "border-brand-green/20 text-brand-green-dark"
-                    }`}
-                  >
-                    Payer avec PayPal
-                  </button>
-                )}
-                {paypalAvailable && <PaypalBadge />}
               </div>
+            </div>
+          )}
+
+          {paypalAvailable && (
+            <div>
+              <label className="mb-3 block text-xs font-bold uppercase tracking-wider text-brand-gold">
+                Ou payez avec PayPal
+              </label>
+              <PaypalButton
+                selected={paymentChoice === "paypal"}
+                onClick={() => setPaymentChoice("paypal")}
+              />
             </div>
           )}
 
