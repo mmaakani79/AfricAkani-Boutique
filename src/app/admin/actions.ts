@@ -14,7 +14,7 @@ import {
   updateProduct,
   type ProductInput,
 } from "@/lib/products-db";
-import type { HalalStatus, PackagingType, StockStatus } from "@/lib/types";
+import type { HalalStatus, PackagingType, PriceTier, StockStatus, ZoneId } from "@/lib/types";
 import { sendTestEmail, type TestEmailResult } from "@/lib/email";
 
 export interface ActionState {
@@ -78,6 +78,27 @@ function readProductForm(formData: FormData): ProductInput {
     .filter(Boolean);
   const videoUrlRaw = String(formData.get("videoUrl") ?? "").trim();
 
+  // Three parallel arrays (one entry per tier, in DOM order) rather than a
+  // single JSON field — PriceTiersField renders each tier as plain hidden
+  // inputs, so this reads back the same way FormData naturally groups them.
+  const tierZones = formData.getAll("tierZone").map(String);
+  const tierMinQtys = formData.getAll("tierMinQty").map(String);
+  const tierPrices = formData.getAll("tierPrice").map(String);
+  const priceTiers: Partial<Record<ZoneId, PriceTier[]>> = { bj: [], ca: [], us: [] };
+  tierZones.forEach((zoneId, i) => {
+    const minQty = Number(tierMinQtys[i]);
+    const price = Number(tierPrices[i]);
+    if (
+      (zoneId === "bj" || zoneId === "ca" || zoneId === "us") &&
+      Number.isFinite(minQty) &&
+      minQty > 1 &&
+      Number.isFinite(price) &&
+      price >= 0
+    ) {
+      priceTiers[zoneId]!.push({ minQty, price });
+    }
+  });
+
   return {
     name,
     slug: slugRaw ? slugify(slugRaw) : slugify(name),
@@ -104,6 +125,7 @@ function readProductForm(formData: FormData): ProductInput {
     // "leave it untouched" (see ProductInput.galleryImages).
     galleryImages,
     videoUrl: videoUrlRaw,
+    priceTiers,
   };
 }
 

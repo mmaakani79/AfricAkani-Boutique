@@ -1,5 +1,12 @@
+import type { PoolClient } from "pg";
 import { ensureSchema, getPool } from "./db";
-import type { HalalStatus, PackagingType, Product, StockStatus } from "./types";
+import type { HalalStatus, PackagingType, PriceTier, Product, StockStatus, ZoneId } from "./types";
+
+interface PriceTierJsonRow {
+  zoneId: string;
+  minQty: number;
+  price: number;
+}
 
 interface ProductRow {
   id: string;
@@ -21,22 +28,43 @@ interface ProductRow {
   image: string | null;
   gallery_images: string[];
   video_url: string | null;
+  /** Only present when the query joins the price tiers subquery below. */
+  price_tiers_json?: PriceTierJsonRow[];
   /** Only present when the query joins the rating/sold aggregates below. */
   avg_rating?: string | null;
   review_count?: string | null;
   sold_count?: string | null;
 }
 
+// Extra quantity-pricing steps (minQty > 1), grouped as JSON so a single
+// query can carry the one-to-many relation without changing row shape.
+const PRICE_TIERS_SELECT = `(
+    SELECT COALESCE(json_agg(json_build_object('zoneId', zone_id, 'minQty', min_qty, 'price', unit_price) ORDER BY zone_id, min_qty), '[]'::json)
+    FROM product_price_tiers WHERE product_id = p.id
+  ) AS price_tiers_json`;
+
 // Joined onto "products p" for customer-facing listings (catalogue, home,
 // product detail, related products) so ProductCard can show stars/avis/vendus
 // without a separate round trip per product.
-const RATING_JOIN_SELECT = `p.*,
+const RATING_JOIN_SELECT = `p.*, ${PRICE_TIERS_SELECT},
   (SELECT COALESCE(AVG(rating), 0) FROM product_reviews WHERE product_id = p.id AND status = 'approuvee') AS avg_rating,
   (SELECT COUNT(*) FROM product_reviews WHERE product_id = p.id AND status = 'approuvee') AS review_count,
   (SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi JOIN orders o ON o.id = oi.order_id WHERE oi.product_id = p.id AND o.payment_status = 'paye') AS sold_count`;
 
 function toPriceOrNull(value: string | null): number | null {
   return value === null ? null : Number(value);
+}
+
+function groupPriceTiers(
+  rows: PriceTierJsonRow[] | undefined
+): Partial<Record<ZoneId, PriceTier[]>> | undefined {
+  if (!rows || rows.length === 0) return undefined;
+  const byZone: Partial<Record<ZoneId, PriceTier[]>> = {};
+  for (const row of rows) {
+    const zoneId = row.zoneId as ZoneId;
+    (byZone[zoneId] ??= []).push({ minQty: row.minQty, price: Number(row.price) });
+  }
+  return byZone;
 }
 
 function rowToProduct(row: ProductRow): Product {
@@ -62,6 +90,7 @@ function rowToProduct(row: ProductRow): Product {
     image: row.image ?? undefined,
     galleryImages: row.gallery_images ?? [],
     videoUrl: row.video_url ?? undefined,
+    priceTiers: groupPriceTiers(row.price_tiers_json),
     rating:
       row.avg_rating !== undefined
         ? { average: Number(row.avg_rating ?? 0), count: Number(row.review_count ?? 0) }
@@ -98,7 +127,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
 export async function getProductById(id: string): Promise<Product | null> {
   await ensureSchema();
   const { rows } = await getPool().query<ProductRow>(
-    "SELECT * FROM products WHERE id = $1",
+    `SELECT p.*, ${PRICE_TIERS_SELECT} FROM products p WHERE p.id = $1`,
     [id]
   );
   return rows[0] ? rowToProduct(rows[0]) : null;
@@ -144,39 +173,82 @@ export interface ProductInput {
   galleryImages?: string[];
   /** Same clear/set/keep convention as `image`. */
   videoUrl?: string;
+  /** Omit (undefined) to leave existing tiers untouched (e.g. Excel bulk edit).
+   *  Provided means "this is the full desired state" — a zone absent from it,
+   *  or given an empty array, ends up with no extra tiers. */
+  priceTiers?: Partial<Record<ZoneId, PriceTier[]>>;
+}
+
+/** Replaces every extra price tier for a product (minQty > 1 only — the base
+ *  price lives on the product row itself, not in this table). */
+async function replacePriceTiers(
+  client: PoolClient,
+  productId: string,
+  tiersByZone: Partial<Record<ZoneId, PriceTier[]>>
+): Promise<void> {
+  await client.query("DELETE FROM product_price_tiers WHERE product_id = $1", [
+    productId,
+  ]);
+  for (const [zoneId, tiers] of Object.entries(tiersByZone)) {
+    for (const tier of tiers ?? []) {
+      if (tier.minQty <= 1) continue;
+      await client.query(
+        `INSERT INTO product_price_tiers (product_id, zone_id, min_qty, unit_price)
+         VALUES ($1,$2,$3,$4)`,
+        [productId, zoneId, tier.minQty, tier.price]
+      );
+    }
+  }
 }
 
 export async function createProduct(input: ProductInput): Promise<Product> {
   await ensureSchema();
   const sku = input.sku?.trim() || `AK-${input.slug.toUpperCase()}`;
-  const { rows } = await getPool().query<ProductRow>(
-    `INSERT INTO products
-      (id, slug, name, category_id, halal, unit, packaging, description, long_description, price_bj, price_ca, price_us, stock, featured, sku, supplier, image, gallery_images, video_url)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
-     RETURNING *`,
-    [
-      input.slug,
-      input.slug,
-      input.name,
-      input.categoryId,
-      input.halal,
-      input.unit,
-      input.packaging,
-      input.description,
-      input.longDescription,
-      input.prices.bj,
-      input.prices.ca,
-      input.prices.us,
-      input.stock,
-      input.featured,
-      sku,
-      input.supplier ?? null,
-      input.image?.trim() || null,
-      input.galleryImages ?? [],
-      input.videoUrl?.trim() || null,
-    ]
-  );
-  return rowToProduct(rows[0]);
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query<ProductRow>(
+      `INSERT INTO products
+        (id, slug, name, category_id, halal, unit, packaging, description, long_description, price_bj, price_ca, price_us, stock, featured, sku, supplier, image, gallery_images, video_url)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+       RETURNING *`,
+      [
+        input.slug,
+        input.slug,
+        input.name,
+        input.categoryId,
+        input.halal,
+        input.unit,
+        input.packaging,
+        input.description,
+        input.longDescription,
+        input.prices.bj,
+        input.prices.ca,
+        input.prices.us,
+        input.stock,
+        input.featured,
+        sku,
+        input.supplier ?? null,
+        input.image?.trim() || null,
+        input.galleryImages ?? [],
+        input.videoUrl?.trim() || null,
+      ]
+    );
+    const productId = rows[0].id;
+    if (input.priceTiers) {
+      await replacePriceTiers(client, productId, input.priceTiers);
+    }
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+  const created = await getProductById(input.slug);
+  if (!created) throw new Error("Product creation succeeded but could not be re-read.");
+  return created;
 }
 
 export async function updateProduct(
@@ -184,42 +256,60 @@ export async function updateProduct(
   input: ProductInput
 ): Promise<Product | null> {
   await ensureSchema();
-  const { rows } = await getPool().query<ProductRow>(
-    `UPDATE products SET
-       slug = $2, name = $3, category_id = $4, halal = $5, unit = $6,
-       packaging = $7, description = $8, long_description = $9, price_bj = $10,
-       price_ca = $11, price_us = $12, stock = $13, featured = $14,
-       sku = COALESCE(NULLIF($15, ''), sku),
-       supplier = COALESCE($16, supplier),
-       image = CASE WHEN $17::text IS NULL THEN image WHEN $17 = '' THEN NULL ELSE $17 END,
-       gallery_images = COALESCE($18, gallery_images),
-       video_url = CASE WHEN $19::text IS NULL THEN video_url WHEN $19 = '' THEN NULL ELSE $19 END,
-       updated_at = now()
-     WHERE id = $1
-     RETURNING *`,
-    [
-      id,
-      input.slug,
-      input.name,
-      input.categoryId,
-      input.halal,
-      input.unit,
-      input.packaging,
-      input.description,
-      input.longDescription,
-      input.prices.bj,
-      input.prices.ca,
-      input.prices.us,
-      input.stock,
-      input.featured,
-      input.sku ?? "",
-      input.supplier ?? null,
-      input.image ?? null,
-      input.galleryImages ?? null,
-      input.videoUrl ?? null,
-    ]
-  );
-  return rows[0] ? rowToProduct(rows[0]) : null;
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query<ProductRow>(
+      `UPDATE products SET
+         slug = $2, name = $3, category_id = $4, halal = $5, unit = $6,
+         packaging = $7, description = $8, long_description = $9, price_bj = $10,
+         price_ca = $11, price_us = $12, stock = $13, featured = $14,
+         sku = COALESCE(NULLIF($15, ''), sku),
+         supplier = COALESCE($16, supplier),
+         image = CASE WHEN $17::text IS NULL THEN image WHEN $17 = '' THEN NULL ELSE $17 END,
+         gallery_images = COALESCE($18, gallery_images),
+         video_url = CASE WHEN $19::text IS NULL THEN video_url WHEN $19 = '' THEN NULL ELSE $19 END,
+         updated_at = now()
+       WHERE id = $1
+       RETURNING *`,
+      [
+        id,
+        input.slug,
+        input.name,
+        input.categoryId,
+        input.halal,
+        input.unit,
+        input.packaging,
+        input.description,
+        input.longDescription,
+        input.prices.bj,
+        input.prices.ca,
+        input.prices.us,
+        input.stock,
+        input.featured,
+        input.sku ?? "",
+        input.supplier ?? null,
+        input.image ?? null,
+        input.galleryImages ?? null,
+        input.videoUrl ?? null,
+      ]
+    );
+    if (!rows[0]) {
+      await client.query("ROLLBACK");
+      return null;
+    }
+    if (input.priceTiers) {
+      await replacePriceTiers(client, id, input.priceTiers);
+    }
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
+  return getProductById(id);
 }
 
 export async function deleteProduct(id: string): Promise<boolean> {

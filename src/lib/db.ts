@@ -68,6 +68,18 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS gallery_images TEXT[] NOT NULL DEF
 ALTER TABLE products ADD COLUMN IF NOT EXISTS video_url TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS products_sku_key ON products (sku);
 
+-- Extra quantity-pricing steps beyond the base price (min_qty > 1 — the base
+-- price_bj/ca/us columns above already cover "1 unit and up").
+CREATE TABLE IF NOT EXISTS product_price_tiers (
+  id SERIAL PRIMARY KEY,
+  product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  zone_id TEXT NOT NULL,
+  min_qty INTEGER NOT NULL CHECK (min_qty > 1),
+  unit_price NUMERIC NOT NULL,
+  UNIQUE (product_id, zone_id, min_qty)
+);
+CREATE INDEX IF NOT EXISTS product_price_tiers_product_idx ON product_price_tiers (product_id);
+
 CREATE TABLE IF NOT EXISTS orders (
   id TEXT PRIMARY KEY,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),

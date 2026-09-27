@@ -8,6 +8,7 @@ import type { ActionState } from "../../actions";
 import { ImageUploadField } from "./image-upload-field";
 import { GalleryUploadField } from "./gallery-upload-field";
 import { VideoUploadField } from "./video-upload-field";
+import { PriceTiersField } from "./price-tiers-field";
 
 const initialState: ActionState = {};
 
@@ -161,6 +162,8 @@ export function ProductForm({
           defaultValue={product?.prices.us ?? undefined}
         />
       </div>
+
+      <PriceTiersField defaultValue={product?.priceTiers} />
 
       <label className="flex items-center gap-2 text-sm font-semibold text-ink/70">
         <input

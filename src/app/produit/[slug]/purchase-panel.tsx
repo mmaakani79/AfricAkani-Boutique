@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Minus, Plus, ShoppingCart, Truck } from "lucide-react";
 import { useZone } from "@/context/zone-context";
 import { useCart } from "@/context/cart-context";
+import { tiersForZone, tierRangeLabel } from "@/lib/price-tiers";
 import type { Product } from "@/lib/types";
 
 export function ProductPurchasePanel({ product }: { product: Product }) {
@@ -11,10 +12,11 @@ export function ProductPurchasePanel({ product }: { product: Product }) {
   const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
-  const price = priceFor(product);
+  const price = priceFor(product, quantity);
   const unavailable = price === null;
   const outOfStock = product.stock === "rupture";
   const disabled = outOfStock || unavailable;
+  const tiers = tiersForZone(product, zone.id);
 
   return (
     <div className="mt-6">
@@ -23,7 +25,47 @@ export function ProductPurchasePanel({ product }: { product: Product }) {
           Non disponible dans cette zone
         </p>
       ) : (
-        <p className="font-brand text-3xl font-bold text-ink">{format(price)}</p>
+        <p className="font-brand text-3xl font-bold text-ink">
+          {format(price)}
+          <span className="ml-1.5 text-sm font-semibold text-ink/40">/ unité</span>
+        </p>
+      )}
+
+      {tiers.length > 1 && (
+        <div className="mt-3 overflow-hidden rounded-xl border border-brand-green/15">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="bg-brand-green/5 text-[11px] uppercase tracking-wider text-brand-gold">
+                <th className="px-3 py-2 font-bold">Quantité</th>
+                <th className="px-3 py-2 font-bold">Prix unitaire</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-brand-green/10 bg-white">
+              {tiers.map((tier, i) => {
+                const active =
+                  quantity >= tier.minQty && (!tiers[i + 1] || quantity < tiers[i + 1].minQty);
+                return (
+                  <tr
+                    key={tier.minQty}
+                    className={active ? "bg-brand-green/10" : undefined}
+                  >
+                    <td
+                      className={`px-3 py-2 ${active ? "font-bold text-brand-green-dark" : "text-ink/70"}`}
+                    >
+                      {tierRangeLabel(tiers, i)} {product.unit}
+                      {active && " ✓"}
+                    </td>
+                    <td
+                      className={`px-3 py-2 ${active ? "font-bold text-brand-green-dark" : "text-ink/70"}`}
+                    >
+                      {format(tier.price)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
 
       <div className="mt-4 flex items-center gap-3">

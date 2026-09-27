@@ -36,6 +36,14 @@ export interface Category {
   photoSeed: string;
 }
 
+/** A volume-pricing step: `price` per unit once quantity reaches `minQty`.
+ *  `minQty: 1` is always the product's base per-zone price and is never
+ *  stored as a tier itself — only steps above it (minQty > 1) live here. */
+export interface PriceTier {
+  minQty: number;
+  price: number;
+}
+
 export interface Product {
   id: string;
   slug: string;
@@ -49,6 +57,8 @@ export interface Product {
   longDescription?: string;
   /** null for a zone means "not sold in that zone". */
   prices: Record<ZoneId, number | null>;
+  /** Extra quantity-price steps per zone, beyond the base price above (minQty > 1 only). */
+  priceTiers?: Partial<Record<ZoneId, PriceTier[]>>;
   stock: StockStatus;
   featured?: boolean;
   /** Internal catalog code. Admin-only — never rendered to customers. */
