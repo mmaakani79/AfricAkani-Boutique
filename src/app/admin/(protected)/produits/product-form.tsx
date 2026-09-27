@@ -6,6 +6,8 @@ import { PACKAGING_LABELS } from "@/lib/packaging";
 import type { Product } from "@/lib/types";
 import type { ActionState } from "../../actions";
 import { ImageUploadField } from "./image-upload-field";
+import { GalleryUploadField } from "./gallery-upload-field";
+import { VideoUploadField } from "./video-upload-field";
 
 const initialState: ActionState = {};
 
@@ -38,6 +40,8 @@ export function ProductForm({
       />
 
       <ImageUploadField defaultValue={product?.image} />
+      <GalleryUploadField defaultValue={product?.galleryImages} />
+      <VideoUploadField defaultValue={product?.videoUrl} />
 
       <label className="block">
         <span className="mb-1 block text-xs font-semibold text-ink/60">

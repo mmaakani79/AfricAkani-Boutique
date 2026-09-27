@@ -3,9 +3,7 @@ import type { Metadata } from "next";
 import { getProductBySlug, getRelatedProducts } from "@/lib/products-db";
 import { getApprovedReviewsForProduct } from "@/lib/reviews-db";
 import { getCategoryById } from "@/data/categories";
-import { CATEGORY_ICONS } from "@/lib/category-icons";
-import { PhotoPlaceholder } from "@/components/shop/photo-placeholder";
-import { HalalBadge } from "@/components/shop/halal-badge";
+import { ProductGallery } from "@/components/shop/product-gallery";
 import { ProductCard } from "@/components/shop/product-card";
 import { StarRatingDisplay } from "@/components/shop/star-rating";
 import { PACKAGING_LABELS, HALAL_LABELS } from "@/lib/packaging";
@@ -39,32 +37,21 @@ export default async function ProductPage({
   if (!product) notFound();
 
   const category = getCategoryById(product.categoryId);
-  const CategoryIcon = category ? CATEGORY_ICONS[category.id] : undefined;
   const relatedProducts = await getRelatedProducts(product.id, product.categoryId);
   const reviews = await getApprovedReviewsForProduct(product.id);
 
   return (
     <Container className="py-10">
       <div className="grid gap-8 md:grid-cols-2">
-        <div className="relative aspect-square overflow-hidden rounded-2xl">
-          {product.image ? (
-            // eslint-disable-next-line @next/next/no-img-element -- product images live on Vercel Blob, not a fixed host next/image can be pre-configured for
-            <img
-              src={product.image}
-              alt={product.name}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <PhotoPlaceholder
-              seed={category?.photoSeed ?? "emerald"}
-              icon={CategoryIcon}
-              className="relative h-full w-full"
-            />
-          )}
-          <div className="absolute right-3 top-3">
-            <HalalBadge status={product.halal} />
-          </div>
-        </div>
+        <ProductGallery
+          name={product.name}
+          image={product.image}
+          galleryImages={product.galleryImages}
+          videoUrl={product.videoUrl}
+          halal={product.halal}
+          placeholderSeed={category?.photoSeed ?? "emerald"}
+          categoryId={category?.id}
+        />
 
         <div>
           {category && (

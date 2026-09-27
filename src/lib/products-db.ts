@@ -19,6 +19,8 @@ interface ProductRow {
   sku: string | null;
   supplier: string | null;
   image: string | null;
+  gallery_images: string[];
+  video_url: string | null;
   /** Only present when the query joins the rating/sold aggregates below. */
   avg_rating?: string | null;
   review_count?: string | null;
@@ -58,6 +60,8 @@ function rowToProduct(row: ProductRow): Product {
     sku: row.sku ?? undefined,
     supplier: row.supplier ?? undefined,
     image: row.image ?? undefined,
+    galleryImages: row.gallery_images ?? [],
+    videoUrl: row.video_url ?? undefined,
     rating:
       row.avg_rating !== undefined
         ? { average: Number(row.avg_rating ?? 0), count: Number(row.review_count ?? 0) }
@@ -135,6 +139,11 @@ export interface ProductInput {
    *  Excel edit that doesn't manage images); pass "" to explicitly clear it, or a
    *  URL to set it. Always a definite value on create — there's nothing to keep. */
   image?: string;
+  /** Extra gallery photos, beyond `image` — always the full replacement list
+   *  (the admin form re-sends every URL it wants kept on every save). */
+  galleryImages?: string[];
+  /** Same clear/set/keep convention as `image`. */
+  videoUrl?: string;
 }
 
 export async function createProduct(input: ProductInput): Promise<Product> {
@@ -142,8 +151,8 @@ export async function createProduct(input: ProductInput): Promise<Product> {
   const sku = input.sku?.trim() || `AK-${input.slug.toUpperCase()}`;
   const { rows } = await getPool().query<ProductRow>(
     `INSERT INTO products
-      (id, slug, name, category_id, halal, unit, packaging, description, long_description, price_bj, price_ca, price_us, stock, featured, sku, supplier, image)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+      (id, slug, name, category_id, halal, unit, packaging, description, long_description, price_bj, price_ca, price_us, stock, featured, sku, supplier, image, gallery_images, video_url)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
      RETURNING *`,
     [
       input.slug,
@@ -163,6 +172,8 @@ export async function createProduct(input: ProductInput): Promise<Product> {
       sku,
       input.supplier ?? null,
       input.image?.trim() || null,
+      input.galleryImages ?? [],
+      input.videoUrl?.trim() || null,
     ]
   );
   return rowToProduct(rows[0]);
@@ -181,6 +192,8 @@ export async function updateProduct(
        sku = COALESCE(NULLIF($15, ''), sku),
        supplier = COALESCE($16, supplier),
        image = CASE WHEN $17::text IS NULL THEN image WHEN $17 = '' THEN NULL ELSE $17 END,
+       gallery_images = COALESCE($18, gallery_images),
+       video_url = CASE WHEN $19::text IS NULL THEN video_url WHEN $19 = '' THEN NULL ELSE $19 END,
        updated_at = now()
      WHERE id = $1
      RETURNING *`,
@@ -202,6 +215,8 @@ export async function updateProduct(
       input.sku ?? "",
       input.supplier ?? null,
       input.image ?? null,
+      input.galleryImages ?? null,
+      input.videoUrl ?? null,
     ]
   );
   return rows[0] ? rowToProduct(rows[0]) : null;

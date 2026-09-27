@@ -2,8 +2,17 @@ import { NextResponse } from "next/server";
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { isAdminAuthed } from "@/lib/admin-api-auth";
 
-const ALLOWED_CONTENT_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const MAX_SIZE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_CONTENT_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+];
+// Generous enough for a short product video (the individual field components
+// enforce a tighter cap per media type before ever attempting the upload).
+const MAX_SIZE_BYTES = 50 * 1024 * 1024;
 
 /**
  * The @vercel/blob client's `upload()` helper discards whatever this route

@@ -55,6 +55,10 @@ export interface Product {
   sku?: string;
   supplier?: string;
   image?: string;
+  /** Extra photos shown in the product page gallery, beyond the cover `image`. */
+  galleryImages?: string[];
+  /** A single product video, played inline in the gallery. */
+  videoUrl?: string;
   /** Computed from approved reviews — undefined when the query didn't join it (e.g. admin edit form). */
   rating?: { average: number; count: number };
   /** Total quantity sold across paid orders — undefined when the query didn't join it. */

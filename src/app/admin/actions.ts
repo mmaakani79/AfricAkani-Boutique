@@ -72,6 +72,11 @@ function readProductForm(formData: FormData): ProductInput {
   const slugRaw = String(formData.get("slug") ?? "").trim();
   const skuRaw = String(formData.get("sku") ?? "").trim();
   const imageRaw = String(formData.get("image") ?? "").trim();
+  const galleryImages = formData
+    .getAll("galleryImages")
+    .map((v) => String(v).trim())
+    .filter(Boolean);
+  const videoUrlRaw = String(formData.get("videoUrl") ?? "").trim();
 
   return {
     name,
@@ -94,6 +99,11 @@ function readProductForm(formData: FormData): ProductInput {
     // explicitly removed the image, a URL means they set/kept one. Never
     // undefined here, so this always overwrites (see ProductInput.image).
     image: imageRaw,
+    // Always the full current list — GalleryUploadField re-sends every URL
+    // it wants kept, so an empty array here means "clear the gallery", not
+    // "leave it untouched" (see ProductInput.galleryImages).
+    galleryImages,
+    videoUrl: videoUrlRaw,
   };
 }
 
