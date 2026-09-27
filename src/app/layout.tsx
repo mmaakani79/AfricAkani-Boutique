@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Lato } from "next/font/google";
+import { Josefin_Sans, Open_Sans } from "next/font/google";
 import "./globals.css";
 import { ZoneProvider } from "@/context/zone-context";
 import { CartProvider } from "@/context/cart-context";
@@ -8,13 +8,13 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { ShippingBanner } from "@/components/layout/shipping-banner";
 
-const playfair = Playfair_Display({
+const josefin = Josefin_Sans({
   variable: "--font-brand",
   subsets: ["latin"],
-  weight: ["600", "700", "800"],
+  weight: ["600", "700"],
 });
 
-const lato = Lato({
+const openSans = Open_Sans({
   variable: "--font-ui",
   subsets: ["latin"],
   weight: ["400", "700"],
@@ -47,7 +47,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="fr"
-      className={`${playfair.variable} ${lato.variable} h-full antialiased`}
+      className={`${josefin.variable} ${openSans.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-ivory text-ink font-sans">
         <ZoneProvider>
