@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Work_Sans } from "next/font/google";
+import { Playfair_Display, Lato } from "next/font/google";
 import "./globals.css";
 import { ZoneProvider } from "@/context/zone-context";
 import { CartProvider } from "@/context/cart-context";
@@ -14,10 +14,10 @@ const playfair = Playfair_Display({
   weight: ["600", "700", "800"],
 });
 
-const workSans = Work_Sans({
+const lato = Lato({
   variable: "--font-ui",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "700"],
 });
 
 const SITE_URL = (
@@ -47,7 +47,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="fr"
-      className={`${playfair.variable} ${workSans.variable} h-full antialiased`}
+      className={`${playfair.variable} ${lato.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-ivory text-ink font-sans">
         <ZoneProvider>
