@@ -35,13 +35,14 @@ export async function Footer() {
                 Afric<span className="text-brand-gold-light">Akani</span>
               </span>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-ivory/60">
-                Boutique · Produits naturels
+                Boutique · Généraliste africaine
               </p>
             </div>
           </div>
           <p className="mt-3 text-sm text-ivory/70">
-            L&rsquo;Afrique, c&rsquo;est bon. Produits naturels et halal
-            d&rsquo;Afrique de l&rsquo;Ouest, livrés du Bénin au Canada.
+            Boutique généraliste africaine — produits naturels, mode,
+            technologie et bien plus, livrés du Bénin au Canada et aux
+            États-Unis.
           </p>
         </div>
 

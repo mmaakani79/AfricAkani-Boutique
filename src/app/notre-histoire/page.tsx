@@ -73,9 +73,10 @@ export default function NotreHistoire() {
             </p>
             <p className="mx-auto mt-5 max-w-xl text-sm text-ivory/90 sm:mx-0 sm:text-base">
               AfricAkani fusionne « Africa » et le prénom de son fondateur,
-              Akani. Une boutique de produits naturels et halal d&rsquo;Afrique
-              de l&rsquo;Ouest, pensée pour ceux qui y vivent et pour la
-              diaspora — du Bénin au Canada.
+              Akani. Une boutique généraliste africaine — produits naturels,
+              mode, technologie et bien plus, pensée pour ceux qui y vivent
+              et pour la diaspora, livrés du Bénin au Canada et aux
+              États-Unis.
             </p>
             <Link
               href="#histoire"

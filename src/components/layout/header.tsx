@@ -13,7 +13,7 @@ export function Header() {
         <Link href="/" className="flex shrink-0 items-center">
           <Image
             src="/logo/wordmark.webp"
-            alt="AfricAkani — Boutique · Produits naturels"
+            alt="AfricAkani — Boutique généraliste africaine"
             width={2000}
             height={600}
             priority

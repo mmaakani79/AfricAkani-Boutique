@@ -58,7 +58,7 @@ export async function generateInvoicePdf(order: OrderDetail): Promise<Buffer> {
     .font("Helvetica")
     .fontSize(9)
     .text(
-      "Boutique de produits naturels et halal d'Afrique de l'Ouest",
+      "Boutique généraliste africaine — produits naturels, mode, technologie et bien plus, livrés du Bénin au Canada et aux États-Unis.",
       marginX + 82,
       58,
       { width: 260 }
