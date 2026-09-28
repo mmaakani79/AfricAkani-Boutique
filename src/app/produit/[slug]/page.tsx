@@ -3,10 +3,11 @@ import type { Metadata } from "next";
 import { getProductBySlug, getRelatedProducts } from "@/lib/products-db";
 import { getApprovedReviewsForProduct } from "@/lib/reviews-db";
 import { getCategoryById } from "@/lib/categories-db";
+import { getPackagingTypeById } from "@/lib/packaging-types-db";
 import { ProductGallery } from "@/components/shop/product-gallery";
 import { ProductCard } from "@/components/shop/product-card";
 import { StarRatingDisplay } from "@/components/shop/star-rating";
-import { PACKAGING_LABELS, HALAL_LABELS } from "@/lib/packaging";
+import { HALAL_LABELS } from "@/lib/packaging";
 import { ProductPurchasePanel } from "./purchase-panel";
 import { Container } from "@/components/layout/container";
 
@@ -37,6 +38,7 @@ export default async function ProductPage({
   if (!product) notFound();
 
   const category = await getCategoryById(product.categoryId);
+  const packagingType = await getPackagingTypeById(product.packaging);
   const relatedProducts = await getRelatedProducts(product.id, product.categoryId);
   const reviews = await getApprovedReviewsForProduct(product.id);
 
@@ -88,7 +90,7 @@ export default async function ProductPage({
             <div>
               <dt className="text-ink/50">Emballage</dt>
               <dd className="font-semibold text-brand-green-dark">
-                {PACKAGING_LABELS[product.packaging]}
+                {packagingType?.name ?? product.packaging}
               </dd>
             </div>
             <div>

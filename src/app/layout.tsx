@@ -4,6 +4,7 @@ import "./globals.css";
 import { ZoneProvider } from "@/context/zone-context";
 import { CartProvider } from "@/context/cart-context";
 import { CategoryProvider } from "@/context/category-context";
+import { PackagingProvider } from "@/context/packaging-context";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { ShippingBanner } from "@/components/layout/shipping-banner";
@@ -52,12 +53,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-ivory text-ink font-sans">
         <ZoneProvider>
           <CategoryProvider>
-            <CartProvider>
-              <ShippingBanner />
-              <Header />
-              <main className="flex-1">{children}</main>
-              <Footer />
-            </CartProvider>
+            <PackagingProvider>
+              <CartProvider>
+                <ShippingBanner />
+                <Header />
+                <main className="flex-1">{children}</main>
+                <Footer />
+              </CartProvider>
+            </PackagingProvider>
           </CategoryProvider>
         </ZoneProvider>
       </body>

@@ -11,24 +11,12 @@ import {
   Scale,
   type LucideIcon,
 } from "lucide-react";
-import type { PackagingType } from "./types";
 
-export const PACKAGING_LABELS: Record<PackagingType, string> = {
-  sachet_plastique_transparent: "Sachet plastique transparent",
-  sachet_opaque: "Sachet noir / opaque",
-  sachet_kraft: "Sachet biodégradable / kraft",
-  bouteille_pet: "Bouteille PET",
-  bidon_jerrican: "Bidon / jerrican",
-  pot_plastique: "Pot plastique avec couvercle",
-  flacon_verre: "Flacon en verre",
-  carton_boite: "Carton / boîte",
-  sachet_doypack: "Sachet doypack (avec zip)",
-  panier_raphia: "Panier en raphia",
-  pagne_tissu: "Pagne / tissu emballant",
-  vrac: "Vente en vrac",
-};
-
-export const PACKAGING_ICONS: Record<PackagingType, LucideIcon> = {
+// Decorative icons for the packaging types seeded by default (see
+// seed-packaging-types.ts) — purely cosmetic, keyed by id. A packaging type
+// the admin creates later (or any id not listed here) falls back to the
+// generic Package icon via getPackagingIcon() below.
+export const PACKAGING_ICONS: Record<string, LucideIcon> = {
   sachet_plastique_transparent: Package,
   sachet_opaque: Package,
   sachet_kraft: PackageOpen,
@@ -41,7 +29,13 @@ export const PACKAGING_ICONS: Record<PackagingType, LucideIcon> = {
   panier_raphia: ShoppingBasket,
   pagne_tissu: Shirt,
   vrac: Scale,
+  boite_metallique: Box,
+  emballage_sous_vide: PackageCheck,
 };
+
+export function getPackagingIcon(id: string): LucideIcon {
+  return PACKAGING_ICONS[id] ?? Package;
+}
 
 export const HALAL_LABELS: Record<string, string> = {
   oui: "Halal vérifié",

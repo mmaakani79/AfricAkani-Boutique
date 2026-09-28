@@ -1,6 +1,7 @@
 import { Pool } from "pg";
 import { SEED_PRODUCTS } from "./seed-products";
 import { SEED_CATEGORIES } from "./seed-categories";
+import { SEED_PACKAGING_TYPES } from "./seed-packaging-types";
 
 declare global {
   var __pgPool: Pool | undefined;
@@ -41,6 +42,13 @@ CREATE TABLE IF NOT EXISTS categories (
   description TEXT NOT NULL DEFAULT '',
   featured_home BOOLEAN NOT NULL DEFAULT false,
   photo_seed TEXT NOT NULL DEFAULT 'emerald',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS packaging_types (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -297,6 +305,24 @@ async function seedCategoriesIfEmpty(): Promise<void> {
   }
 }
 
+async function seedPackagingTypesIfEmpty(): Promise<void> {
+  const pool = getPool();
+  const { rows } = await pool.query<{ count: string }>(
+    "SELECT count(*)::text FROM packaging_types"
+  );
+  if (Number(rows[0].count) > 0) return;
+
+  for (let i = 0; i < SEED_PACKAGING_TYPES.length; i++) {
+    const p = SEED_PACKAGING_TYPES[i];
+    await pool.query(
+      `INSERT INTO packaging_types (id, name, sort_order)
+       VALUES ($1,$2,$3)
+       ON CONFLICT (id) DO NOTHING`,
+      [p.id, p.name, i]
+    );
+  }
+}
+
 async function seedIfEmpty(): Promise<void> {
   const pool = getPool();
   const { rows } = await pool.query<{ count: string }>(
@@ -405,6 +431,7 @@ export function ensureSchema(): Promise<void> {
       const pool = getPool();
       await pool.query(SCHEMA_SQL);
       await seedCategoriesIfEmpty();
+      await seedPackagingTypesIfEmpty();
       await seedIfEmpty();
       await backfillProductSkus();
       await seedMobileMoneyIfEmpty();

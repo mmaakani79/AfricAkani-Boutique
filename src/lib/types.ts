@@ -4,19 +4,15 @@ export type HalalStatus = "oui" | "a_verifier" | "n/a";
 
 export type StockStatus = "en_stock" | "stock_limite" | "rupture";
 
-export type PackagingType =
-  | "sachet_plastique_transparent"
-  | "sachet_opaque"
-  | "sachet_kraft"
-  | "bouteille_pet"
-  | "bidon_jerrican"
-  | "pot_plastique"
-  | "flacon_verre"
-  | "carton_boite"
-  | "sachet_doypack"
-  | "panier_raphia"
-  | "pagne_tissu"
-  | "vrac";
+/** References a row in the DB-backed, admin-managed `packaging_types`
+ *  table (see packaging-types-db.ts) — free-form now rather than a fixed
+ *  union, so the admin can add their own types without a code change. */
+export type PackagingType = string;
+
+export interface PackagingTypeRecord {
+  id: string;
+  name: string;
+}
 
 export interface Zone {
   id: ZoneId;

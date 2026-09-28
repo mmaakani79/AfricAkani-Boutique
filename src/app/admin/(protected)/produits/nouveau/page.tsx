@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getAllCategories } from "@/lib/categories-db";
+import { getAllPackagingTypes } from "@/lib/packaging-types-db";
 import { ProductForm } from "../product-form";
 import { createProductAction } from "../../../actions";
 
@@ -11,7 +12,10 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function NewProductPage() {
-  const categories = await getAllCategories();
+  const [categories, packagingTypes] = await Promise.all([
+    getAllCategories(),
+    getAllPackagingTypes(),
+  ]);
 
   return (
     <div>
@@ -20,6 +24,7 @@ export default async function NewProductPage() {
       </h1>
       <ProductForm
         categories={categories}
+        packagingTypes={packagingTypes}
         action={createProductAction}
         submitLabel="Créer le produit"
       />
