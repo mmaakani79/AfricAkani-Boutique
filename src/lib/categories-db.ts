@@ -10,6 +10,7 @@ interface CategoryRow {
   featured_home: boolean;
   photo_seed: string;
   sort_order: number;
+  image: string | null;
 }
 
 function rowToCategory(row: CategoryRow): Category {
@@ -20,6 +21,7 @@ function rowToCategory(row: CategoryRow): Category {
     description: row.description,
     featuredHome: row.featured_home,
     photoSeed: row.photo_seed,
+    image: row.image ?? undefined,
   };
 }
 
@@ -55,6 +57,8 @@ export interface CategoryInput {
   description: string;
   featuredHome: boolean;
   photoSeed: string;
+  /** Uploaded cover photo URL, or "" to clear it and fall back to photoSeed. */
+  image?: string;
 }
 
 /** Thrown by deleteCategory when products still reference it. */
@@ -75,8 +79,8 @@ export async function createCategory(input: CategoryInput): Promise<Category> {
     "SELECT count(*)::text FROM categories"
   );
   const { rows } = await pool.query<CategoryRow>(
-    `INSERT INTO categories (id, slug, name, description, featured_home, photo_seed, sort_order)
-     VALUES ($1,$2,$3,$4,$5,$6,$7)
+    `INSERT INTO categories (id, slug, name, description, featured_home, photo_seed, sort_order, image)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
      RETURNING *`,
     [
       slug,
@@ -86,6 +90,7 @@ export async function createCategory(input: CategoryInput): Promise<Category> {
       input.featuredHome,
       input.photoSeed,
       Number(countRows[0].count),
+      input.image?.trim() || null,
     ]
   );
   return rowToCategory(rows[0]);
@@ -99,10 +104,18 @@ export async function updateCategory(
   const slug = input.slug?.trim() ? slugify(input.slug) : slugify(input.name);
   const { rows } = await getPool().query<CategoryRow>(
     `UPDATE categories SET
-       slug = $2, name = $3, description = $4, featured_home = $5, photo_seed = $6
+       slug = $2, name = $3, description = $4, featured_home = $5, photo_seed = $6, image = $7
      WHERE id = $1
      RETURNING *`,
-    [id, slug, input.name, input.description, input.featuredHome, input.photoSeed]
+    [
+      id,
+      slug,
+      input.name,
+      input.description,
+      input.featuredHome,
+      input.photoSeed,
+      input.image?.trim() || null,
+    ]
   );
   return rows[0] ? rowToCategory(rows[0]) : null;
 }

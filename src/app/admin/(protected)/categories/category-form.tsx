@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { PHOTO_SEEDS, seedGradient } from "@/lib/photo-palette";
 import type { Category } from "@/lib/types";
 import type { ActionState } from "../../actions";
+import { ImageUploadField } from "@/components/admin/image-upload-field";
 
 const initialState: ActionState = {};
 
@@ -60,9 +61,15 @@ export function CategoryForm({
         />
       </label>
 
+      <ImageUploadField
+        defaultValue={category?.image}
+        label="Image de la catégorie"
+        previewAlt="Aperçu de la catégorie"
+      />
+
       <fieldset>
         <legend className="mb-1.5 block text-xs font-semibold text-ink/60">
-          Couleur (utilisée tant qu&rsquo;aucune photo n&rsquo;est fournie)
+          Couleur (utilisée tant qu&rsquo;aucune image n&rsquo;est fournie)
         </legend>
         <div className="flex flex-wrap gap-2">
           {PHOTO_SEEDS.map((seed) => (

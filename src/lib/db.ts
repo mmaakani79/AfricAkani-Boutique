@@ -86,6 +86,7 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS image TEXT;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS long_description TEXT NOT NULL DEFAULT '';
 ALTER TABLE products ADD COLUMN IF NOT EXISTS gallery_images TEXT[] NOT NULL DEFAULT '{}';
 ALTER TABLE products ADD COLUMN IF NOT EXISTS video_url TEXT;
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS image TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS products_sku_key ON products (sku);
 
 -- Extra quantity-pricing steps beyond the base price (min_qty > 1 — the base

@@ -17,6 +17,7 @@ function readCategoryForm(formData: FormData): CategoryInput {
     description: String(formData.get("description") ?? "").trim(),
     featuredHome: formData.get("featuredHome") === "on",
     photoSeed: String(formData.get("photoSeed") ?? "emerald"),
+    image: String(formData.get("image") ?? "").trim(),
   };
 }
 

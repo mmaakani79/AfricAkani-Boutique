@@ -14,8 +14,14 @@ const NOT_CONFIGURED_MESSAGE =
 
 export function ImageUploadField({
   defaultValue,
+  name = "image",
+  label = "Image du produit",
+  previewAlt = "Aperçu",
 }: {
   defaultValue?: string | null;
+  name?: string;
+  label?: string;
+  previewAlt?: string;
 }) {
   const [url, setUrl] = useState(defaultValue ?? "");
   const [uploading, setUploading] = useState(false);
@@ -84,9 +90,7 @@ export function ImageUploadField({
 
   return (
     <div className="block">
-      <span className="mb-1 block text-xs font-semibold text-ink/60">
-        Image du produit
-      </span>
+      <span className="mb-1 block text-xs font-semibold text-ink/60">{label}</span>
       <input
         ref={inputRef}
         type="file"
@@ -98,7 +102,7 @@ export function ImageUploadField({
           e.target.value = "";
         }}
       />
-      <input type="hidden" name="image" value={url} />
+      <input type="hidden" name={name} value={url} />
 
       {storageConfigured === false && (
         <p className="mb-2 flex items-start gap-1.5 rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
@@ -109,10 +113,10 @@ export function ImageUploadField({
 
       {url ? (
         <div className="flex items-center gap-4 rounded-xl border border-brand-green/20 bg-ivory p-3">
-          {/* eslint-disable-next-line @next/next/no-img-element -- product images live on Vercel Blob, not a fixed local/remote host next/image can be pre-configured for */}
+          {/* eslint-disable-next-line @next/next/no-img-element -- uploaded images live on Vercel Blob, not a fixed local/remote host next/image can be pre-configured for */}
           <img
             src={url}
-            alt="Aperçu du produit"
+            alt={previewAlt}
             className="h-24 w-24 shrink-0 rounded-lg object-cover"
           />
           <div className="flex flex-col gap-2">

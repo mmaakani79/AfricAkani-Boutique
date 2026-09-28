@@ -10,11 +10,21 @@ export function CategoryCard({ category }: { category: Category }) {
       href={`/catalogue?categorie=${category.id}`}
       className="group relative block aspect-[4/5] overflow-hidden rounded-2xl"
     >
-      <PhotoPlaceholder
-        seed={category.photoSeed}
-        icon={Icon}
-        className="relative h-full w-full transition-transform duration-300 group-hover:scale-105"
-      />
+      {category.image ? (
+        // eslint-disable-next-line @next/next/no-img-element -- category images live on Vercel Blob, not a fixed host next/image can be pre-configured for
+        <img
+          src={category.image}
+          alt={category.name}
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+        />
+      ) : (
+        <PhotoPlaceholder
+          seed={category.photoSeed}
+          icon={Icon}
+          className="relative h-full w-full transition-transform duration-300 group-hover:scale-105"
+        />
+      )}
+      <div className="absolute inset-0 bg-black/25" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 p-4">
         <h3 className="font-brand text-lg font-bold text-white">{category.name}</h3>

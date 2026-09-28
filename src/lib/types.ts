@@ -30,6 +30,8 @@ export interface Category {
   description: string;
   featuredHome?: boolean;
   photoSeed: string;
+  /** Uploaded cover photo. When unset, the card falls back to a photoSeed gradient. */
+  image?: string;
 }
 
 /** A volume-pricing step: `price` per unit once quantity reaches `minQty`.

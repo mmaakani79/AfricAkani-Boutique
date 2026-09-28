@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import type { Category, PackagingTypeRecord, Product } from "@/lib/types";
 import type { ActionState } from "../../actions";
-import { ImageUploadField } from "./image-upload-field";
+import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { GalleryUploadField } from "./gallery-upload-field";
 import { VideoUploadField } from "./video-upload-field";
 import { PriceTiersField } from "./price-tiers-field";
