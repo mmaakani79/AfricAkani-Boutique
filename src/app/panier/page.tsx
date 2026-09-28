@@ -79,8 +79,16 @@ export default function PanierPage() {
         {items.map((item) => {
           const category = getCategoryById(item.product.categoryId);
           const Icon = category ? CATEGORY_ICONS[category.id] : undefined;
+          const variantLabel = item.variant
+            ? Object.entries(item.variant.attributes)
+                .map(([k, v]) => `${k}: ${v}`)
+                .join(" · ")
+            : null;
           return (
-            <div key={item.product.id} className="flex items-center gap-4 p-4">
+            <div
+              key={`${item.product.id}::${item.variant?.id ?? ""}`}
+              className="flex items-center gap-4 p-4"
+            >
               <Link
                 href={`/produit/${item.product.slug}`}
                 className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl"
@@ -108,6 +116,9 @@ export default function PanierPage() {
                 >
                   {item.product.name}
                 </Link>
+                {variantLabel && (
+                  <p className="text-xs text-ink/60">{variantLabel}</p>
+                )}
                 <p className="text-xs text-ink/50">{item.product.unit}</p>
               </div>
 
@@ -116,7 +127,7 @@ export default function PanierPage() {
                   type="button"
                   aria-label="Diminuer la quantité"
                   onClick={() =>
-                    updateQuantity(item.product.id, item.quantity - 1)
+                    updateQuantity(item.product.id, item.quantity - 1, item.variant?.id)
                   }
                   className="p-2 text-brand-green-dark"
                 >
@@ -129,7 +140,7 @@ export default function PanierPage() {
                   type="button"
                   aria-label="Augmenter la quantité"
                   onClick={() =>
-                    updateQuantity(item.product.id, item.quantity + 1)
+                    updateQuantity(item.product.id, item.quantity + 1, item.variant?.id)
                   }
                   className="p-2 text-brand-green-dark"
                 >
@@ -144,7 +155,7 @@ export default function PanierPage() {
               <button
                 type="button"
                 aria-label="Retirer du panier"
-                onClick={() => removeItem(item.product.id)}
+                onClick={() => removeItem(item.product.id, item.variant?.id)}
                 className="shrink-0 rounded-full p-2 text-ink/40 hover:bg-ivory hover:text-red-600"
               >
                 <Trash2 className="h-4 w-4" />

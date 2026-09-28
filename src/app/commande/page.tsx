@@ -120,14 +120,21 @@ export default function CommandePage() {
       id: orderId,
       zoneId,
       subtotal,
-      items: items.map((i) => ({
-        productId: i.product.id,
-        name: i.product.name,
-        sku: i.product.sku ?? null,
-        quantity: i.quantity,
-        unitPrice: i.lineTotal / i.quantity,
-        lineTotal: i.lineTotal,
-      })),
+      items: items.map((i) => {
+        const variantLabel = i.variant
+          ? Object.entries(i.variant.attributes)
+              .map(([k, v]) => `${k}: ${v}`)
+              .join(", ")
+          : null;
+        return {
+          productId: i.product.id,
+          name: variantLabel ? `${i.product.name} (${variantLabel})` : i.product.name,
+          sku: i.variant?.sku ?? i.product.sku ?? null,
+          quantity: i.quantity,
+          unitPrice: i.lineTotal / i.quantity,
+          lineTotal: i.lineTotal,
+        };
+      }),
       customer: {
         name,
         email,
@@ -544,9 +551,19 @@ export default function CommandePage() {
           </h2>
           <ul className="space-y-2 text-sm">
             {items.map((item) => (
-              <li key={item.product.id} className="flex justify-between gap-2">
+              <li
+                key={`${item.product.id}::${item.variant?.id ?? ""}`}
+                className="flex justify-between gap-2"
+              >
                 <span className="text-ink/70">
                   {item.quantity} × {item.product.name}
+                  {item.variant && (
+                    <span className="block text-xs text-ink/50">
+                      {Object.entries(item.variant.attributes)
+                        .map(([k, v]) => `${k}: ${v}`)
+                        .join(" · ")}
+                    </span>
+                  )}
                 </span>
                 <span className="shrink-0 font-semibold">
                   {format(item.lineTotal)}

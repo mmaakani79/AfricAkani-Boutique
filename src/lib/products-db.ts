@@ -1,11 +1,27 @@
 import type { PoolClient } from "pg";
 import { ensureSchema, getPool } from "./db";
-import type { HalalStatus, PackagingType, PriceTier, Product, StockStatus, ZoneId } from "./types";
+import type {
+  HalalStatus,
+  PackagingType,
+  PriceTier,
+  Product,
+  ProductVariant,
+  StockStatus,
+  VariantOption,
+  ZoneId,
+} from "./types";
 
 interface PriceTierJsonRow {
   zoneId: string;
   minQty: number;
   price: number;
+}
+
+interface VariantJsonRow {
+  id: string;
+  attributes: Record<string, string>;
+  sku: string;
+  stock: string;
 }
 
 interface ProductRow {
@@ -28,8 +44,11 @@ interface ProductRow {
   image: string | null;
   gallery_images: string[];
   video_url: string | null;
+  variant_options: VariantOption[] | null;
   /** Only present when the query joins the price tiers subquery below. */
   price_tiers_json?: PriceTierJsonRow[];
+  /** Only present when the query joins the variants subquery below. */
+  variants_json?: VariantJsonRow[];
   /** Only present when the query joins the rating/sold aggregates below. */
   avg_rating?: string | null;
   review_count?: string | null;
@@ -43,10 +62,17 @@ const PRICE_TIERS_SELECT = `(
     FROM product_price_tiers WHERE product_id = p.id
   ) AS price_tiers_json`;
 
+// Sellable variants (Taille/Couleur/… combinations), grouped as JSON for the
+// same one-to-many reason as price tiers above.
+const VARIANTS_SELECT = `(
+    SELECT COALESCE(json_agg(json_build_object('id', id, 'attributes', attributes, 'sku', sku, 'stock', stock) ORDER BY sort_order, id), '[]'::json)
+    FROM product_variants WHERE product_id = p.id
+  ) AS variants_json`;
+
 // Joined onto "products p" for customer-facing listings (catalogue, home,
 // product detail, related products) so ProductCard can show stars/avis/vendus
 // without a separate round trip per product.
-const RATING_JOIN_SELECT = `p.*, ${PRICE_TIERS_SELECT},
+const RATING_JOIN_SELECT = `p.*, ${PRICE_TIERS_SELECT}, ${VARIANTS_SELECT},
   (SELECT COALESCE(AVG(rating), 0) FROM product_reviews WHERE product_id = p.id AND status = 'approuvee') AS avg_rating,
   (SELECT COUNT(*) FROM product_reviews WHERE product_id = p.id AND status = 'approuvee') AS review_count,
   (SELECT COALESCE(SUM(oi.quantity), 0) FROM order_items oi JOIN orders o ON o.id = oi.order_id WHERE oi.product_id = p.id AND o.payment_status = 'paye') AS sold_count`;
@@ -65,6 +91,16 @@ function groupPriceTiers(
     (byZone[zoneId] ??= []).push({ minQty: row.minQty, price: Number(row.price) });
   }
   return byZone;
+}
+
+function groupVariants(rows: VariantJsonRow[] | undefined): ProductVariant[] | undefined {
+  if (!rows || rows.length === 0) return undefined;
+  return rows.map((r) => ({
+    id: r.id,
+    attributes: r.attributes,
+    sku: r.sku,
+    stock: r.stock as StockStatus,
+  }));
 }
 
 function rowToProduct(row: ProductRow): Product {
@@ -90,6 +126,9 @@ function rowToProduct(row: ProductRow): Product {
     image: row.image ?? undefined,
     galleryImages: row.gallery_images ?? [],
     videoUrl: row.video_url ?? undefined,
+    variantOptions:
+      row.variant_options && row.variant_options.length > 0 ? row.variant_options : undefined,
+    variants: groupVariants(row.variants_json),
     priceTiers: groupPriceTiers(row.price_tiers_json),
     rating:
       row.avg_rating !== undefined
@@ -127,7 +166,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
 export async function getProductById(id: string): Promise<Product | null> {
   await ensureSchema();
   const { rows } = await getPool().query<ProductRow>(
-    `SELECT p.*, ${PRICE_TIERS_SELECT} FROM products p WHERE p.id = $1`,
+    `SELECT p.*, ${PRICE_TIERS_SELECT}, ${VARIANTS_SELECT} FROM products p WHERE p.id = $1`,
     [id]
   );
   return rows[0] ? rowToProduct(rows[0]) : null;
@@ -177,6 +216,13 @@ export interface ProductInput {
    *  Provided means "this is the full desired state" — a zone absent from it,
    *  or given an empty array, ends up with no extra tiers. */
   priceTiers?: Partial<Record<ZoneId, PriceTier[]>>;
+  /** Omit (undefined) to leave the existing option definitions untouched
+   *  (e.g. Excel bulk edit). Provided means "this is the full desired state". */
+  variantOptions?: VariantOption[];
+  /** Omit (undefined) to leave existing variants untouched (e.g. Excel bulk
+   *  edit). Provided means "this is the full desired state" — the admin form
+   *  always re-sends every variant it wants kept on every save. */
+  variants?: ProductVariant[];
 }
 
 /** Replaces every extra price tier for a product (minQty > 1 only — the base
@@ -201,6 +247,30 @@ async function replacePriceTiers(
   }
 }
 
+/** Replaces every variant for a product — the admin form always re-sends
+ *  the full desired list, so this mirrors replacePriceTiers's delete+reinsert. */
+async function replaceVariants(
+  client: PoolClient,
+  productId: string,
+  variants: ProductVariant[]
+): Promise<void> {
+  await client.query("DELETE FROM product_variants WHERE product_id = $1", [productId]);
+  for (const [i, variant] of variants.entries()) {
+    await client.query(
+      `INSERT INTO product_variants (id, product_id, attributes, sku, stock, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6)`,
+      [
+        variant.id,
+        productId,
+        JSON.stringify(variant.attributes),
+        variant.sku,
+        variant.stock,
+        i,
+      ]
+    );
+  }
+}
+
 export async function createProduct(input: ProductInput): Promise<Product> {
   await ensureSchema();
   const sku = input.sku?.trim() || `AK-${input.slug.toUpperCase()}`;
@@ -210,8 +280,8 @@ export async function createProduct(input: ProductInput): Promise<Product> {
     await client.query("BEGIN");
     const { rows } = await client.query<ProductRow>(
       `INSERT INTO products
-        (id, slug, name, category_id, halal, unit, packaging, description, long_description, price_bj, price_ca, price_us, stock, featured, sku, supplier, image, gallery_images, video_url)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+        (id, slug, name, category_id, halal, unit, packaging, description, long_description, price_bj, price_ca, price_us, stock, featured, sku, supplier, image, gallery_images, video_url, variant_options)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
        RETURNING *`,
       [
         input.slug,
@@ -233,11 +303,15 @@ export async function createProduct(input: ProductInput): Promise<Product> {
         input.image?.trim() || null,
         input.galleryImages ?? [],
         input.videoUrl?.trim() || null,
+        JSON.stringify(input.variantOptions ?? []),
       ]
     );
     const productId = rows[0].id;
     if (input.priceTiers) {
       await replacePriceTiers(client, productId, input.priceTiers);
+    }
+    if (input.variants) {
+      await replaceVariants(client, productId, input.variants);
     }
     await client.query("COMMIT");
   } catch (err) {
@@ -270,6 +344,7 @@ export async function updateProduct(
          image = CASE WHEN $17::text IS NULL THEN image WHEN $17 = '' THEN NULL ELSE $17 END,
          gallery_images = COALESCE($18, gallery_images),
          video_url = CASE WHEN $19::text IS NULL THEN video_url WHEN $19 = '' THEN NULL ELSE $19 END,
+         variant_options = CASE WHEN $20::text IS NULL THEN variant_options ELSE $20::jsonb END,
          updated_at = now()
        WHERE id = $1
        RETURNING *`,
@@ -293,6 +368,7 @@ export async function updateProduct(
         input.image ?? null,
         input.galleryImages ?? null,
         input.videoUrl ?? null,
+        input.variantOptions !== undefined ? JSON.stringify(input.variantOptions) : null,
       ]
     );
     if (!rows[0]) {
@@ -301,6 +377,9 @@ export async function updateProduct(
     }
     if (input.priceTiers) {
       await replacePriceTiers(client, id, input.priceTiers);
+    }
+    if (input.variants) {
+      await replaceVariants(client, id, input.variants);
     }
     await client.query("COMMIT");
   } catch (err) {

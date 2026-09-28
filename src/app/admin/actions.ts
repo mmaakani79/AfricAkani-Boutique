@@ -14,7 +14,15 @@ import {
   updateProduct,
   type ProductInput,
 } from "@/lib/products-db";
-import type { HalalStatus, PackagingType, PriceTier, StockStatus, ZoneId } from "@/lib/types";
+import type {
+  HalalStatus,
+  PackagingType,
+  PriceTier,
+  ProductVariant,
+  StockStatus,
+  VariantOption,
+  ZoneId,
+} from "@/lib/types";
 import { sendTestEmail, type TestEmailResult } from "@/lib/email";
 
 export interface ActionState {
@@ -99,6 +107,41 @@ function readProductForm(formData: FormData): ProductInput {
     }
   });
 
+  // Same parallel-arrays convention as the price tiers above — one entry per
+  // option/variant row, in DOM order (see VariantsField).
+  const variantOptionNames = formData.getAll("variantOptionName").map(String);
+  const variantOptionValues = formData.getAll("variantOptionValues").map(String);
+  const variantOptions: VariantOption[] = variantOptionNames
+    .map((name, i) => ({
+      name: name.trim(),
+      values: (variantOptionValues[i] ?? "")
+        .split(",")
+        .map((v) => v.trim())
+        .filter(Boolean),
+    }))
+    .filter((o) => o.name && o.values.length > 0);
+
+  const variantIds = formData.getAll("variantId").map(String);
+  const variantAttributesRaw = formData.getAll("variantAttributes").map(String);
+  const variantSkus = formData.getAll("variantSku").map(String);
+  const variantStocks = formData.getAll("variantStock").map(String);
+  const variants: ProductVariant[] = variantIds
+    .map((id, i) => {
+      let attributes: Record<string, string> = {};
+      try {
+        attributes = JSON.parse(variantAttributesRaw[i] ?? "{}");
+      } catch {
+        attributes = {};
+      }
+      return {
+        id,
+        attributes,
+        sku: (variantSkus[i] ?? "").trim(),
+        stock: (variantStocks[i] || "en_stock") as StockStatus,
+      };
+    })
+    .filter((v) => v.sku && Object.keys(v.attributes).length > 0);
+
   return {
     name,
     slug: slugRaw ? slugify(slugRaw) : slugify(name),
@@ -126,6 +169,8 @@ function readProductForm(formData: FormData): ProductInput {
     galleryImages,
     videoUrl: videoUrlRaw,
     priceTiers,
+    variantOptions,
+    variants,
   };
 }
 

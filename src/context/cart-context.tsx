@@ -9,15 +9,23 @@ import {
   useState,
 } from "react";
 import { useZone } from "./zone-context";
-import type { Product } from "@/lib/types";
+import type { Product, ProductVariant } from "@/lib/types";
 
 export interface CartLine {
   product: Product;
   quantity: number;
+  /** The variant chosen on the product page, when the product has variants. */
+  variant?: ProductVariant;
 }
 
 export interface CartItem extends CartLine {
   lineTotal: number;
+}
+
+/** Lines are keyed by product id + variant id so the same product with two
+ *  different variants (e.g. Taille M vs Taille L) stays on separate lines. */
+function lineKey(productId: string, variantId?: string): string {
+  return variantId ? `${productId}::${variantId}` : productId;
 }
 
 interface CartContextValue {
@@ -25,9 +33,9 @@ interface CartContextValue {
   items: CartItem[];
   itemCount: number;
   subtotal: number;
-  addItem: (product: Product, quantity?: number) => void;
-  removeItem: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  addItem: (product: Product, quantity?: number, variant?: ProductVariant) => void;
+  removeItem: (productId: string, variantId?: string) => void;
+  updateQuantity: (productId: string, quantity: number, variantId?: string) => void;
   clearCart: () => void;
 }
 
@@ -62,32 +70,47 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [lines, hydrated]);
 
-  const addItem = useCallback((product: Product, quantity = 1) => {
-    setLines((prev) => {
-      const existing = prev.find((l) => l.product.id === product.id);
-      if (existing) {
-        return prev.map((l) =>
-          l.product.id === product.id
-            ? { ...l, quantity: l.quantity + quantity }
-            : l
+  const addItem = useCallback(
+    (product: Product, quantity = 1, variant?: ProductVariant) => {
+      setLines((prev) => {
+        const key = lineKey(product.id, variant?.id);
+        const existing = prev.find(
+          (l) => lineKey(l.product.id, l.variant?.id) === key
         );
-      }
-      return [...prev, { product, quantity }];
-    });
+        if (existing) {
+          return prev.map((l) =>
+            lineKey(l.product.id, l.variant?.id) === key
+              ? { ...l, quantity: l.quantity + quantity }
+              : l
+          );
+        }
+        return [...prev, { product, quantity, variant }];
+      });
+    },
+    []
+  );
+
+  const removeItem = useCallback((productId: string, variantId?: string) => {
+    const key = lineKey(productId, variantId);
+    setLines((prev) =>
+      prev.filter((l) => lineKey(l.product.id, l.variant?.id) !== key)
+    );
   }, []);
 
-  const removeItem = useCallback((productId: string) => {
-    setLines((prev) => prev.filter((l) => l.product.id !== productId));
-  }, []);
-
-  const updateQuantity = useCallback((productId: string, quantity: number) => {
-    setLines((prev) => {
-      if (quantity <= 0) return prev.filter((l) => l.product.id !== productId);
-      return prev.map((l) =>
-        l.product.id === productId ? { ...l, quantity } : l
-      );
-    });
-  }, []);
+  const updateQuantity = useCallback(
+    (productId: string, quantity: number, variantId?: string) => {
+      const key = lineKey(productId, variantId);
+      setLines((prev) => {
+        if (quantity <= 0) {
+          return prev.filter((l) => lineKey(l.product.id, l.variant?.id) !== key);
+        }
+        return prev.map((l) =>
+          lineKey(l.product.id, l.variant?.id) === key ? { ...l, quantity } : l
+        );
+      });
+    },
+    []
+  );
 
   const clearCart = useCallback(() => setLines([]), []);
 

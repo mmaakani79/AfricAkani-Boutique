@@ -86,6 +86,7 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS image TEXT;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS long_description TEXT NOT NULL DEFAULT '';
 ALTER TABLE products ADD COLUMN IF NOT EXISTS gallery_images TEXT[] NOT NULL DEFAULT '{}';
 ALTER TABLE products ADD COLUMN IF NOT EXISTS video_url TEXT;
+ALTER TABLE products ADD COLUMN IF NOT EXISTS variant_options JSONB NOT NULL DEFAULT '[]';
 ALTER TABLE categories ADD COLUMN IF NOT EXISTS image TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS products_sku_key ON products (sku);
 
@@ -100,6 +101,21 @@ CREATE TABLE IF NOT EXISTS product_price_tiers (
   UNIQUE (product_id, zone_id, min_qty)
 );
 CREATE INDEX IF NOT EXISTS product_price_tiers_product_idx ON product_price_tiers (product_id);
+
+-- Sellable variants (e.g. Taille: M + Couleur: Rouge), each with its own SKU
+-- and stock status. attributes keys must match one of the product's
+-- variant_options names above.
+CREATE TABLE IF NOT EXISTS product_variants (
+  id TEXT PRIMARY KEY,
+  product_id TEXT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  attributes JSONB NOT NULL DEFAULT '{}',
+  sku TEXT NOT NULL,
+  stock TEXT NOT NULL DEFAULT 'en_stock',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS product_variants_product_idx ON product_variants (product_id);
+CREATE UNIQUE INDEX IF NOT EXISTS product_variants_sku_key ON product_variants (sku);
 
 CREATE TABLE IF NOT EXISTS orders (
   id TEXT PRIMARY KEY,

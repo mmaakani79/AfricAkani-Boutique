@@ -7,6 +7,7 @@ import { ImageUploadField } from "@/components/admin/image-upload-field";
 import { GalleryUploadField } from "./gallery-upload-field";
 import { VideoUploadField } from "./video-upload-field";
 import { PriceTiersField } from "./price-tiers-field";
+import { VariantsField } from "./variants-field";
 
 const initialState: ActionState = {};
 
@@ -167,6 +168,8 @@ export function ProductForm({
       </div>
 
       <PriceTiersField defaultValue={product?.priceTiers} />
+
+      <VariantsField product={product} />
 
       <label className="flex items-center gap-2 text-sm font-semibold text-ink/70">
         <input

@@ -24,6 +24,7 @@ export function ProductCard({ product }: { product: Product }) {
   const CategoryIcon = category ? CATEGORY_ICONS[category.id] : undefined;
   const price = priceFor(product);
   const unavailable = price === null;
+  const hasVariants = !!product.variantOptions && product.variantOptions.length > 0;
 
   return (
     <div className="group flex flex-col overflow-hidden rounded-2xl border border-brand-green/10 bg-white shadow-sm transition-shadow hover:shadow-md">
@@ -87,15 +88,27 @@ export function ProductCard({ product }: { product: Product }) {
               <span className="font-brand text-base font-bold text-ink">
                 {format(price)}
               </span>
-              <button
-                type="button"
-                onClick={() => addItem(product)}
-                disabled={product.stock === "rupture"}
-                className="flex items-center gap-1 rounded-full bg-brand-green px-3 py-1.5 text-xs font-bold text-ivory transition-colors hover:bg-brand-green-dark disabled:cursor-not-allowed disabled:bg-ink/20"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Ajouter
-              </button>
+              {hasVariants ? (
+                // Variants (size/color/…) must be chosen on the product page —
+                // a quick-add here has no way to know which one to add.
+                <Link
+                  href={`/produit/${product.slug}`}
+                  className="flex items-center gap-1 rounded-full bg-brand-green px-3 py-1.5 text-xs font-bold text-ivory transition-colors hover:bg-brand-green-dark"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Choisir
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => addItem(product)}
+                  disabled={product.stock === "rupture"}
+                  className="flex items-center gap-1 rounded-full bg-brand-green px-3 py-1.5 text-xs font-bold text-ivory transition-colors hover:bg-brand-green-dark disabled:cursor-not-allowed disabled:bg-ink/20"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Ajouter
+                </button>
+              )}
             </>
           )}
         </div>

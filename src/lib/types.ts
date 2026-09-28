@@ -34,6 +34,22 @@ export interface Category {
   image?: string;
 }
 
+/** One selectable option a product's variants are built from (e.g. name
+ *  "Taille", values ["S","M","L","XL"]). */
+export interface VariantOption {
+  name: string;
+  values: string[];
+}
+
+/** One buyable combination of the product's variant options (e.g.
+ *  { Taille: "M", Couleur: "Rouge" }), with its own SKU and stock status. */
+export interface ProductVariant {
+  id: string;
+  attributes: Record<string, string>;
+  sku: string;
+  stock: StockStatus;
+}
+
 /** A volume-pricing step: `price` per unit once quantity reaches `minQty`.
  *  `minQty: 1` is always the product's base per-zone price and is never
  *  stored as a tier itself — only steps above it (minQty > 1) live here. */
@@ -67,6 +83,10 @@ export interface Product {
   galleryImages?: string[];
   /** A single product video, played inline in the gallery. */
   videoUrl?: string;
+  /** Selectable option definitions (Taille, Couleur, …) this product's variants are built from. */
+  variantOptions?: VariantOption[];
+  /** Buyable combinations of the options above, each with its own SKU and stock. Empty/absent means the product has no variants. */
+  variants?: ProductVariant[];
   /** Computed from approved reviews — undefined when the query didn't join it (e.g. admin edit form). */
   rating?: { average: number; count: number };
   /** Total quantity sold across paid orders — undefined when the query didn't join it. */

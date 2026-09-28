@@ -12,14 +12,77 @@ export function ProductPurchasePanel({ product }: { product: Product }) {
   const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const hasVariants = !!product.variantOptions && product.variantOptions.length > 0;
+  const [selectedAttributes, setSelectedAttributes] = useState<Record<string, string>>({});
+
+  const selectedVariant = hasVariants
+    ? product.variants?.find((v) =>
+        product.variantOptions!.every((opt) => v.attributes[opt.name] === selectedAttributes[opt.name])
+      )
+    : undefined;
+  const variantIncomplete =
+    hasVariants && product.variantOptions!.some((opt) => !selectedAttributes[opt.name]);
+
   const price = priceFor(product, quantity);
   const unavailable = price === null;
-  const outOfStock = product.stock === "rupture";
-  const disabled = outOfStock || unavailable;
+  const outOfStock = hasVariants
+    ? selectedVariant
+      ? selectedVariant.stock === "rupture"
+      : false
+    : product.stock === "rupture";
+  const disabled = outOfStock || unavailable || variantIncomplete || (hasVariants && !selectedVariant);
   const tiers = tiersForZone(product, zone.id);
 
   return (
     <div className="mt-6">
+      {hasVariants && (
+        <div className="mb-4 space-y-3">
+          {product.variantOptions!.map((option) => (
+            <div key={option.name}>
+              <span className="mb-1.5 block text-xs font-semibold text-ink/60">
+                {option.name}
+              </span>
+              <div className="flex flex-wrap gap-2">
+                {option.values.map((value) => {
+                  const active = selectedAttributes[option.name] === value;
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() =>
+                        setSelectedAttributes((prev) => ({ ...prev, [option.name]: value }))
+                      }
+                      className={`rounded-full border px-4 py-1.5 text-sm font-semibold transition-colors ${
+                        active
+                          ? "border-brand-green bg-brand-green text-ivory"
+                          : "border-brand-green/25 bg-white text-brand-green-dark hover:bg-ivory"
+                      }`}
+                    >
+                      {value}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+          {!variantIncomplete && !selectedVariant && (
+            <p className="text-xs font-semibold text-red-600">
+              Cette combinaison n&rsquo;est pas disponible.
+            </p>
+          )}
+          {selectedVariant?.stock === "rupture" && (
+            <p className="text-xs font-semibold text-red-600">
+              Cette variante est en rupture de stock.
+            </p>
+          )}
+          {selectedVariant?.stock === "stock_limite" && (
+            <p className="text-xs font-semibold text-brand-gold">
+              Stock limité pour cette variante.
+            </p>
+          )}
+        </div>
+      )}
+
       {unavailable ? (
         <p className="font-brand text-xl font-bold text-ink/50">
           Non disponible dans cette zone
@@ -95,7 +158,7 @@ export function ProductPurchasePanel({ product }: { product: Product }) {
           type="button"
           disabled={disabled}
           onClick={() => {
-            addItem(product, quantity);
+            addItem(product, quantity, selectedVariant);
             setAdded(true);
             setTimeout(() => setAdded(false), 1800);
           }}
@@ -104,13 +167,15 @@ export function ProductPurchasePanel({ product }: { product: Product }) {
           {!disabled && !added && (
             <ShoppingCart className="h-4 w-4" strokeWidth={1.75} aria-hidden />
           )}
-          {outOfStock
-            ? "Rupture de stock"
-            : unavailable
-              ? "Indisponible ici"
-              : added
-                ? "Ajouté ✓"
-                : "Ajouter au panier"}
+          {variantIncomplete
+            ? "Choisissez une variante"
+            : outOfStock
+              ? "Rupture de stock"
+              : unavailable
+                ? "Indisponible ici"
+                : added
+                  ? "Ajouté ✓"
+                  : "Ajouter au panier"}
         </button>
       </div>
 
