@@ -133,14 +133,18 @@ function readProductForm(formData: FormData): ProductInput {
       } catch {
         attributes = {};
       }
+      const skuRaw = (variantSkus[i] ?? "").trim();
       return {
         id,
         attributes,
-        sku: (variantSkus[i] ?? "").trim(),
+        // Never drop a variant for a blank SKU (the form marks it required,
+        // but a stray submission shouldn't silently lose the row) — fall
+        // back to something derived from its own id instead.
+        sku: skuRaw || `VAR-${id.slice(0, 8).toUpperCase()}`,
         stock: (variantStocks[i] || "en_stock") as StockStatus,
       };
     })
-    .filter((v) => v.sku && Object.keys(v.attributes).length > 0);
+    .filter((v) => Object.keys(v.attributes).length > 0);
 
   return {
     name,

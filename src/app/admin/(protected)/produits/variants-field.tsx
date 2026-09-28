@@ -17,6 +17,21 @@ function attributesKey(attributes: Record<string, string>): string {
     .join("|");
 }
 
+/** A sensible starting SKU so a freshly-generated variant is never blank —
+ *  the admin can still edit it, but nothing is silently dropped on save for
+ *  lacking one (see readProductForm, which requires a non-empty SKU). */
+function defaultSkuFor(attributes: Record<string, string>): string {
+  return Object.values(attributes)
+    .map((v) =>
+      v
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, "")
+    )
+    .join("-");
+}
+
 /** Every combination of the given options' values, e.g. Taille×Couleur → S/Rouge, S/Bleu, … */
 function cartesianCombinations(options: VariantOption[]): Record<string, string>[] {
   const usable = options.filter((o) => o.name.trim() && o.values.length > 0);
@@ -68,7 +83,7 @@ export function VariantsField({ product }: { product?: Product }) {
           existing ?? {
             id: newId(),
             attributes,
-            sku: "",
+            sku: defaultSkuFor(attributes),
             stock: "en_stock" as StockStatus,
           }
         );
@@ -157,10 +172,13 @@ export function VariantsField({ product }: { product?: Product }) {
               </span>
               <input
                 type="text"
-                placeholder="SKU"
+                placeholder="SKU (obligatoire)"
+                required
                 value={variant.sku}
                 onChange={(e) => updateVariant(variant.id, { sku: e.target.value })}
-                className="w-32 rounded-lg border border-brand-green/20 bg-ivory px-2 py-1.5 text-xs outline-none focus:border-brand-green"
+                className={`w-36 rounded-lg border bg-ivory px-2 py-1.5 text-xs outline-none focus:border-brand-green ${
+                  variant.sku.trim() ? "border-brand-green/20" : "border-red-400"
+                }`}
               />
               <select
                 value={variant.stock}
