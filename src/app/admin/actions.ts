@@ -10,6 +10,7 @@ import { verifyAdminPassword } from "@/lib/admin-password-db";
 import {
   createProduct,
   deleteProduct,
+  reorderProducts,
   slugify,
   updateProduct,
   type ProductInput,
@@ -224,6 +225,23 @@ export async function updateProductAction(
 export async function deleteProductAction(id: string): Promise<void> {
   await deleteProduct(id);
   redirect("/admin/produits");
+}
+
+export interface ReorderProductsState {
+  error?: string;
+}
+
+/** Persists the admin's drag-and-drop order from the products list — no
+ *  redirect, the client stays on the page and just shows a save indicator. */
+export async function reorderProductsAction(
+  orderedIds: string[]
+): Promise<ReorderProductsState> {
+  try {
+    await reorderProducts(orderedIds);
+  } catch {
+    return { error: "Erreur lors de l'enregistrement du nouvel ordre." };
+  }
+  return {};
 }
 
 export async function sendTestEmailAction(): Promise<TestEmailResult> {

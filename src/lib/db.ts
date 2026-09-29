@@ -87,6 +87,7 @@ ALTER TABLE products ADD COLUMN IF NOT EXISTS long_description TEXT NOT NULL DEF
 ALTER TABLE products ADD COLUMN IF NOT EXISTS gallery_images TEXT[] NOT NULL DEFAULT '{}';
 ALTER TABLE products ADD COLUMN IF NOT EXISTS video_url TEXT;
 ALTER TABLE products ADD COLUMN IF NOT EXISTS variant_options JSONB NOT NULL DEFAULT '[]';
+ALTER TABLE products ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE categories ADD COLUMN IF NOT EXISTS image TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS products_sku_key ON products (sku);
 
@@ -304,6 +305,22 @@ async function backfillProductSkus(): Promise<void> {
   );
 }
 
+/** One-time: give existing products a stable initial drag order (by name)
+ *  the first time this runs — skipped once any row has a non-zero
+ *  sort_order, i.e. after this backfill or an admin reorder has happened. */
+async function backfillProductSortOrder(): Promise<void> {
+  const pool = getPool();
+  const { rows } = await pool.query<{ count: string }>(
+    "SELECT count(*)::text FROM products WHERE sort_order <> 0"
+  );
+  if (Number(rows[0].count) > 0) return;
+  await pool.query(`
+    UPDATE products p SET sort_order = sub.rn
+    FROM (SELECT id, row_number() OVER (ORDER BY name ASC) AS rn FROM products) sub
+    WHERE p.id = sub.id
+  `);
+}
+
 async function seedCategoriesIfEmpty(): Promise<void> {
   const pool = getPool();
   const { rows } = await pool.query<{ count: string }>(
@@ -451,6 +468,7 @@ export function ensureSchema(): Promise<void> {
       await seedPackagingTypesIfEmpty();
       await seedIfEmpty();
       await backfillProductSkus();
+      await backfillProductSortOrder();
       await seedMobileMoneyIfEmpty();
       await seedContractTextIfEmpty();
     })();

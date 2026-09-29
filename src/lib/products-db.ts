@@ -141,7 +141,7 @@ function rowToProduct(row: ProductRow): Product {
 export async function getAllProducts(): Promise<Product[]> {
   await ensureSchema();
   const { rows } = await getPool().query<ProductRow>(
-    `SELECT ${RATING_JOIN_SELECT} FROM products p ORDER BY p.name ASC`
+    `SELECT ${RATING_JOIN_SELECT} FROM products p ORDER BY p.sort_order ASC, p.name ASC`
   );
   return rows.map(rowToProduct);
 }
@@ -149,9 +149,32 @@ export async function getAllProducts(): Promise<Product[]> {
 export async function getFeaturedProducts(): Promise<Product[]> {
   await ensureSchema();
   const { rows } = await getPool().query<ProductRow>(
-    `SELECT ${RATING_JOIN_SELECT} FROM products p WHERE p.featured = true ORDER BY p.name ASC`
+    `SELECT ${RATING_JOIN_SELECT} FROM products p WHERE p.featured = true ORDER BY p.sort_order ASC, p.name ASC`
   );
   return rows.map(rowToProduct);
+}
+
+/** Persists the admin's drag-and-drop order — orderedIds must be every
+ *  product id, front to back; each gets its index as its new sort_order. */
+export async function reorderProducts(orderedIds: string[]): Promise<void> {
+  await ensureSchema();
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    for (let i = 0; i < orderedIds.length; i++) {
+      await client.query("UPDATE products SET sort_order = $2 WHERE id = $1", [
+        orderedIds[i],
+        i,
+      ]);
+    }
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
@@ -280,8 +303,9 @@ export async function createProduct(input: ProductInput): Promise<Product> {
     await client.query("BEGIN");
     const { rows } = await client.query<ProductRow>(
       `INSERT INTO products
-        (id, slug, name, category_id, halal, unit, packaging, description, long_description, price_bj, price_ca, price_us, stock, featured, sku, supplier, image, gallery_images, video_url, variant_options)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+        (id, slug, name, category_id, halal, unit, packaging, description, long_description, price_bj, price_ca, price_us, stock, featured, sku, supplier, image, gallery_images, video_url, variant_options, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,
+         (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM products))
        RETURNING *`,
       [
         input.slug,

@@ -1,12 +1,9 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Plus, Pencil, Trash2, Upload, FileDown } from "lucide-react";
+import { Plus, Upload, FileDown } from "lucide-react";
 import { getAllProducts } from "@/lib/products-db";
 import { getAllCategories } from "@/lib/categories-db";
-import { CATEGORY_ICONS } from "@/lib/category-icons";
-import { PhotoPlaceholder } from "@/components/shop/photo-placeholder";
-import { formatPrice } from "@/data/zones";
-import { deleteProductAction } from "../../actions";
+import { ProductsTable } from "./products-table";
 
 export const metadata: Metadata = {
   title: "Produits — Admin AfricAkani",
@@ -20,7 +17,6 @@ export default async function AdminProductsPage() {
     getAllProducts(),
     getAllCategories(),
   ]);
-  const categoryById = new Map(categories.map((c) => [c.id, c]));
 
   return (
     <div>
@@ -50,85 +46,14 @@ export default async function AdminProductsPage() {
         </div>
       </div>
 
-      <div className="mt-6 overflow-x-auto rounded-2xl bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-brand-green/10 text-xs font-bold uppercase tracking-wider text-ink/50">
-              <th className="px-4 py-3" />
-              <th className="px-4 py-3">Nom</th>
-              <th className="px-4 py-3">Catégorie</th>
-              <th className="px-4 py-3">Prix (Bénin)</th>
-              <th className="px-4 py-3">Stock</th>
-              <th className="px-4 py-3">Vedette</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((p) => {
-              const category = categoryById.get(p.categoryId);
-              const CategoryIcon = category ? CATEGORY_ICONS[category.id] : undefined;
-              return (
-              <tr key={p.id} className="border-b border-brand-green/5">
-                <td className="px-4 py-3">
-                  {p.image ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- product images live on Vercel Blob, not a fixed host next/image can be pre-configured for
-                    <img
-                      src={p.image}
-                      alt={p.name}
-                      className="h-10 w-10 rounded-lg object-cover"
-                    />
-                  ) : (
-                    <PhotoPlaceholder
-                      seed={category?.photoSeed ?? "emerald"}
-                      icon={CategoryIcon}
-                      className="relative h-10 w-10 rounded-lg"
-                    />
-                  )}
-                </td>
-                <td className="px-4 py-3 font-semibold text-brand-green-dark">
-                  {p.name}
-                </td>
-                <td className="px-4 py-3 text-ink/60">
-                  {category?.name ?? p.categoryId}
-                </td>
-                <td className="px-4 py-3 text-ink/60">
-                  {p.prices.bj === null ? "Non vendu" : formatPrice(p.prices.bj, "bj")}
-                </td>
-                <td className="px-4 py-3 text-ink/60">
-                  {p.stock === "en_stock" && "En stock"}
-                  {p.stock === "stock_limite" && "Stock limité"}
-                  {p.stock === "rupture" && "Rupture"}
-                </td>
-                <td className="px-4 py-3 text-ink/60">
-                  {p.featured ? "Oui" : "—"}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center justify-end gap-2">
-                    <Link
-                      href={`/admin/produits/${p.id}`}
-                      aria-label={`Modifier ${p.name}`}
-                      className="rounded-full p-2 text-brand-green hover:bg-ivory"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Link>
-                    <form
-                      action={deleteProductAction.bind(null, p.id)}
-                    >
-                      <button
-                        type="submit"
-                        aria-label={`Supprimer ${p.name}`}
-                        className="rounded-full p-2 text-red-600 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </form>
-                  </div>
-                </td>
-              </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <p className="mt-3 text-xs text-ink/50">
+        Glissez la poignée <span className="font-semibold">⠿</span> à gauche de chaque
+        ligne pour réorganiser les produits — cet ordre est celui utilisé sur la
+        boutique.
+      </p>
+
+      <div className="mt-4">
+        <ProductsTable products={products} categories={categories} />
       </div>
     </div>
   );
