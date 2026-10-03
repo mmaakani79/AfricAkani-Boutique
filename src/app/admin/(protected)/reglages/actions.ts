@@ -1,5 +1,7 @@
 "use server";
 
+import { requireAdmin } from "@/lib/admin-api-auth";
+
 import { revalidatePath } from "next/cache";
 import { updateShippingSettings } from "@/lib/shipping-settings-db";
 import { ZONES, roundForZone } from "@/data/zones";
@@ -24,6 +26,7 @@ export async function updateShippingSettingsAction(
   _prevState: ReglagesActionState,
   formData: FormData
 ): Promise<ReglagesActionState> {
+  await requireAdmin();
   const zoneIds = Object.keys(ZONES) as ZoneId[];
   const parsed: {
     zoneId: ZoneId;

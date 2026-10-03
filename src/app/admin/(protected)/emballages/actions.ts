@@ -1,5 +1,7 @@
 "use server";
 
+import { requireAdmin } from "@/lib/admin-api-auth";
+
 import { redirect } from "next/navigation";
 import {
   createPackagingType,
@@ -20,6 +22,7 @@ export async function createPackagingTypeAction(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  await requireAdmin();
   const input = readPackagingTypeForm(formData);
 
   if (!input.name) {
@@ -43,6 +46,7 @@ export async function updatePackagingTypeAction(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  await requireAdmin();
   const input = readPackagingTypeForm(formData);
 
   if (!input.name) {
@@ -69,6 +73,7 @@ export interface DeletePackagingTypeState {
 export async function deletePackagingTypeAction(
   id: string
 ): Promise<DeletePackagingTypeState> {
+  await requireAdmin();
   try {
     await deletePackagingType(id);
   } catch (err) {

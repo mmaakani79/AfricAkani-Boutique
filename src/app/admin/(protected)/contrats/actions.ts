@@ -1,5 +1,7 @@
 "use server";
 
+import { requireAdmin } from "@/lib/admin-api-auth";
+
 import { revalidatePath } from "next/cache";
 import { setContractText, deleteSignedContract } from "@/lib/contracts-db";
 
@@ -12,6 +14,7 @@ export async function updateContractTextAction(
   _prevState: ContractTextState,
   formData: FormData
 ): Promise<ContractTextState> {
+  await requireAdmin();
   const text = String(formData.get("contractText") ?? "").trim();
   if (!text) {
     return { error: "Le texte du contrat ne peut pas être vide." };
@@ -23,6 +26,7 @@ export async function updateContractTextAction(
 }
 
 export async function deleteSignedContractAction(id: string): Promise<void> {
+  await requireAdmin();
   await deleteSignedContract(id);
   revalidatePath("/admin/contrats");
 }
