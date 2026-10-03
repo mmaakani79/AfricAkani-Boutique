@@ -21,7 +21,7 @@ export function Header() {
           />
         </Link>
 
-        <nav className="hidden items-center gap-4 whitespace-nowrap text-sm font-semibold text-brand-green-dark md:flex xl:gap-8">
+        <nav className="hidden items-center gap-4 whitespace-nowrap text-sm font-semibold text-brand-green-dark md:flex 2xl:gap-8">
           <Link href="/catalogue" className="whitespace-nowrap hover:text-brand-gold">
             Catalogue
           </Link>
@@ -33,7 +33,7 @@ export function Header() {
           </Link>
         </nav>
 
-        <div className="flex items-center gap-2 xl:gap-3">
+        <div className="flex items-center gap-2 2xl:gap-3">
           <div className="hidden sm:block">
             <ZoneSwitcher />
           </div>

@@ -13,6 +13,8 @@ import { getDashboardStats, getSalesOverTime } from "@/lib/orders-db";
 import { ZONES, formatPrice } from "@/data/zones";
 import type { ZoneId } from "@/lib/types";
 import { TestEmailButton } from "@/components/admin/test-email-button";
+import { ShopStatusToggle } from "@/components/admin/shop-status-toggle";
+import { getShopStatus } from "@/lib/site-settings-db";
 import { SalesChartSection } from "@/components/admin/sales-chart";
 
 export const metadata: Metadata = {
@@ -23,9 +25,10 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboard() {
-  const [stats, initialSales] = await Promise.all([
+  const [stats, initialSales, shopStatus] = await Promise.all([
     getDashboardStats(),
     getSalesOverTime("day"),
+    getShopStatus(),
   ]);
   const revenueByZone = new Map(
     stats.revenueByZone.map((r) => [r.zoneId, r])
@@ -36,6 +39,14 @@ export default async function AdminDashboard() {
       <h1 className="font-brand text-2xl font-bold text-brand-green-dark">
         Tableau de bord
       </h1>
+
+      <div className="mt-6">
+        <ShopStatusToggle
+          initialClosed={shopStatus.closed}
+          envClosed={shopStatus.envClosed}
+          overridden={shopStatus.overridden}
+        />
+      </div>
 
       <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard

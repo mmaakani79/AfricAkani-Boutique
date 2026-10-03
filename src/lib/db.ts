@@ -46,6 +46,15 @@ CREATE TABLE IF NOT EXISTS categories (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Single-row site switches. maintenance_mode NULL means "never set from the
+-- admin" so the MAINTENANCE_MODE environment variable still decides; true or
+-- false set from the admin takes priority over the variable.
+CREATE TABLE IF NOT EXISTS site_settings (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  maintenance_mode BOOLEAN,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS packaging_types (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,

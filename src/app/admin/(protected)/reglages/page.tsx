@@ -3,6 +3,8 @@ import { getAllShippingSettings } from "@/lib/shipping-settings-db";
 import { getAllOperators, getBeneficiaryName } from "@/lib/mobile-money-db";
 import { getStripeKeyMode, isStripeWebhookConfigured } from "@/lib/stripe";
 import { getPaypalMode, isPaypalWebhookConfigured } from "@/lib/paypal";
+import { ShopStatusToggle } from "@/components/admin/shop-status-toggle";
+import { getShopStatus } from "@/lib/site-settings-db";
 import { ShippingSettingsForm } from "./shipping-settings-form";
 import { MobileMoneyForm } from "./mobile-money-form";
 
@@ -23,10 +25,11 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function AdminReglagesPage() {
-  const [settings, operators, beneficiaryName] = await Promise.all([
+  const [settings, operators, beneficiaryName, shopStatus] = await Promise.all([
     getAllShippingSettings(),
     getAllOperators(),
     getBeneficiaryName(),
+    getShopStatus(),
   ]);
 
   const stripeMode = getStripeKeyMode();
@@ -39,6 +42,14 @@ export default async function AdminReglagesPage() {
       <h1 className="font-brand text-2xl font-bold text-brand-green-dark">
         Réglages
       </h1>
+
+      <div className="mt-6">
+        <ShopStatusToggle
+          initialClosed={shopStatus.closed}
+          envClosed={shopStatus.envClosed}
+          overridden={shopStatus.overridden}
+        />
+      </div>
 
       <h2 className="mt-6 font-brand text-xl font-bold text-brand-green-dark">
         Paiement par carte (Stripe)

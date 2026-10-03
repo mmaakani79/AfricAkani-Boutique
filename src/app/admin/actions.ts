@@ -7,6 +7,8 @@ import {
   createSessionToken,
 } from "@/lib/admin-auth";
 import { verifyAdminPassword } from "@/lib/admin-password-db";
+import { isAdminAuthed } from "@/lib/admin-api-auth";
+import { setShopClosed } from "@/lib/site-settings-db";
 import {
   createProduct,
   deleteProduct,
@@ -242,6 +244,27 @@ export async function reorderProductsAction(
     return { error: "Erreur lors de l'enregistrement du nouvel ordre." };
   }
   return {};
+}
+
+export interface ShopClosedResult {
+  ok: boolean;
+  closed?: boolean;
+  error?: string;
+}
+
+/** Opens or closes the public storefront. Checks the admin session itself:
+ *  server actions can be invoked from any URL, so the /admin path guard in the
+ *  proxy isn't enough for something that can take the whole shop offline. */
+export async function setShopClosedAction(closed: boolean): Promise<ShopClosedResult> {
+  if (!(await isAdminAuthed())) {
+    return { ok: false, error: "Session expirée — reconnectez-vous." };
+  }
+  try {
+    await setShopClosed(closed);
+  } catch {
+    return { ok: false, error: "Le réglage n'a pas pu être enregistré. Réessayez." };
+  }
+  return { ok: true, closed };
 }
 
 export async function sendTestEmailAction(): Promise<TestEmailResult> {

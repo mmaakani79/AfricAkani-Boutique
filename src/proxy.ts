@@ -1,9 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ADMIN_SESSION_COOKIE, verifySessionToken } from "@/lib/admin-auth";
+import { isShopClosed } from "@/lib/site-settings-db";
 import {
   MAINTENANCE_BYPASS_COOKIE,
   BYPASS_COOKIE_MAX_AGE,
-  isMaintenanceModeEnabled,
   checkBypassKey,
   createBypassToken,
   verifyBypassToken,
@@ -12,7 +12,7 @@ import { renderMaintenancePage } from "@/lib/maintenance-page";
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|icon.png|logo/|photos/).*)",
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|icon.png|logo/|logos/|photos/).*)",
   ],
 };
 
@@ -45,7 +45,7 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (!isMaintenanceModeEnabled()) {
+  if (!(await isShopClosed())) {
     return NextResponse.next();
   }
 
@@ -80,6 +80,7 @@ export default async function proxy(request: NextRequest) {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
       "Retry-After": String(MAINTENANCE_RETRY_AFTER_SECONDS),
+      "Cache-Control": "no-store",
     },
   });
 }
