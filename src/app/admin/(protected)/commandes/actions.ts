@@ -1,5 +1,7 @@
 "use server";
 
+import { requireAdmin } from "@/lib/admin-api-auth";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import {
@@ -30,6 +32,7 @@ export async function updateOrderStatusAction(
   _prevState: OrderActionState,
   formData: FormData
 ): Promise<OrderActionState> {
+  await requireAdmin();
   const status = String(formData.get("status") ?? "") as OrderStatus;
 
   const ok = await updateOrderStatus(id, status);
@@ -75,6 +78,7 @@ export async function updateOrderPaymentAction(
   _prevState: OrderActionState,
   formData: FormData
 ): Promise<OrderActionState> {
+  await requireAdmin();
   const paymentStatus = String(formData.get("paymentStatus") ?? "") as PaymentStatus;
   const paymentMethod = String(formData.get("paymentMethod") ?? "").trim() || null;
   const confirmed = formData.get("confirm") === "on";
@@ -96,6 +100,7 @@ export async function updateOrderPaymentAction(
 }
 
 export async function deleteOrderAction(id: string): Promise<void> {
+  await requireAdmin();
   await deleteOrder(id);
   redirect("/admin/commandes");
 }
@@ -104,6 +109,7 @@ export async function setOrderTestAction(
   id: string,
   isTest: boolean
 ): Promise<void> {
+  await requireAdmin();
   await setOrderTest(id, isTest);
   revalidatePath(`/admin/commandes/${id}`);
   revalidatePath("/admin/commandes");
@@ -111,11 +117,13 @@ export async function setOrderTestAction(
 }
 
 export async function logWhatsappReminderAction(id: string): Promise<void> {
+  await requireAdmin();
   await recordReminder(id, "whatsapp", "whatsapp_manual", "Relance manuelle depuis l'admin");
   revalidatePath(`/admin/commandes/${id}`);
 }
 
 export async function logWhatsappPaymentConfirmedAction(id: string): Promise<void> {
+  await requireAdmin();
   await recordReminder(
     id,
     "whatsapp",
@@ -126,6 +134,7 @@ export async function logWhatsappPaymentConfirmedAction(id: string): Promise<voi
 }
 
 export async function confirmMobileMoneyPaymentAction(id: string): Promise<void> {
+  await requireAdmin();
   const ok = await updateOrderPaymentStatus(id, "paye", "mobile_money");
   if (ok) {
     try {
@@ -146,6 +155,7 @@ export async function confirmMobileMoneyPaymentAction(id: string): Promise<void>
 }
 
 export async function rejectMobileMoneyPaymentAction(id: string): Promise<void> {
+  await requireAdmin();
   await updateOrderPaymentStatus(id, "echoue", "mobile_money");
   revalidatePath(`/admin/commandes/${id}`);
   revalidatePath("/admin/commandes");
