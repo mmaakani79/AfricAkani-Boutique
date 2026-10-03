@@ -1,10 +1,12 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { isAdminAuthed } from "@/lib/admin-api-auth";
 import {
   createCategory,
   updateCategory,
   deleteCategory,
+  reorderCategories,
   CategoryInUseError,
   type CategoryInput,
 } from "@/lib/categories-db";
@@ -82,4 +84,28 @@ export async function deleteCategoryAction(id: string): Promise<DeleteCategorySt
   }
 
   redirect("/admin/categories");
+}
+
+export interface ReorderCategoriesState {
+  error?: string;
+}
+
+/** Persists the drag-and-drop order from the categories list. Checks the admin
+ *  session itself (server actions are callable from any URL) and stays on the
+ *  page — the client shows the save confirmation. */
+export async function reorderCategoriesAction(
+  orderedIds: string[]
+): Promise<ReorderCategoriesState> {
+  if (!(await isAdminAuthed())) {
+    return { error: "Session expirée — reconnectez-vous." };
+  }
+  if (!Array.isArray(orderedIds) || !orderedIds.every((id) => typeof id === "string")) {
+    return { error: "Ordre invalide." };
+  }
+  try {
+    await reorderCategories(orderedIds);
+  } catch {
+    return { error: "Erreur lors de l'enregistrement du nouvel ordre." };
+  }
+  return {};
 }

@@ -74,13 +74,11 @@ export class CategoryInUseError extends Error {
 export async function createCategory(input: CategoryInput): Promise<Category> {
   await ensureSchema();
   const slug = input.slug?.trim() ? slugify(input.slug) : slugify(input.name);
-  const pool = getPool();
-  const { rows: countRows } = await pool.query<{ count: string }>(
-    "SELECT count(*)::text FROM categories"
-  );
-  const { rows } = await pool.query<CategoryRow>(
+  // New categories go to the end: one past the current highest position (a
+  // row count would collide with an existing position after any deletion).
+  const { rows } = await getPool().query<CategoryRow>(
     `INSERT INTO categories (id, slug, name, description, featured_home, photo_seed, sort_order, image)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+     VALUES ($1,$2,$3,$4,$5,$6,(SELECT COALESCE(MAX(sort_order), -1) + 1 FROM categories),$7)
      RETURNING *`,
     [
       slug,
@@ -89,11 +87,39 @@ export async function createCategory(input: CategoryInput): Promise<Category> {
       input.description,
       input.featuredHome,
       input.photoSeed,
-      Number(countRows[0].count),
       input.image?.trim() || null,
     ]
   );
   return rowToCategory(rows[0]);
+}
+
+/** Persists the admin's drag-and-drop order. orderedIds is the full list, front
+ *  to back; any category missing from it (e.g. created in another tab meanwhile)
+ *  keeps its relative place after the listed ones, so positions never collide. */
+export async function reorderCategories(orderedIds: string[]): Promise<void> {
+  await ensureSchema();
+  const pool = getPool();
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const { rows } = await client.query<{ id: string }>(
+      "SELECT id FROM categories ORDER BY sort_order ASC, name ASC FOR UPDATE"
+    );
+    const existing = rows.map((r) => r.id);
+    const known = new Set(existing);
+    const seen = new Set<string>();
+    const first = orderedIds.filter((id) => known.has(id) && !seen.has(id) && seen.add(id));
+    const final = [...first, ...existing.filter((id) => !seen.has(id))];
+    for (let i = 0; i < final.length; i++) {
+      await client.query("UPDATE categories SET sort_order = $2 WHERE id = $1", [final[i], i]);
+    }
+    await client.query("COMMIT");
+  } catch (err) {
+    await client.query("ROLLBACK");
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 export async function updateCategory(

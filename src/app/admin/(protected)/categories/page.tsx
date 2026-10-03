@@ -1,9 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Plus, Pencil } from "lucide-react";
+import { Plus } from "lucide-react";
 import { getAllCategories, getProductCountsByCategory } from "@/lib/categories-db";
-import { seedGradient } from "@/lib/photo-palette";
-import { CategoryDeleteButton } from "./category-delete-button";
+import { CategoriesTable } from "./categories-table";
 
 export const metadata: Metadata = {
   title: "Catégories — Admin AfricAkani",
@@ -32,53 +31,14 @@ export default async function AdminCategoriesPage() {
         </Link>
       </div>
 
-      <div className="mt-6 overflow-x-auto rounded-2xl bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-brand-green/10 text-xs font-bold uppercase tracking-wider text-ink/50">
-              <th className="px-4 py-3" />
-              <th className="px-4 py-3">Nom</th>
-              <th className="px-4 py-3">Slug</th>
-              <th className="px-4 py-3">Produits</th>
-              <th className="px-4 py-3">Vedette accueil</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody>
-            {categories.map((c) => (
-              <tr key={c.id} className="border-b border-brand-green/5">
-                <td className="px-4 py-3">
-                  <span
-                    style={{ background: seedGradient(c.photoSeed) }}
-                    className="block h-8 w-8 rounded-full"
-                  />
-                </td>
-                <td className="px-4 py-3 font-semibold text-brand-green-dark">
-                  {c.name}
-                </td>
-                <td className="px-4 py-3 text-ink/60">{c.slug}</td>
-                <td className="px-4 py-3 text-ink/60">
-                  {productCounts[c.id] ?? 0}
-                </td>
-                <td className="px-4 py-3 text-ink/60">
-                  {c.featuredHome ? "Oui" : "—"}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center justify-end gap-2">
-                    <Link
-                      href={`/admin/categories/${c.id}`}
-                      aria-label={`Modifier ${c.name}`}
-                      className="rounded-full p-2 text-brand-green hover:bg-ivory"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Link>
-                    <CategoryDeleteButton id={c.id} name={c.name} />
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <p className="mt-3 text-xs text-ink/50">
+        Maintenez la poignée <span className="font-semibold">⠿</span> à gauche d&rsquo;une
+        catégorie (souris ou doigt) et glissez-la pour la déplacer — cet ordre est celui
+        de la boutique (accueil et filtres du catalogue).
+      </p>
+
+      <div className="mt-4">
+        <CategoriesTable categories={categories} productCounts={productCounts} />
       </div>
     </div>
   );
