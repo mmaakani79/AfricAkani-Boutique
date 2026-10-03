@@ -1,5 +1,7 @@
 "use server";
 
+import { requireAdmin } from "@/lib/admin-api-auth";
+
 import { redirect } from "next/navigation";
 import {
   createCategory,
@@ -25,6 +27,7 @@ export async function createCategoryAction(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  await requireAdmin();
   const input = readCategoryForm(formData);
 
   if (!input.name) {
@@ -48,6 +51,7 @@ export async function updateCategoryAction(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  await requireAdmin();
   const input = readCategoryForm(formData);
 
   if (!input.name) {
@@ -72,6 +76,7 @@ export interface DeleteCategoryState {
 }
 
 export async function deleteCategoryAction(id: string): Promise<DeleteCategoryState> {
+  await requireAdmin();
   try {
     await deleteCategory(id);
   } catch (err) {

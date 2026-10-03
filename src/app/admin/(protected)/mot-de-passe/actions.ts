@@ -1,5 +1,7 @@
 "use server";
 
+import { requireAdmin } from "@/lib/admin-api-auth";
+
 import {
   hashPassword,
   setStoredPasswordHash,
@@ -17,6 +19,7 @@ export async function changePasswordAction(
   _prevState: ChangePasswordState,
   formData: FormData
 ): Promise<ChangePasswordState> {
+  await requireAdmin();
   const currentPassword = String(formData.get("currentPassword") ?? "");
   const newPassword = String(formData.get("newPassword") ?? "");
   const confirmPassword = String(formData.get("confirmPassword") ?? "");

@@ -1,5 +1,7 @@
 "use server";
 
+import { requireAdmin } from "@/lib/admin-api-auth";
+
 import { revalidatePath } from "next/cache";
 import {
   createOperator,
@@ -17,6 +19,7 @@ export async function updateBeneficiaryNameAction(
   _prevState: MobileMoneyActionState,
   formData: FormData
 ): Promise<MobileMoneyActionState> {
+  await requireAdmin();
   const name = String(formData.get("beneficiaryName") ?? "").trim();
   await setBeneficiaryName(name);
   revalidatePath("/admin/reglages");
@@ -27,6 +30,7 @@ export async function createOperatorAction(
   _prevState: MobileMoneyActionState,
   formData: FormData
 ): Promise<MobileMoneyActionState> {
+  await requireAdmin();
   const name = String(formData.get("name") ?? "").trim();
   const merchantNumber = String(formData.get("merchantNumber") ?? "").trim();
   const displayName = String(formData.get("displayName") ?? "").trim();
@@ -43,6 +47,7 @@ export async function updateOperatorAction(
   _prevState: MobileMoneyActionState,
   formData: FormData
 ): Promise<MobileMoneyActionState> {
+  await requireAdmin();
   const name = String(formData.get("name") ?? "").trim();
   const merchantNumber = String(formData.get("merchantNumber") ?? "").trim();
   const displayName = String(formData.get("displayName") ?? "").trim();
@@ -56,6 +61,7 @@ export async function updateOperatorAction(
 }
 
 export async function deleteOperatorAction(id: string): Promise<void> {
+  await requireAdmin();
   await deleteOperator(id);
   revalidatePath("/admin/reglages");
 }

@@ -1,5 +1,7 @@
 "use server";
 
+import { requireAdmin } from "@/lib/admin-api-auth";
+
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import {
@@ -185,6 +187,7 @@ export async function createProductAction(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  await requireAdmin();
   const input = readProductForm(formData);
 
   if (!input.name || !input.slug || !input.categoryId || !input.unit) {
@@ -208,6 +211,7 @@ export async function updateProductAction(
   _prevState: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  await requireAdmin();
   const input = readProductForm(formData);
 
   if (!input.name || !input.slug || !input.categoryId || !input.unit) {
@@ -225,6 +229,7 @@ export async function updateProductAction(
 }
 
 export async function deleteProductAction(id: string): Promise<void> {
+  await requireAdmin();
   await deleteProduct(id);
   redirect("/admin/produits");
 }
@@ -238,6 +243,7 @@ export interface ReorderProductsState {
 export async function reorderProductsAction(
   orderedIds: string[]
 ): Promise<ReorderProductsState> {
+  await requireAdmin();
   try {
     await reorderProducts(orderedIds);
   } catch {
@@ -268,5 +274,6 @@ export async function setShopClosedAction(closed: boolean): Promise<ShopClosedRe
 }
 
 export async function sendTestEmailAction(): Promise<TestEmailResult> {
+  await requireAdmin();
   return sendTestEmail();
 }
