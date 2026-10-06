@@ -1,11 +1,11 @@
 "use server";
 
-import { getOrderForTracking, toCustomerOrder, type OrderDetail } from "@/lib/orders-db";
+import { getOrderForTracking, toCustomerOrder, type CustomerOrder } from "@/lib/orders-db";
 import { getReviewsForOrder, submitReview, type Review } from "@/lib/reviews-db";
 
 export interface ReviewLookupState {
   error?: string;
-  order?: OrderDetail;
+  order?: CustomerOrder;
   contact?: string;
   existingByProductId?: Record<string, Review>;
 }

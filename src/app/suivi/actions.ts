@@ -3,14 +3,14 @@
 import {
   getOrderForTracking,
   toCustomerOrder,
-  type OrderDetail,
+  type CustomerOrder,
   type OrderStatus,
   type PaymentStatus,
 } from "@/lib/orders-db";
 
 export interface TrackingState {
   error?: string;
-  order?: OrderDetail;
+  order?: CustomerOrder;
 }
 
 export async function trackOrderAction(

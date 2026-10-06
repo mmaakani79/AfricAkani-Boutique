@@ -846,8 +846,43 @@ export async function getSalesOverTime(period: SalesPeriod): Promise<SalesSeries
   }));
 }
 
-/** An order as shown to the customer who placed it: internal supplier
- *  references (SKUs) removed. */
-export function toCustomerOrder(order: OrderDetail): OrderDetail {
-  return { ...order, items: order.items.map((i) => ({ ...i, productSku: null })) };
+/** What the order-tracking and review pages are allowed to send to the browser:
+ *  an allowlist, so a field added to OrderDetail later (costs, supplier
+ *  references, internal errors…) can never reach a customer by accident. */
+export interface CustomerOrder {
+  id: string;
+  createdAt: string;
+  zoneId: ZoneId;
+  subtotal: number;
+  shippingFee: number;
+  status: OrderStatus;
+  paymentStatus: PaymentStatus;
+  paymentMethod: string | null;
+  items: {
+    productId: string;
+    productName: string;
+    quantity: number;
+    unitPrice: number;
+    lineTotal: number;
+  }[];
+}
+
+export function toCustomerOrder(order: OrderDetail): CustomerOrder {
+  return {
+    id: order.id,
+    createdAt: order.createdAt,
+    zoneId: order.zoneId,
+    subtotal: order.subtotal,
+    shippingFee: order.shippingFee,
+    status: order.status,
+    paymentStatus: order.paymentStatus,
+    paymentMethod: order.paymentMethod,
+    items: order.items.map((i) => ({
+      productId: i.productId,
+      productName: i.productName,
+      quantity: i.quantity,
+      unitPrice: i.unitPrice,
+      lineTotal: i.lineTotal,
+    })),
+  };
 }
