@@ -103,11 +103,13 @@ export async function sendProductRequestNotification(
   }
 }
 
-function itemsText(order: OrderDetail): string {
+/** The SKU is an internal supplier reference: it appears only in e-mails sent
+ *  to the admin, never in anything a customer receives. */
+function itemsText(order: OrderDetail, { includeSku = false }: { includeSku?: boolean } = {}): string {
   return order.items
     .map(
       (i) =>
-        `  ${i.quantity} × ${i.productName}${i.productSku ? ` (SKU ${i.productSku})` : ""} — ${formatPrice(i.lineTotal, order.zoneId)}`
+        `  ${i.quantity} × ${i.productName}${includeSku && i.productSku ? ` (SKU ${i.productSku})` : ""} — ${formatPrice(i.lineTotal, order.zoneId)}`
     )
     .join("\n");
 }
@@ -141,7 +143,7 @@ export async function sendAdminNewOrderNotification(
     `Adresse : ${formatOrderAddress(order)}`,
     "",
     "Articles :",
-    itemsText(order),
+    itemsText(order, { includeSku: true }),
     "",
     totalsText(order),
     isMobileMoney

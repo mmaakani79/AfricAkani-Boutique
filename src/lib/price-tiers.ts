@@ -1,11 +1,11 @@
 // Pure quantity-pricing helpers — safe to import from client components
 // (no DB import), shared by the cart, the product page, and the admin form.
 
-import type { PriceTier, Product, ZoneId } from "./types";
+import type { PriceTier, PublicProduct, ZoneId } from "./types";
 
 /** All tiers for a zone, tier 1 (the base price) first, sorted ascending by
  *  minQty. Empty if the product isn't sold in that zone. */
-export function tiersForZone(product: Product, zoneId: ZoneId): PriceTier[] {
+export function tiersForZone(product: PublicProduct, zoneId: ZoneId): PriceTier[] {
   const base = product.prices[zoneId];
   if (base === null || base === undefined) return [];
   const extra = (product.priceTiers?.[zoneId] ?? [])
@@ -17,7 +17,7 @@ export function tiersForZone(product: Product, zoneId: ZoneId): PriceTier[] {
 /** The applicable unit price for a given quantity — the highest tier whose
  *  minQty doesn't exceed it. null if the product isn't sold in that zone. */
 export function priceForQuantity(
-  product: Product,
+  product: PublicProduct,
   zoneId: ZoneId,
   quantity: number
 ): number | null {

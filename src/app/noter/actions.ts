@@ -1,6 +1,6 @@
 "use server";
 
-import { getOrderForTracking, type OrderDetail } from "@/lib/orders-db";
+import { getOrderForTracking, toCustomerOrder, type OrderDetail } from "@/lib/orders-db";
 import { getReviewsForOrder, submitReview, type Review } from "@/lib/reviews-db";
 
 export interface ReviewLookupState {
@@ -44,7 +44,7 @@ export async function lookupOrderForReviewAction(
     existing.map((r) => [r.productId, r])
   );
 
-  return { order, contact, existingByProductId };
+  return { order: toCustomerOrder(order), contact, existingByProductId };
 }
 
 export interface ReviewSubmitState {

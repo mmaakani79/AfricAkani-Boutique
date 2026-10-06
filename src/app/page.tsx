@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Leaf, Truck, ShieldCheck, Globe2 } from "lucide-react";
 import { getAllCategories } from "@/lib/categories-db";
 import { getFeaturedProducts } from "@/lib/products-db";
+import { toPublicProduct } from "@/lib/public-product";
 import { ProductCard } from "@/components/shop/product-card";
 import { CategoryCard } from "@/components/shop/category-card";
 import { HeroCollage } from "@/components/shop/hero-collage";
@@ -35,7 +36,7 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   const categories = await getAllCategories();
   const featuredCategories = categories.filter((c) => c.featuredHome);
-  const featuredProducts = await getFeaturedProducts();
+  const featuredProducts = (await getFeaturedProducts()).map(toPublicProduct);
 
   return (
     <div>

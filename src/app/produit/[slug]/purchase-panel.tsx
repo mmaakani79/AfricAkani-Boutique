@@ -5,9 +5,9 @@ import { Minus, Plus, ShoppingCart, Truck } from "lucide-react";
 import { useZone } from "@/context/zone-context";
 import { useCart } from "@/context/cart-context";
 import { tiersForZone, tierRangeLabel } from "@/lib/price-tiers";
-import type { Product } from "@/lib/types";
+import type { PublicProduct } from "@/lib/types";
 
-export function ProductPurchasePanel({ product }: { product: Product }) {
+export function ProductPurchasePanel({ product }: { product: PublicProduct }) {
   const { priceFor, format, zone } = useZone();
   const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);

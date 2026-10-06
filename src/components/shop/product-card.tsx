@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Package, Plus } from "lucide-react";
-import type { Product } from "@/lib/types";
+import type { PublicProduct } from "@/lib/types";
 import { useZone } from "@/context/zone-context";
 import { useCart } from "@/context/cart-context";
 import { useCategories } from "@/context/category-context";
@@ -13,7 +13,7 @@ import { PhotoPlaceholder } from "./photo-placeholder";
 import { HalalBadge } from "./halal-badge";
 import { StarRatingDisplay } from "./star-rating";
 
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({ product }: { product: PublicProduct }) {
   const { priceFor, format } = useZone();
   const { addItem } = useCart();
   const { getCategoryById } = useCategories();

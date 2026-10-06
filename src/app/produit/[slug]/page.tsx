@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getProductBySlug, getRelatedProducts } from "@/lib/products-db";
+import { toPublicProduct } from "@/lib/public-product";
 import { getApprovedReviewsForProduct } from "@/lib/reviews-db";
 import { getCategoryById } from "@/lib/categories-db";
 import { getPackagingTypeById } from "@/lib/packaging-types-db";
@@ -109,7 +110,7 @@ export default async function ProductPage({
             </div>
           </dl>
 
-          <ProductPurchasePanel product={product} />
+          <ProductPurchasePanel product={toPublicProduct(product)} />
         </div>
       </div>
 
@@ -176,7 +177,7 @@ export default async function ProductPage({
           </h2>
           <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {relatedProducts.map((p) => (
-              <ProductCard key={p.id} product={p} />
+              <ProductCard key={p.id} product={toPublicProduct(p)} />
             ))}
           </div>
         </div>

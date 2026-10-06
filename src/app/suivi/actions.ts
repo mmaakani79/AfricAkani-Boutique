@@ -2,6 +2,7 @@
 
 import {
   getOrderForTracking,
+  toCustomerOrder,
   type OrderDetail,
   type OrderStatus,
   type PaymentStatus,
@@ -34,7 +35,7 @@ export async function trackOrderAction(
     };
   }
 
-  return { order };
+  return { order: toCustomerOrder(order) };
 }
 
 /** Lightweight live-status lookup used by "Mon compte" to refresh each locally-saved order. */

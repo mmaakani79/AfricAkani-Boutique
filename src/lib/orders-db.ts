@@ -8,6 +8,10 @@ export { ORDER_STATUSES, PAYMENT_STATUSES } from "./order-types";
 export interface OrderItemInput {
   productId: string;
   name: string;
+  /** Chosen variant, when the product has variants. The browser sends only
+   *  this id: the SKU is resolved on the server (see resolveItemSkus). */
+  variantId?: string | null;
+  /** Internal supplier reference — filled in by the server, never by the browser. */
   sku?: string | null;
   quantity: number;
   unitPrice: number;
@@ -840,4 +844,10 @@ export async function getSalesOverTime(period: SalesPeriod): Promise<SalesSeries
       total: totalsByZoneAndBucket.get(`${zoneId}|${key}`) ?? 0,
     })),
   }));
+}
+
+/** An order as shown to the customer who placed it: internal supplier
+ *  references (SKUs) removed. */
+export function toCustomerOrder(order: OrderDetail): OrderDetail {
+  return { ...order, items: order.items.map((i) => ({ ...i, productSku: null })) };
 }

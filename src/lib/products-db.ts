@@ -424,6 +424,32 @@ export async function deleteProduct(id: string): Promise<boolean> {
   return (rowCount ?? 0) > 0;
 }
 
+/** The internal SKU of each ordered line, looked up in the database: the
+ *  variant's SKU when a variant was chosen, otherwise the product's. The SKU is
+ *  never sent to (or trusted from) the browser. */
+export async function resolveItemSkus<T extends { productId: string; variantId?: string | null }>(
+  items: T[]
+): Promise<(T & { sku: string | null })[]> {
+  await ensureSchema();
+  const pool = getPool();
+  return Promise.all(
+    items.map(async (item) => {
+      if (item.variantId) {
+        const { rows } = await pool.query<{ sku: string }>(
+          "SELECT sku FROM product_variants WHERE id = $1 AND product_id = $2",
+          [item.variantId, item.productId]
+        );
+        if (rows[0]) return { ...item, sku: rows[0].sku };
+      }
+      const { rows } = await pool.query<{ sku: string | null }>(
+        "SELECT sku FROM products WHERE id = $1",
+        [item.productId]
+      );
+      return { ...item, sku: rows[0]?.sku ?? null };
+    })
+  );
+}
+
 export async function getProductBySku(sku: string): Promise<Product | null> {
   await ensureSchema();
   const { rows } = await getPool().query<ProductRow>(

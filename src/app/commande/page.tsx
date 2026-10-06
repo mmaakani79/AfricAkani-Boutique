@@ -129,7 +129,7 @@ export default function CommandePage() {
         return {
           productId: i.product.id,
           name: variantLabel ? `${i.product.name} (${variantLabel})` : i.product.name,
-          sku: i.variant?.sku ?? i.product.sku ?? null,
+          variantId: i.variant?.id ?? null,
           quantity: i.quantity,
           unitPrice: i.lineTotal / i.quantity,
           lineTotal: i.lineTotal,

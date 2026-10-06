@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { getAllProducts } from "@/lib/products-db";
+import { toPublicProduct } from "@/lib/public-product";
 import { getAllCategories } from "@/lib/categories-db";
 import { CatalogueClient } from "./catalogue-client";
 
@@ -21,7 +22,7 @@ export default async function CataloguePage() {
 
   return (
     <Suspense fallback={null}>
-      <CatalogueClient products={products} categories={categories} />
+      <CatalogueClient products={products.map(toPublicProduct)} categories={categories} />
     </Suspense>
   );
 }

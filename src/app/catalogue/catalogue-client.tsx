@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import { ProductCard } from "@/components/shop/product-card";
 import { Container } from "@/components/layout/container";
-import type { Category, HalalStatus, Product } from "@/lib/types";
+import type { Category, HalalStatus, PublicProduct } from "@/lib/types";
 
 const HALAL_FILTERS: { value: HalalStatus | "tous"; label: string }[] = [
   { value: "tous", label: "Tous" },
@@ -17,7 +17,7 @@ export function CatalogueClient({
   products,
   categories,
 }: {
-  products: Product[];
+  products: PublicProduct[];
   categories: Category[];
 }) {
   const searchParams = useSearchParams();

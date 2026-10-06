@@ -92,3 +92,14 @@ export interface Product {
   /** Total quantity sold across paid orders — undefined when the query didn't join it. */
   soldCount?: number;
 }
+
+/** A variant as the public storefront sees it: no SKU (supplier reference). */
+export type PublicProductVariant = Omit<ProductVariant, "sku">;
+
+/** A product as sent to the browser. The SKU, the supplier and every variant's
+ *  SKU are internal: anything rendered by a public page — including props
+ *  handed to client components, which end up in the page source — must be a
+ *  PublicProduct, built with toPublicProduct(). */
+export type PublicProduct = Omit<Product, "sku" | "supplier" | "variants"> & {
+  variants?: PublicProductVariant[];
+};

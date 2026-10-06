@@ -10,7 +10,7 @@ import {
 } from "react";
 import { DEFAULT_ZONE, ZONES, formatPrice } from "@/data/zones";
 import { priceForQuantity } from "@/lib/price-tiers";
-import type { Product, Zone, ZoneId } from "@/lib/types";
+import type { PublicProduct, Zone, ZoneId } from "@/lib/types";
 import type { ShippingSettings } from "@/lib/shipping-types";
 
 type ZoneWithShipping = Zone & Pick<ShippingSettings, "shippingFee" | "minOrderAmount">;
@@ -21,7 +21,7 @@ interface ZoneContextValue {
   setZoneId: (zoneId: ZoneId) => void;
   /** The applicable unit price for that quantity (tiered pricing) — quantity
    *  defaults to 1, i.e. the base price, for callers that don't care (cards). */
-  priceFor: (product: Product, quantity?: number) => number | null;
+  priceFor: (product: PublicProduct, quantity?: number) => number | null;
   format: (amount: number) => string;
 }
 
@@ -101,7 +101,7 @@ export function ZoneProvider({ children }: { children: React.ReactNode }) {
       zoneId,
       zone,
       setZoneId,
-      priceFor: (product: Product, quantity = 1) =>
+      priceFor: (product: PublicProduct, quantity = 1) =>
         priceForQuantity(product, zoneId, quantity),
       format: (amount: number) => formatPrice(amount, zoneId),
     };

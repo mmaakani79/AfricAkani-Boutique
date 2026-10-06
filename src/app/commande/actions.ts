@@ -9,6 +9,7 @@ import {
   type OrderDetail,
   type OrderInput,
 } from "@/lib/orders-db";
+import { resolveItemSkus } from "@/lib/products-db";
 import { getShippingSettings } from "@/lib/shipping-settings-db";
 import { computeShippingFee, isBelowMinOrder } from "@/lib/shipping-calc";
 import { getOperator, isTransactionIdTaken } from "@/lib/mobile-money-db";
@@ -23,6 +24,12 @@ import {
 } from "@/lib/email";
 
 export type OrderDraft = Omit<OrderInput, "shippingFee" | "freeShippingReached">;
+
+/** The browser never knows the internal SKUs: they're looked up here, from the
+ *  chosen product/variant, and any `sku` the client might send is overwritten. */
+async function withServerSkus(draft: OrderDraft): Promise<OrderDraft> {
+  return { ...draft, items: await resolveItemSkus(draft.items) };
+}
 
 export interface OrderSubmissionResult {
   ok: boolean;
@@ -136,8 +143,9 @@ async function sendOrderReceivedNotifications(orderDetail: OrderDetail): Promise
 }
 
 export async function submitOrderAction(
-  input: OrderDraft
+  draft: OrderDraft
 ): Promise<OrderSubmissionResult> {
+  const input = await withServerSkus(draft);
   const pricing = await computeOrderPricing(input);
   if (!pricing.ok) return pricing;
   const { shippingFee, freeShippingReached } = pricing;
@@ -211,8 +219,9 @@ export interface StripeCheckoutResult {
 /** Card payment via a Stripe-hosted Checkout page — Canada/US zones only
  *  (Stripe handles CAD/USD natively; Bénin keeps Mobile Money + WhatsApp). */
 export async function createStripeCheckoutAction(
-  input: OrderDraft
+  draft: OrderDraft
 ): Promise<StripeCheckoutResult> {
+  const input = await withServerSkus(draft);
   if (input.zoneId !== "ca" && input.zoneId !== "us") {
     return { ok: false, error: "Le paiement par carte n'est pas disponible pour cette zone." };
   }
@@ -319,8 +328,9 @@ export interface PaypalCheckoutResult {
  *  to PayPal's hosted approval page; the actual capture happens when they
  *  return to /commande/succes. */
 export async function createPaypalOrderAction(
-  input: OrderDraft
+  draft: OrderDraft
 ): Promise<PaypalCheckoutResult> {
+  const input = await withServerSkus(draft);
   if (input.zoneId !== "ca" && input.zoneId !== "us") {
     return { ok: false, error: "PayPal n'est pas disponible pour cette zone." };
   }

@@ -9,13 +9,13 @@ import {
   useState,
 } from "react";
 import { useZone } from "./zone-context";
-import type { Product, ProductVariant } from "@/lib/types";
+import type { PublicProduct, PublicProductVariant } from "@/lib/types";
 
 export interface CartLine {
-  product: Product;
+  product: PublicProduct;
   quantity: number;
   /** The variant chosen on the product page, when the product has variants. */
-  variant?: ProductVariant;
+  variant?: PublicProductVariant;
 }
 
 export interface CartItem extends CartLine {
@@ -33,7 +33,7 @@ interface CartContextValue {
   items: CartItem[];
   itemCount: number;
   subtotal: number;
-  addItem: (product: Product, quantity?: number, variant?: ProductVariant) => void;
+  addItem: (product: PublicProduct, quantity?: number, variant?: PublicProductVariant) => void;
   removeItem: (productId: string, variantId?: string) => void;
   updateQuantity: (productId: string, quantity: number, variantId?: string) => void;
   clearCart: () => void;
@@ -71,7 +71,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [lines, hydrated]);
 
   const addItem = useCallback(
-    (product: Product, quantity = 1, variant?: ProductVariant) => {
+    (product: PublicProduct, quantity = 1, variant?: PublicProductVariant) => {
       setLines((prev) => {
         const key = lineKey(product.id, variant?.id);
         const existing = prev.find(
