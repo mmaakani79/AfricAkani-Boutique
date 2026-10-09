@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { logoutAction } from "../actions";
 import { getShopStatus } from "@/lib/site-settings-db";
+import { PreviewBanner } from "@/components/admin/preview-banner";
 
 // Reads the live shop status from the database on every request — without
 // this the layout could be prerendered at build time with a stale value.
@@ -31,6 +32,7 @@ export default async function AdminProtectedLayout({
 
   return (
     <div className="min-h-screen bg-ivory">
+      <PreviewBanner />
       <header className="border-b border-brand-green/10 bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
