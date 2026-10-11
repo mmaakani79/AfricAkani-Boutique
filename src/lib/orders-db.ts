@@ -9,7 +9,7 @@ export interface OrderItemInput {
   productId: string;
   name: string;
   /** Chosen variant, when the product has variants. The browser sends only
-   *  this id: the SKU is resolved on the server (see resolveItemSkus). */
+   *  this id: name, SKU and prices are all filled in by the server (see order-pricing.ts). */
   variantId?: string | null;
   /** Internal supplier reference — filled in by the server, never by the browser. */
   sku?: string | null;

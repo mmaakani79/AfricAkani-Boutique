@@ -13,8 +13,9 @@ import {
   createStripeCheckoutAction,
   createPaypalOrderAction,
   submitOrderAction,
-  type OrderDraft,
 } from "./actions";
+import type { OrderDraft } from "@/lib/order-draft";
+import type { QuoteSummary } from "@/lib/order-pricing";
 import { MobileMoneyPanel } from "./mobile-money-panel";
 import {
   PaymentBadgeRow,
@@ -111,15 +112,14 @@ export default function CommandePage() {
     usingMobileMoney &&
     (!mmOperatorId || !mmPhone.trim() || !mmTransactionId.trim());
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSubmitError(null);
-    setSubmitting(true);
-
-    const draft: OrderDraft = {
-      id: orderId,
-      zoneId,
+  // Only used for the local "Mon compte" copy when the server could not be
+  // reached at all; whenever the server answers, its own figures are used.
+  function estimateFromCart(): QuoteSummary {
+    return {
       subtotal,
+      shippingFee,
+      total,
+      freeShippingReached: reached,
       items: items.map((i) => {
         const variantLabel = i.variant
           ? Object.entries(i.variant.attributes)
@@ -128,13 +128,32 @@ export default function CommandePage() {
           : null;
         return {
           productId: i.product.id,
-          name: variantLabel ? `${i.product.name} (${variantLabel})` : i.product.name,
           variantId: i.variant?.id ?? null,
+          name: variantLabel ? `${i.product.name} (${variantLabel})` : i.product.name,
           quantity: i.quantity,
           unitPrice: i.lineTotal / i.quantity,
           lineTotal: i.lineTotal,
         };
       }),
+    };
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSubmitError(null);
+    setSubmitting(true);
+
+    // Choices only — never an amount. The server prices the order itself
+    // (prices, shipping, total) and sends its figures back in `result.order`.
+    const draft: OrderDraft = {
+      id: orderId,
+      zoneId,
+      currency: zone.currency,
+      items: items.map((i) => ({
+        productId: i.product.id,
+        variantId: i.variant?.id ?? null,
+        quantity: i.quantity,
+      })),
       customer: {
         name,
         email,
@@ -181,14 +200,15 @@ export default function CommandePage() {
         return;
       }
 
+      const charged = redirectResult.order ?? estimateFromCart();
       saveOrder({
         id: draft.id,
         createdAt: new Date().toISOString(),
         zoneId,
-        subtotal,
-        shippingFee: redirectResult.shippingFee ?? shippingFee,
-        freeShippingReached: reached,
-        items: draft.items,
+        subtotal: charged.subtotal,
+        shippingFee: charged.shippingFee,
+        freeShippingReached: charged.freeShippingReached,
+        items: charged.items,
         customer: draft.customer,
         paymentMethod: usingStripe ? "stripe" : "paypal",
         mobileMoneyOperator: null,
@@ -205,8 +225,8 @@ export default function CommandePage() {
     } catch {
       // The order still succeeds for the customer even if the admin-facing
       // database write fails (e.g. no database configured yet) — estimate
-      // the shipping fee locally in that fallback case.
-      result = { ok: true as const, shippingFee };
+      // the amounts locally in that fallback case.
+      result = { ok: true as const, order: estimateFromCart() };
     }
 
     setSubmitting(false);
@@ -216,14 +236,15 @@ export default function CommandePage() {
       return;
     }
 
+    const charged = result.order ?? estimateFromCart();
     const order: Order = {
       id: draft.id,
       createdAt: new Date().toISOString(),
       zoneId,
-      subtotal,
-      shippingFee: result.shippingFee ?? shippingFee,
-      freeShippingReached: reached,
-      items: draft.items,
+      subtotal: charged.subtotal,
+      shippingFee: charged.shippingFee,
+      freeShippingReached: charged.freeShippingReached,
+      items: charged.items,
       customer: draft.customer,
       paymentMethod: draft.paymentMethod ?? null,
       mobileMoneyOperator: usingMobileMoney
