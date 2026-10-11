@@ -82,12 +82,15 @@ function optionalString(value: unknown): string | null | undefined {
 
 const INVALID_CUSTOMER = "Coordonnées invalides. Merci de vérifier le formulaire.";
 
-export function parseOrderDraft(raw: unknown): ParseResult {
-  if (!isRecord(raw)) return { ok: false, error: "Commande invalide. Merci de réessayer." };
+export type CartParseResult =
+  | { ok: true; zoneId: ZoneId; lines: ValidatedDraft["lines"] }
+  | { ok: false; error: string };
 
-  if (typeof raw.id !== "string" || !ORDER_ID_PATTERN.test(raw.id)) {
-    return { ok: false, error: "Numéro de commande invalide. Merci de recharger la page." };
-  }
+/** The cart part of a request — zone, announced currency, lines — checked on
+ *  its own, so the price check (no customer details yet) and the order itself
+ *  apply exactly the same rules. */
+export function parseCart(raw: unknown): CartParseResult {
+  if (!isRecord(raw)) return { ok: false, error: "Commande invalide. Merci de réessayer." };
 
   if (!isServedZone(raw.zoneId)) {
     return { ok: false, error: "Cette zone de livraison n'est pas desservie." };
@@ -141,6 +144,20 @@ export function parseOrderDraft(raw: unknown): ParseResult {
     }
     lines.push({ productId: item.productId, variantId, quantity });
   }
+
+  return { ok: true, zoneId, lines };
+}
+
+export function parseOrderDraft(raw: unknown): ParseResult {
+  if (!isRecord(raw)) return { ok: false, error: "Commande invalide. Merci de réessayer." };
+
+  if (typeof raw.id !== "string" || !ORDER_ID_PATTERN.test(raw.id)) {
+    return { ok: false, error: "Numéro de commande invalide. Merci de recharger la page." };
+  }
+
+  const cart = parseCart(raw);
+  if (!cart.ok) return cart;
+  const { zoneId, lines } = cart;
 
   if (!isRecord(raw.customer)) return { ok: false, error: INVALID_CUSTOMER };
   const c = raw.customer;

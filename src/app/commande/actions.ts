@@ -12,8 +12,10 @@ import {
 import { getProductsByIds } from "@/lib/products-db";
 import { getShippingSettings } from "@/lib/shipping-settings-db";
 import { getOperator, isTransactionIdTaken } from "@/lib/mobile-money-db";
-import { parseOrderDraft, type OrderDraft, type ValidatedDraft } from "@/lib/order-draft";
+import { parseCart, parseOrderDraft, type OrderDraft, type ValidatedDraft } from "@/lib/order-draft";
+import type { CartPreview } from "@/lib/price-change";
 import {
+  previewCart,
   priceOrder,
   stripeAmountMatchesQuote,
   stripeLineItems,
@@ -41,6 +43,25 @@ async function priceDraft(
   const products = await getProductsByIds(draft.lines.map((l) => l.productId));
   const shipping = await getShippingSettings(draft.zoneId);
   return priceOrder({ zoneId: draft.zoneId, lines: draft.lines, products, shipping });
+}
+
+export type CartPreviewResult = { ok: true; preview: CartPreview } | { ok: false; error: string };
+
+/** What this cart would cost right now, per line, as the server computes it.
+ *  Creates nothing and charges nothing: the checkout page calls it before
+ *  every payment to catch a price that changed since the customer added the
+ *  product. Like the order itself, it takes only ids, quantities and the zone. */
+export async function previewCartPricesAction(
+  draft: Pick<OrderDraft, "zoneId" | "currency" | "items">
+): Promise<CartPreviewResult> {
+  const cart = parseCart(draft);
+  if (!cart.ok) return cart;
+  const products = await getProductsByIds(cart.lines.map((l) => l.productId));
+  const shipping = await getShippingSettings(cart.zoneId);
+  return {
+    ok: true,
+    preview: previewCart({ zoneId: cart.zoneId, lines: cart.lines, products, shipping }),
+  };
 }
 
 function toOrderInput(

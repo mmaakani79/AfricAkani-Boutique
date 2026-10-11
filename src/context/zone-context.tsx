@@ -23,6 +23,9 @@ interface ZoneContextValue {
    *  defaults to 1, i.e. the base price, for callers that don't care (cards). */
   priceFor: (product: PublicProduct, quantity?: number) => number | null;
   format: (amount: number) => string;
+  /** Adopts a shipping rule the server just reported (after the customer
+   *  agreed to a price change), instead of waiting for a page reload. */
+  applyShippingSettings: (settings: ShippingSettings) => void;
 }
 
 const ZoneContext = createContext<ZoneContextValue | null>(null);
@@ -89,6 +92,10 @@ export function ZoneProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const applyShippingSettings = useCallback((settings: ShippingSettings) => {
+    setShipping((prev) => ({ ...prev, [settings.zoneId]: settings }));
+  }, []);
+
   const value = useMemo<ZoneContextValue>(() => {
     const zoneSettings = shipping[zoneId];
     const zone: ZoneWithShipping = {
@@ -104,8 +111,9 @@ export function ZoneProvider({ children }: { children: React.ReactNode }) {
       priceFor: (product: PublicProduct, quantity = 1) =>
         priceForQuantity(product, zoneId, quantity),
       format: (amount: number) => formatPrice(amount, zoneId),
+      applyShippingSettings,
     };
-  }, [zoneId, setZoneId, shipping]);
+  }, [zoneId, setZoneId, shipping, applyShippingSettings]);
 
   return <ZoneContext.Provider value={value}>{children}</ZoneContext.Provider>;
 }
