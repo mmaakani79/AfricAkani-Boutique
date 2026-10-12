@@ -7,12 +7,14 @@ import { ProductCard } from "@/components/shop/product-card";
 import { CategoryCard } from "@/components/shop/category-card";
 import { HeroCollage } from "@/components/shop/hero-collage";
 import { Container } from "@/components/layout/container";
+import { FreeShippingCardText } from "@/components/shop/free-shipping-card-text";
 
 const REASSURANCE = [
   {
     icon: Truck,
     title: "Livraison gratuite",
-    text: "Dès le seuil de votre zone",
+    // The visitor's own threshold, read from Réglages (see the component).
+    text: <FreeShippingCardText />,
   },
   {
     icon: ShieldCheck,
@@ -54,7 +56,7 @@ export default async function Home() {
             </h1>
             <p className="mt-5 max-w-xl text-base text-ivory/85 sm:text-lg">
               Produits naturels et halal, et sélection généraliste utile au
-              quotidien. Livrés chez vous, gratuitement.
+              quotidien. Qualité vérifiée, du Bénin au Canada et aux États-Unis.
             </p>
             <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
               <Link

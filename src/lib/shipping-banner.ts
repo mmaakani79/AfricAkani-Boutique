@@ -56,3 +56,16 @@ export function bannerPlainText(items: BannerItem[]): string {
     )
     .join(" • ");
 }
+
+/** Shown on the home page's "Livraison gratuite" card when the zone's threshold
+ *  can't be read from Réglages: no figure, never an invented one. */
+export const CARD_NEUTRAL_TEXT = "Dès le seuil de votre zone";
+
+/** The sub-title of that card: the visitor's own zone threshold ("Dès 20 000 FCFA"). */
+export function freeShippingCardText(
+  zoneId: ZoneId,
+  live: Record<ZoneId, ShippingSettings> | null
+): string {
+  const own = bannerItems(zoneId, live).find((item) => item.primary);
+  return own ? `Dès ${own.amount}` : CARD_NEUTRAL_TEXT;
+}

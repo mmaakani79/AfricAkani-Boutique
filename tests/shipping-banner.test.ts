@@ -3,7 +3,13 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { NEUTRAL_MESSAGE, bannerItems, bannerPlainText } from "@/lib/shipping-banner";
+import {
+  CARD_NEUTRAL_TEXT,
+  NEUTRAL_MESSAGE,
+  bannerItems,
+  bannerPlainText,
+  freeShippingCardText,
+} from "@/lib/shipping-banner";
 import type { ShippingSettings } from "@/lib/shipping-types";
 import type { ZoneId } from "@/lib/types";
 
@@ -78,5 +84,28 @@ describe("Réglages indisponibles : aucun chiffre inventé", () => {
   it("aucune zone valable : message neutre", () => {
     const rules = live({ bj: 0, ca: 0, us: 0 });
     assert.deepEqual(bannerItems("bj", rules), []);
+  });
+});
+
+describe("carte « Livraison gratuite » de l'accueil", () => {
+  const rules = live({ bj: 20000, ca: 50, us: 55 });
+
+  it("affiche le seuil de la zone du client, lu dans les Réglages", () => {
+    assert.equal(nbsp(freeShippingCardText("bj", rules)), "Dès 20 000 FCFA");
+    assert.equal(nbsp(freeShippingCardText("ca", rules)), "Dès 50,00 CAD");
+    assert.equal(nbsp(freeShippingCardText("us", rules)), "Dès 55,00 USD");
+  });
+
+  it("suit une modification des Réglages (aucun chiffre en dur)", () => {
+    assert.equal(nbsp(freeShippingCardText("bj", live({ bj: 30000, ca: 60, us: 70 }))), "Dès 30 000 FCFA");
+  });
+
+  it("Réglages indisponibles : texte neutre, sans aucun chiffre", () => {
+    assert.equal(freeShippingCardText("bj", null), CARD_NEUTRAL_TEXT);
+    assert.ok(!/\d/.test(CARD_NEUTRAL_TEXT));
+  });
+
+  it("seuil de la zone invalide : texte neutre plutôt qu'un chiffre faux", () => {
+    assert.equal(freeShippingCardText("ca", live({ bj: 20000, ca: 0, us: 55 })), CARD_NEUTRAL_TEXT);
   });
 });
