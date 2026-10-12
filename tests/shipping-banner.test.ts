@@ -3,7 +3,16 @@
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { NEUTRAL_MESSAGE, bannerItems, bannerPlainText } from "@/lib/shipping-banner";
+import {
+  CARD_NEUTRAL_TEXT,
+  FREE_SHIPPING_NEUTRAL_TEXT,
+  NEUTRAL_MESSAGE,
+  bannerItems,
+  bannerPlainText,
+  freeShippingCardText,
+  freeShippingLineText,
+  freeShippingProductText,
+} from "@/lib/shipping-banner";
 import type { ShippingSettings } from "@/lib/shipping-types";
 import type { ZoneId } from "@/lib/types";
 
@@ -78,5 +87,67 @@ describe("Réglages indisponibles : aucun chiffre inventé", () => {
   it("aucune zone valable : message neutre", () => {
     const rules = live({ bj: 0, ca: 0, us: 0 });
     assert.deepEqual(bannerItems("bj", rules), []);
+  });
+});
+
+describe("carte « Livraison gratuite » de l'accueil", () => {
+  const rules = live({ bj: 20000, ca: 50, us: 55 });
+
+  it("affiche le seuil de la zone du client, lu dans les Réglages", () => {
+    assert.equal(nbsp(freeShippingCardText("bj", rules)), "Dès 20 000 FCFA");
+    assert.equal(nbsp(freeShippingCardText("ca", rules)), "Dès 50,00 CAD");
+    assert.equal(nbsp(freeShippingCardText("us", rules)), "Dès 55,00 USD");
+  });
+
+  it("suit une modification des Réglages (aucun chiffre en dur)", () => {
+    assert.equal(nbsp(freeShippingCardText("bj", live({ bj: 30000, ca: 60, us: 70 }))), "Dès 30 000 FCFA");
+  });
+
+  it("Réglages indisponibles : texte neutre, sans aucun chiffre", () => {
+    assert.equal(freeShippingCardText("bj", null), CARD_NEUTRAL_TEXT);
+    assert.ok(!/\d/.test(CARD_NEUTRAL_TEXT));
+  });
+
+  it("seuil de la zone invalide : texte neutre plutôt qu'un chiffre faux", () => {
+    assert.equal(freeShippingCardText("ca", live({ bj: 20000, ca: 0, us: 55 })), CARD_NEUTRAL_TEXT);
+  });
+});
+
+describe("pied de page, menu mobile et fiche produit : plus de seuil de repli", () => {
+  const rules = live({ bj: 20000, ca: 50, us: 55 });
+
+  it("pied de page / menu : le seuil de la zone, lu dans les Réglages", () => {
+    assert.equal(nbsp(freeShippingLineText("bj", rules)), "Livraison gratuite dès 20 000 FCFA");
+    assert.equal(nbsp(freeShippingLineText("ca", rules)), "Livraison gratuite dès 50,00 CAD");
+    assert.equal(nbsp(freeShippingLineText("us", rules)), "Livraison gratuite dès 55,00 USD");
+  });
+
+  it("fiche produit : le seuil de la zone et le nom de la zone", () => {
+    assert.equal(
+      nbsp(freeShippingProductText("ca", rules, "Canada")),
+      "Livraison gratuite dès 50,00 CAD d\u2019achat (Canada)"
+    );
+    assert.equal(
+      nbsp(freeShippingProductText("bj", rules, "Bénin & Afrique de l'Ouest")),
+      "Livraison gratuite dès 20 000 FCFA d\u2019achat (Bénin & Afrique de l'Ouest)"
+    );
+  });
+
+  it("suit une modification des Réglages (aucun chiffre en dur)", () => {
+    const changed = live({ bj: 35000, ca: 70, us: 80 });
+    assert.equal(nbsp(freeShippingLineText("bj", changed)), "Livraison gratuite dès 35 000 FCFA");
+    assert.equal(nbsp(freeShippingProductText("us", changed, "États-Unis")), "Livraison gratuite dès 80,00 USD d\u2019achat (États-Unis)");
+  });
+
+  it("Réglages pas encore lus ou indisponibles : texte neutre, jamais un chiffre", () => {
+    assert.equal(freeShippingLineText("bj", null), FREE_SHIPPING_NEUTRAL_TEXT);
+    assert.equal(freeShippingProductText("ca", null, "Canada"), `${FREE_SHIPPING_NEUTRAL_TEXT} (Canada)`);
+    assert.ok(!/\d/.test(FREE_SHIPPING_NEUTRAL_TEXT));
+    assert.ok(!/\d/.test(freeShippingProductText("us", null, "États-Unis")));
+  });
+
+  it("seuil de la zone invalide : neutre, pas de valeur de repli", () => {
+    const broken = live({ bj: 20000, ca: 0, us: 55 });
+    assert.equal(freeShippingLineText("ca", broken), FREE_SHIPPING_NEUTRAL_TEXT);
   });
 });

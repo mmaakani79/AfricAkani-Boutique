@@ -56,3 +56,42 @@ export function bannerPlainText(items: BannerItem[]): string {
     )
     .join(" • ");
 }
+
+/** Shown on the home page's "Livraison gratuite" card when the zone's threshold
+ *  can't be read from Réglages: no figure, never an invented one. */
+export const CARD_NEUTRAL_TEXT = "Dès le seuil de votre zone";
+
+/** The sub-title of that card: the visitor's own zone threshold ("Dès 20 000 FCFA"). */
+export function freeShippingCardText(
+  zoneId: ZoneId,
+  live: Record<ZoneId, ShippingSettings> | null
+): string {
+  const own = bannerItems(zoneId, live).find((item) => item.primary);
+  return own ? `Dès ${own.amount}` : CARD_NEUTRAL_TEXT;
+}
+
+/** Fallback wording for every place that mentions free shipping: no figure. */
+export const FREE_SHIPPING_NEUTRAL_TEXT = "Livraison gratuite dès le seuil de votre zone";
+
+/** "Livraison gratuite dès 20 000 FCFA" — footer link and mobile menu. The
+ *  threshold is the visitor's own zone one, read from Réglages; without it the
+ *  wording stays neutral (never a figure written in the code). */
+export function freeShippingLineText(
+  zoneId: ZoneId,
+  live: Record<ZoneId, ShippingSettings> | null
+): string {
+  const own = bannerItems(zoneId, live).find((item) => item.primary);
+  return own ? `Livraison gratuite dès ${own.amount}` : FREE_SHIPPING_NEUTRAL_TEXT;
+}
+
+/** Same line on a product page, with the zone's name: "… dès 50,00 CAD d’achat (Canada)". */
+export function freeShippingProductText(
+  zoneId: ZoneId,
+  live: Record<ZoneId, ShippingSettings> | null,
+  zoneLabel: string
+): string {
+  const own = bannerItems(zoneId, live).find((item) => item.primary);
+  return own
+    ? `Livraison gratuite dès ${own.amount} d\u2019achat (${zoneLabel})`
+    : `${FREE_SHIPPING_NEUTRAL_TEXT} (${zoneLabel})`;
+}

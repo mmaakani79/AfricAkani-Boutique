@@ -5,10 +5,11 @@ import { Minus, Plus, ShoppingCart, Truck } from "lucide-react";
 import { useZone } from "@/context/zone-context";
 import { useCart } from "@/context/cart-context";
 import { tiersForZone, tierRangeLabel } from "@/lib/price-tiers";
+import { freeShippingProductText } from "@/lib/shipping-banner";
 import type { PublicProduct } from "@/lib/types";
 
 export function ProductPurchasePanel({ product }: { product: PublicProduct }) {
-  const { priceFor, format, zone } = useZone();
+  const { priceFor, format, zone, liveShipping } = useZone();
   const { addItem } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
@@ -181,8 +182,7 @@ export function ProductPurchasePanel({ product }: { product: PublicProduct }) {
 
       <p className="mt-4 flex items-center gap-2 text-xs font-semibold text-brand-green-dark">
         <Truck className="h-4 w-4 shrink-0" />
-        Livraison gratuite dès {format(zone.freeShippingThreshold)} d&rsquo;achat
-        ({zone.label})
+        {freeShippingProductText(zone.id, liveShipping, zone.label)}
       </p>
     </div>
   );

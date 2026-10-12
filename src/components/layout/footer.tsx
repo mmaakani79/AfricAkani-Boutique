@@ -42,8 +42,8 @@ export async function Footer() {
           </div>
           <p className="mt-3 text-sm text-ivory/70">
             Boutique généraliste africaine — produits naturels, mode,
-            technologie et bien plus, livrés du Bénin au Canada et aux
-            États-Unis.
+            technologie et bien plus, livrés en Afrique de l&rsquo;Ouest, au
+            Canada et aux États-Unis.
           </p>
         </div>
 

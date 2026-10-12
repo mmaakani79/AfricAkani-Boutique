@@ -26,14 +26,14 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "AfricAkani — L'Afrique, c'est bon.",
   description:
-    "Boutique généraliste africaine — produits naturels, mode, technologie et bien plus, livrés du Bénin au Canada et aux États-Unis. Livraison gratuite dès un certain montant.",
+    "Boutique généraliste africaine — produits naturels, mode, technologie et bien plus, livrés en Afrique de l'Ouest, au Canada et aux États-Unis. Livraison gratuite dès un certain montant.",
   alternates: {
     canonical: "/",
   },
   openGraph: {
     title: "AfricAkani — L'Afrique, c'est bon.",
     description:
-      "Boutique généraliste africaine — produits naturels, mode, technologie et bien plus, livrés du Bénin au Canada et aux États-Unis.",
+      "Boutique généraliste africaine — produits naturels, mode, technologie et bien plus, livrés en Afrique de l'Ouest, au Canada et aux États-Unis.",
     url: SITE_URL,
     siteName: "AfricAkani",
     locale: "fr_FR",

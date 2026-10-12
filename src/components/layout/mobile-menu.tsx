@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Menu, X } from "lucide-react";
 import { useZone } from "@/context/zone-context";
+import { freeShippingLineText } from "@/lib/shipping-banner";
 
 const SHOP_LINKS = [
   { href: "/catalogue", label: "Catalogue" },
@@ -16,7 +17,7 @@ const SHOP_LINKS = [
 
 export function MobileMenu() {
   const [open, setOpen] = useState(false);
-  const { zone, format } = useZone();
+  const { zoneId, liveShipping } = useZone();
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -91,7 +92,7 @@ export function MobileMenu() {
                 Notre histoire
               </Link>
               <span className="rounded-lg px-3 py-2.5 text-base font-medium text-brand-green-dark">
-                Livraison gratuite dès {format(zone.freeShippingThreshold)}
+                {freeShippingLineText(zoneId, liveShipping)}
               </span>
               <Link
                 href="/notre-histoire#benin"

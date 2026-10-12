@@ -7,7 +7,7 @@ import { Container } from "@/components/layout/container";
 export const metadata: Metadata = {
   title: "Notre histoire — AfricAkani",
   description:
-    "Africa + Akani : l'histoire d'une boutique née d'une conviction simple, du Bénin au Canada.",
+    "Africa + Akani : l'histoire d'une boutique née d'une conviction simple, pour l'Afrique de l'Ouest et la diaspora au Canada et aux États-Unis.",
   alternates: { canonical: "/notre-histoire" },
 };
 
@@ -75,8 +75,8 @@ export default function NotreHistoire() {
               AfricAkani fusionne « Africa » et le prénom de son fondateur,
               Akani. Une boutique généraliste africaine — produits naturels,
               mode, technologie et bien plus, pensée pour ceux qui y vivent
-              et pour la diaspora, livrés du Bénin au Canada et aux
-              États-Unis.
+              et pour la diaspora, livrés en Afrique de l&rsquo;Ouest, au
+              Canada et aux États-Unis.
             </p>
             <Link
               href="#histoire"
@@ -153,8 +153,8 @@ export default function NotreHistoire() {
             Découvrez la maison
           </h2>
           <p className="mx-auto mt-3 max-w-md text-sm text-ivory/85 sm:text-base">
-            Des produits naturels, halal, et utiles au quotidien — livrés
-            gratuitement.
+            Des produits naturels, halal, et utiles au quotidien, choisis avec
+            soin.
           </p>
           <Link
             href="/catalogue"
