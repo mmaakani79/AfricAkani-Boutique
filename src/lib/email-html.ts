@@ -56,7 +56,7 @@ export function renderEmailHtml(subject: string, lines: string[]): string {
               <td style="padding:16px 28px 24px;border-top:1px solid #e0b65a55;">
                 <p style="margin:0;font-size:11px;color:#1c1c1a99;">
                   AfricAkani — Boutique généraliste africaine — produits naturels, mode,
-                  technologie et bien plus, livrés du Bénin au Canada et aux États-Unis.
+                  technologie et bien plus, livrés en Afrique de l'Ouest, au Canada et aux États-Unis.
                 </p>
               </td>
             </tr>
