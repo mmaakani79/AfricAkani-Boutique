@@ -8,7 +8,13 @@ import {
   ADMIN_SESSION_COOKIE,
   createSessionToken,
 } from "@/lib/admin-auth";
-import { verifyAdminPassword } from "@/lib/admin-password-db";
+import { getStoredPasswordHash, verifyAdminPassword } from "@/lib/admin-password-db";
+import {
+  buildLoginDiagnostic,
+  classifyLoginError,
+  isPreviewDiagnosticEnabled,
+  type LoginRefusal,
+} from "@/lib/login-diagnostic";
 import { isAdminAuthed } from "@/lib/admin-api-auth";
 import { setShopClosed } from "@/lib/site-settings-db";
 import {
@@ -34,6 +40,36 @@ export interface ActionState {
   error?: string;
 }
 
+/** Temporary diagnostic, Preview deployments only (no effect elsewhere): logs
+ *  lengths and yes/no facts about a refused login — never the password or any
+ *  part of it. Must never break the login itself, hence the catch-all. */
+async function logPreviewLoginRefusal(
+  candidate: string,
+  resultat: LoginRefusal,
+  err?: unknown
+): Promise<void> {
+  if (!isPreviewDiagnosticEnabled(process.env)) return;
+  try {
+    const usesStoredHash = await getStoredPasswordHash()
+      .then((hash) => Boolean(hash))
+      .catch((): "inconnu" => "inconnu");
+    console.warn(
+      "[diagnostic-connexion-admin]",
+      JSON.stringify(
+        buildLoginDiagnostic({
+          env: process.env,
+          candidate,
+          resultat,
+          usesStoredHash,
+          cause: err === undefined ? undefined : classifyLoginError(err),
+        })
+      )
+    );
+  } catch {
+    /* a diagnostic must never get in the way of the login */
+  }
+}
+
 export async function loginAction(
   _prevState: ActionState,
   formData: FormData
@@ -43,7 +79,8 @@ export async function loginAction(
   let ok: boolean;
   try {
     ok = await verifyAdminPassword(password);
-  } catch {
+  } catch (err) {
+    await logPreviewLoginRefusal(password, "erreur-interne", err);
     return {
       error:
         "ADMIN_PASSWORD n'est pas configuré côté serveur. Ajoutez cette variable d'environnement.",
@@ -51,6 +88,7 @@ export async function loginAction(
   }
 
   if (!ok) {
+    await logPreviewLoginRefusal(password, "mot-de-passe-incorrect");
     return { error: "Mot de passe incorrect." };
   }
 

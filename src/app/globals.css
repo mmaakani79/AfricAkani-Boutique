@@ -262,3 +262,221 @@ body {
     opacity: 0.35 !important;
   }
 }
+
+/* ---- Bandeau de livraison : texte qui défile + petit camion --------------- */
+
+.ship-banner {
+  overflow: hidden;
+}
+
+.ship-truck-wrap {
+  position: relative;
+  z-index: 2;
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding-right: 0.25rem;
+  background: var(--color-green-dark);
+}
+
+.ship-truck {
+  display: block;
+  width: 2.9rem;
+  height: 1.2rem;
+  overflow: visible;
+}
+
+.ship-truck-body {
+  animation: ship-bounce 1.2s ease-in-out infinite;
+}
+
+.ship-wheel {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ship-spin 2.6s linear infinite;
+}
+
+.ship-speed {
+  transform-box: fill-box;
+  transform-origin: left center;
+  opacity: 0;
+  animation: ship-speed 2.1s ease-out infinite;
+}
+.ship-speed-2 {
+  animation-delay: 0.7s;
+}
+.ship-speed-3 {
+  animation-delay: 1.4s;
+}
+
+/* Visible window: the text slides under a soft edge instead of being cut. */
+.ship-viewport {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 1.1rem, #000 calc(100% - 1.1rem), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 1.1rem, #000 calc(100% - 1.1rem), transparent 100%);
+}
+
+.ship-track {
+  display: flex;
+  width: max-content;
+  animation: ship-scroll var(--ship-duration, 40s) linear infinite;
+  will-change: transform;
+}
+
+/* Each copy is at least as wide as the window, so the loop never shows a hole. */
+.ship-copy {
+  flex: none;
+  min-width: 100%;
+  white-space: nowrap;
+  padding-right: 3rem;
+}
+@supports (width: 1cqw) {
+  .ship-viewport {
+    container-type: inline-size;
+  }
+  .ship-copy {
+    min-width: 100cqw;
+  }
+}
+
+.ship-item + .ship-item {
+  margin-left: 0;
+}
+.ship-sep {
+  margin: 0 0.9rem;
+  color: #ffd700;
+  opacity: 0.7;
+}
+.ship-amount {
+  color: #ffd700;
+  font-weight: 800;
+  background: rgb(255 215 0 / 0.14);
+  border-radius: 0.375rem;
+  padding: 0.05rem 0.4rem;
+}
+.ship-amount-other {
+  color: #ffe680;
+}
+.ship-zone {
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+.ship-static {
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: center;
+}
+
+.ship-pause {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  color: #ffd700;
+  background: rgb(255 255 255 / 0.1);
+}
+.ship-pause:hover {
+  background: rgb(255 255 255 / 0.2);
+}
+.ship-pause:focus-visible {
+  outline: 2px solid #ffd700;
+  outline-offset: 2px;
+}
+
+/* Pause: on mouse hover and on keyboard focus, unless the visitor chose with the
+   button ("paused" stops everything — the only way on a touch screen — and
+   "playing" keeps it running whatever the mouse or the focus do). */
+.ship-banner[data-mode="paused"] *,
+.ship-banner[data-mode="auto"]:has(:focus-visible) * {
+  animation-play-state: paused !important;
+}
+@media (hover: hover) {
+  .ship-banner[data-mode="auto"]:hover * {
+    animation-play-state: paused !important;
+  }
+}
+
+@keyframes ship-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes ship-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes ship-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-0.7px);
+  }
+}
+
+@keyframes ship-speed {
+  0% {
+    transform: scaleX(0.15);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 0;
+  }
+}
+
+/* Reduced motion: no scrolling, no bouncing, no turning wheels, no speed lines.
+   The text stays fixed, centred and fully readable (it may wrap on a phone). */
+@media (prefers-reduced-motion: reduce) {
+  .ship-track {
+    animation: none;
+    display: block;
+    width: 100%;
+    transform: none;
+  }
+  .ship-viewport {
+    -webkit-mask-image: none;
+    mask-image: none;
+    overflow: visible;
+  }
+  .ship-copy {
+    display: block;
+    min-width: 0;
+    white-space: normal;
+    padding-right: 0;
+    text-align: center;
+  }
+  .ship-copy[aria-hidden="true"],
+  .ship-pause,
+  .ship-speed {
+    display: none;
+  }
+  .ship-truck-body,
+  .ship-wheel {
+    animation: none;
+  }
+  .ship-item {
+    display: inline-block;
+    margin: 0 0.5rem;
+  }
+}

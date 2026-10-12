@@ -6,15 +6,26 @@ import {
   setOrderStripeSession,
   setOrderPaypalOrderId,
   DuplicateTransactionIdError,
+  getOrderById,
   type OrderDetail,
   type OrderInput,
 } from "@/lib/orders-db";
-import { resolveItemSkus } from "@/lib/products-db";
+import { getProductsByIds } from "@/lib/products-db";
 import { getShippingSettings } from "@/lib/shipping-settings-db";
-import { computeShippingFee, isBelowMinOrder } from "@/lib/shipping-calc";
 import { getOperator, isTransactionIdTaken } from "@/lib/mobile-money-db";
-import { roundForZone, formatPrice, ZONES } from "@/data/zones";
+import { parseCart, parseOrderDraft, type OrderDraft, type ValidatedDraft } from "@/lib/order-draft";
+import type { CartPreview } from "@/lib/price-change";
+import {
+  previewCart,
+  priceOrder,
+  stripeAmountMatchesQuote,
+  stripeLineItems,
+  summarizeQuote,
+  type OrderQuote,
+  type QuoteSummary,
+} from "@/lib/order-pricing";
 import { getSiteUrl } from "@/lib/order-config";
+import { isSameOrderRequest, summaryFromStoredOrder } from "@/lib/order-replay";
 import { getStripeClient } from "@/lib/stripe";
 import { createPaypalOrder, isPaypalConfigured } from "@/lib/paypal";
 import {
@@ -23,62 +34,81 @@ import {
   sendCustomerOrderConfirmation,
 } from "@/lib/email";
 
-export type OrderDraft = Omit<OrderInput, "shippingFee" | "freeShippingReached">;
+/** Money never comes from the browser. The draft carries choices only
+ *  (products, variants, quantities, zone, customer details); every amount —
+ *  unit prices, line totals, subtotal, shipping, total — is computed here from
+ *  the database, and is what gets stored, charged by Stripe and PayPal, and
+ *  shown back to the customer (`order` in each result). */
+async function priceDraft(
+  draft: ValidatedDraft
+): Promise<{ ok: true; quote: OrderQuote } | { ok: false; error: string }> {
+  const products = await getProductsByIds(draft.lines.map((l) => l.productId));
+  const shipping = await getShippingSettings(draft.zoneId);
+  return priceOrder({ zoneId: draft.zoneId, lines: draft.lines, products, shipping });
+}
 
-/** The browser never knows the internal SKUs: they're looked up here, from the
- *  chosen product/variant, and any `sku` the client might send is overwritten. */
-async function withServerSkus(draft: OrderDraft): Promise<OrderDraft> {
-  return { ...draft, items: await resolveItemSkus(draft.items) };
+export type CartPreviewResult = { ok: true; preview: CartPreview } | { ok: false; error: string };
+
+/** What this cart would cost right now, per line, as the server computes it.
+ *  Creates nothing and charges nothing: the checkout page calls it before
+ *  every payment to catch a price that changed since the customer added the
+ *  product. Like the order itself, it takes only ids, quantities and the zone. */
+export async function previewCartPricesAction(
+  draft: Pick<OrderDraft, "zoneId" | "currency" | "items">
+): Promise<CartPreviewResult> {
+  const cart = parseCart(draft);
+  if (!cart.ok) return cart;
+  const products = await getProductsByIds(cart.lines.map((l) => l.productId));
+  const shipping = await getShippingSettings(cart.zoneId);
+  return {
+    ok: true,
+    preview: previewCart({ zoneId: cart.zoneId, lines: cart.lines, products, shipping }),
+  };
+}
+
+function toOrderInput(
+  draft: ValidatedDraft,
+  quote: OrderQuote,
+  extra: Pick<
+    OrderInput,
+    "paymentMethod" | "paymentStatus" | "mobileMoneyOperator" | "mobileMoneyPhone" | "mobileMoneyTransactionId"
+  >
+): OrderInput {
+  return {
+    id: draft.id,
+    zoneId: quote.zoneId,
+    subtotal: quote.subtotal,
+    shippingFee: quote.shippingFee,
+    freeShippingReached: quote.freeShippingReached,
+    items: quote.lines.map((line) => ({
+      productId: line.productId,
+      name: line.name,
+      variantId: line.variantId,
+      sku: line.sku,
+      quantity: line.quantity,
+      unitPrice: line.unitPrice,
+      lineTotal: line.lineTotal,
+    })),
+    customer: draft.customer,
+    ...extra,
+  };
 }
 
 export interface OrderSubmissionResult {
   ok: boolean;
   error?: string;
   shippingFee?: number;
+  /** The amounts the server computed — what the customer is actually charged. */
+  order?: QuoteSummary;
 }
 
-async function computeOrderPricing(
-  input: Pick<OrderDraft, "zoneId" | "subtotal">
-): Promise<
-  | { ok: true; shippingFee: number; freeShippingReached: boolean }
-  | { ok: false; error: string }
-> {
-  const settings = await getShippingSettings(input.zoneId);
-
-  if (isBelowMinOrder(input.subtotal, settings)) {
-    return {
-      ok: false,
-      error: `Montant minimum de commande pour cette zone : ${formatPrice(
-        settings.minOrderAmount!,
-        input.zoneId
-      )}.`,
-    };
-  }
-
-  const shippingFee = roundForZone(
-    computeShippingFee(input.subtotal, settings),
-    input.zoneId
-  );
-  const freeShippingReached = input.subtotal >= settings.freeShippingThreshold;
-
-  return { ok: true, shippingFee, freeShippingReached };
-}
-
-function buildOrderDetail(
-  input: OrderDraft,
-  extra: {
-    shippingFee: number;
-    freeShippingReached: boolean;
-    paymentStatus: OrderInput["paymentStatus"];
-    mobileMoneyOperatorName?: string | null;
-  }
-): OrderDetail {
+function buildOrderDetail(input: OrderInput): OrderDetail {
   return {
     id: input.id,
     createdAt: new Date().toISOString(),
     zoneId: input.zoneId,
     subtotal: input.subtotal,
-    shippingFee: extra.shippingFee,
+    shippingFee: input.shippingFee,
     customerName: input.customer.name,
     customerPhone: input.customer.phone,
     customerEmail: input.customer.email,
@@ -88,15 +118,15 @@ function buildOrderDetail(
     customerProvince: input.customer.province ?? null,
     customerPostalCode: input.customer.postalCode ?? null,
     customerCountry: input.customer.country ?? null,
-    freeShippingReached: extra.freeShippingReached,
+    freeShippingReached: input.freeShippingReached,
     status: "nouvelle",
-    paymentStatus: extra.paymentStatus ?? "en_attente",
+    paymentStatus: input.paymentStatus ?? "en_attente",
     paymentMethod: input.paymentMethod ?? null,
     isTest: false,
     reminder24hSentAt: null,
     reminder48hSentAt: null,
     emailError: null,
-    mobileMoneyOperator: extra.mobileMoneyOperatorName ?? null,
+    mobileMoneyOperator: input.mobileMoneyOperator ?? null,
     mobileMoneyPhone: input.mobileMoneyPhone ?? null,
     mobileMoneyTransactionId: input.mobileMoneyTransactionId ?? null,
     stripeCheckoutSessionId: null,
@@ -142,26 +172,70 @@ async function sendOrderReceivedNotifications(orderDetail: OrderDetail): Promise
   }
 }
 
+const ORDER_NUMBER_CLASH: OrderSubmissionResult = {
+  ok: false,
+  error:
+    "Cette commande ne peut pas être enregistrée avec ce numéro. Rechargez la page, vérifiez votre panier et réessayez.",
+};
+
+/** The recorded order, when `draft` is a repeat of the request that created it:
+ *  the result the first attempt would have returned. null when no order has
+ *  this number; a refusal when the number belongs to a different request. */
+async function replayOfEarlierAttempt(draft: ValidatedDraft): Promise<OrderSubmissionResult | null> {
+  const stored = await getOrderById(draft.id);
+  if (!stored) return null;
+  const same = isSameOrderRequest(stored, {
+    zoneId: draft.zoneId,
+    customer: draft.customer,
+    wantsMobileMoney: draft.wantsMobileMoney,
+    mobileMoneyTransactionId: draft.mobileMoneyTransactionId,
+    lines: draft.lines,
+  });
+  if (!same) return ORDER_NUMBER_CLASH;
+  return { ok: true, shippingFee: stored.shippingFee, order: summaryFromStoredOrder(stored) };
+}
+
 export async function submitOrderAction(
   draft: OrderDraft
 ): Promise<OrderSubmissionResult> {
-  const input = await withServerSkus(draft);
-  const pricing = await computeOrderPricing(input);
-  if (!pricing.ok) return pricing;
-  const { shippingFee, freeShippingReached } = pricing;
+  const parsed = parseOrderDraft(draft);
+  if (!parsed.ok) return parsed;
+  const validated = parsed.draft;
 
+  // Idempotence: a retry (or a double click, or a lost response) carries the
+  // same order number. If that order is already recorded and is the same
+  // request, answer with it — before any other check, because the first
+  // attempt already consumed e.g. the Mobile Money transaction id.
+  const earlier = await replayOfEarlierAttempt(validated);
+  if (earlier) return earlier;
+
+  const priced = await priceDraft(validated);
+  if (!priced.ok) return priced;
+  const { quote } = priced;
+
+  let paymentMethod: OrderInput["paymentMethod"] = null;
   let paymentStatus: OrderInput["paymentStatus"] = "en_attente";
   // Freeze the operator's display name at order time (not its id/slug) —
   // historically accurate even if the operator is later renamed or removed.
   let mobileMoneyOperatorName: string | null = null;
+  let mobileMoneyPhone: string | null = null;
+  let mobileMoneyTransactionId: string | null = null;
 
-  if (input.paymentMethod === "mobile_money") {
-    const transactionId = input.mobileMoneyTransactionId?.trim();
-    if (!input.mobileMoneyOperator || !transactionId || !input.mobileMoneyPhone) {
+  if (validated.wantsMobileMoney) {
+    // Mobile Money is paid in FCFA: refuse it for a zone priced in another currency.
+    if (quote.currency !== "FCFA") {
+      return {
+        ok: false,
+        error: "Le paiement Mobile Money n'est disponible que pour la zone en FCFA.",
+      };
+    }
+
+    const transactionId = validated.mobileMoneyTransactionId?.trim();
+    if (!validated.mobileMoneyOperator || !transactionId || !validated.mobileMoneyPhone) {
       return { ok: false, error: "Merci de compléter les informations Mobile Money." };
     }
 
-    const operator = await getOperator(input.mobileMoneyOperator);
+    const operator = await getOperator(validated.mobileMoneyOperator);
     if (!operator || !operator.active) {
       return { ok: false, error: "Opérateur Mobile Money invalide." };
     }
@@ -174,18 +248,24 @@ export async function submitOrderAction(
       };
     }
 
+    paymentMethod = "mobile_money";
     paymentStatus = "en_verification";
     mobileMoneyOperatorName = operator.name;
+    mobileMoneyPhone = validated.mobileMoneyPhone;
+    mobileMoneyTransactionId = validated.mobileMoneyTransactionId;
   }
 
+  const input = toOrderInput(validated, quote, {
+    paymentMethod,
+    paymentStatus,
+    mobileMoneyOperator: mobileMoneyOperatorName,
+    mobileMoneyPhone,
+    mobileMoneyTransactionId,
+  });
+
+  let created: boolean;
   try {
-    await createOrder({
-      ...input,
-      shippingFee,
-      freeShippingReached,
-      paymentStatus,
-      mobileMoneyOperator: mobileMoneyOperatorName,
-    });
+    created = await createOrder(input);
   } catch (err) {
     if (err instanceof DuplicateTransactionIdError) {
       return {
@@ -197,16 +277,17 @@ export async function submitOrderAction(
     throw err;
   }
 
-  await sendOrderReceivedNotifications(
-    buildOrderDetail(input, {
-      shippingFee,
-      freeShippingReached,
-      paymentStatus,
-      mobileMoneyOperatorName,
-    })
-  );
+  if (!created) {
+    // Another attempt with this very order number was recorded between our
+    // check and our insert (two requests at once): same answer as a replay.
+    return (await replayOfEarlierAttempt(validated)) ?? ORDER_NUMBER_CLASH;
+  }
 
-  return { ok: true, shippingFee };
+  // Only now — the order is really recorded — are the e-mails sent. A replay
+  // never sends them again.
+  await sendOrderReceivedNotifications(buildOrderDetail(input));
+
+  return { ok: true, shippingFee: quote.shippingFee, order: summarizeQuote(quote) };
 }
 
 export interface StripeCheckoutResult {
@@ -214,6 +295,7 @@ export interface StripeCheckoutResult {
   error?: string;
   url?: string;
   shippingFee?: number;
+  order?: QuoteSummary;
 }
 
 /** Card payment via a Stripe-hosted Checkout page — Canada/US zones only
@@ -221,8 +303,10 @@ export interface StripeCheckoutResult {
 export async function createStripeCheckoutAction(
   draft: OrderDraft
 ): Promise<StripeCheckoutResult> {
-  const input = await withServerSkus(draft);
-  if (input.zoneId !== "ca" && input.zoneId !== "us") {
+  const parsed = parseOrderDraft(draft);
+  if (!parsed.ok) return parsed;
+  const validated = parsed.draft;
+  if (validated.zoneId !== "ca" && validated.zoneId !== "us") {
     return { ok: false, error: "Le paiement par carte n'est pas disponible pour cette zone." };
   }
 
@@ -233,56 +317,34 @@ export async function createStripeCheckoutAction(
     return { ok: false, error: "Le paiement par carte n'est pas configuré pour le moment." };
   }
 
-  const pricing = await computeOrderPricing(input);
-  if (!pricing.ok) return pricing;
-  const { shippingFee, freeShippingReached } = pricing;
+  const priced = await priceDraft(validated);
+  if (!priced.ok) return priced;
+  const { quote } = priced;
+
+  // What Stripe will charge must be exactly the total stored on the order.
+  if (!stripeAmountMatchesQuote(quote)) {
+    console.error(`[stripe] Commande ${validated.id} : montant Stripe ≠ total calculé, commande refusée.`);
+    return { ok: false, error: "Erreur de calcul du montant. Aucune commande n'a été créée." };
+  }
+
+  const input = toOrderInput(validated, quote, {
+    paymentMethod: "stripe",
+    paymentStatus: "en_attente",
+  });
 
   try {
-    await createOrder({
-      ...input,
-      shippingFee,
-      freeShippingReached,
-      paymentStatus: "en_attente",
-      paymentMethod: "stripe",
-    });
+    if (!(await createOrder(input))) {
+      console.error(`[stripe] Commande ${input.id} : ce numéro de commande existe déjà.`);
+      return { ok: false, error: "Erreur lors de la création de la commande." };
+    }
   } catch (err) {
     console.error(`[stripe] Commande ${input.id} : échec de création en base.`, err);
     return { ok: false, error: "Erreur lors de la création de la commande." };
   }
 
-  await sendOrderReceivedNotifications(
-    buildOrderDetail(input, {
-      shippingFee,
-      freeShippingReached,
-      paymentStatus: "en_attente",
-    })
-  );
+  await sendOrderReceivedNotifications(buildOrderDetail(input));
 
-  const currency = ZONES[input.zoneId].currency.toLowerCase();
   const siteUrl = getSiteUrl();
-
-  const lineItems = [
-    ...input.items.map((item) => ({
-      price_data: {
-        currency,
-        product_data: { name: item.name },
-        unit_amount: Math.round(item.unitPrice * 100),
-      },
-      quantity: item.quantity,
-    })),
-    ...(shippingFee > 0
-      ? [
-          {
-            price_data: {
-              currency,
-              product_data: { name: "Livraison" },
-              unit_amount: Math.round(shippingFee * 100),
-            },
-            quantity: 1,
-          },
-        ]
-      : []),
-  ];
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -291,7 +353,7 @@ export async function createStripeCheckoutAction(
       // payment methods" dashboard setting — that setting being off is a
       // common cause of session creation failing outright in production.
       payment_method_types: ["card"],
-      line_items: lineItems,
+      line_items: stripeLineItems(quote),
       customer_email: input.customer.email || undefined,
       success_url: `${siteUrl}/commande/succes?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${siteUrl}/commande`,
@@ -306,7 +368,7 @@ export async function createStripeCheckoutAction(
 
     await setOrderStripeSession(input.id, session.id);
 
-    return { ok: true, url: session.url, shippingFee };
+    return { ok: true, url: session.url, shippingFee: quote.shippingFee, order: summarizeQuote(quote) };
   } catch (err) {
     // Logged (not surfaced to the customer) so the real cause is visible in
     // the server logs — the generic Stripe SDK error otherwise gives no clue
@@ -321,6 +383,7 @@ export interface PaypalCheckoutResult {
   error?: string;
   url?: string;
   shippingFee?: number;
+  order?: QuoteSummary;
 }
 
 /** PayPal Checkout — Canada/US zones only, alongside Stripe (Bénin keeps
@@ -330,8 +393,10 @@ export interface PaypalCheckoutResult {
 export async function createPaypalOrderAction(
   draft: OrderDraft
 ): Promise<PaypalCheckoutResult> {
-  const input = await withServerSkus(draft);
-  if (input.zoneId !== "ca" && input.zoneId !== "us") {
+  const parsed = parseOrderDraft(draft);
+  if (!parsed.ok) return parsed;
+  const validated = parsed.draft;
+  if (validated.zoneId !== "ca" && validated.zoneId !== "us") {
     return { ok: false, error: "PayPal n'est pas disponible pour cette zone." };
   }
 
@@ -339,47 +404,42 @@ export async function createPaypalOrderAction(
     return { ok: false, error: "PayPal n'est pas configuré pour le moment." };
   }
 
-  const pricing = await computeOrderPricing(input);
-  if (!pricing.ok) return pricing;
-  const { shippingFee, freeShippingReached } = pricing;
+  const priced = await priceDraft(validated);
+  if (!priced.ok) return priced;
+  const { quote } = priced;
+
+  const input = toOrderInput(validated, quote, {
+    paymentMethod: "paypal",
+    paymentStatus: "en_attente",
+  });
 
   try {
-    await createOrder({
-      ...input,
-      shippingFee,
-      freeShippingReached,
-      paymentStatus: "en_attente",
-      paymentMethod: "paypal",
-    });
+    if (!(await createOrder(input))) {
+      console.error(`[paypal] Commande ${input.id} : ce numéro de commande existe déjà.`);
+      return { ok: false, error: "Erreur lors de la création de la commande." };
+    }
   } catch (err) {
     console.error(`[paypal] Commande ${input.id} : échec de création en base.`, err);
     return { ok: false, error: "Erreur lors de la création de la commande." };
   }
 
-  await sendOrderReceivedNotifications(
-    buildOrderDetail(input, {
-      shippingFee,
-      freeShippingReached,
-      paymentStatus: "en_attente",
-    })
-  );
+  await sendOrderReceivedNotifications(buildOrderDetail(input));
 
-  const currency = ZONES[input.zoneId].currency;
   const siteUrl = getSiteUrl();
-  const total = input.subtotal + shippingFee;
 
   try {
     const order = await createPaypalOrder({
       orderId: input.id,
-      currency,
-      amount: total,
+      currency: quote.currency,
+      // The same total that was just stored on the order, never a browser value.
+      amount: quote.total,
       returnUrl: `${siteUrl}/commande/succes?order_id=${input.id}`,
       cancelUrl: `${siteUrl}/commande`,
     });
 
     await setOrderPaypalOrderId(input.id, order.id);
 
-    return { ok: true, url: order.approveUrl, shippingFee };
+    return { ok: true, url: order.approveUrl, shippingFee: quote.shippingFee, order: summarizeQuote(quote) };
   } catch (err) {
     console.error(`[paypal] Commande ${input.id} : échec de création de la commande PayPal.`, err);
     return { ok: false, error: "Erreur lors de la connexion à PayPal. Réessayez." };

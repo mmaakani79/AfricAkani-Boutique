@@ -2,6 +2,7 @@ import { Pool } from "pg";
 import { SEED_PRODUCTS } from "./seed-products";
 import { SEED_CATEGORIES } from "./seed-categories";
 import { SEED_PACKAGING_TYPES } from "./seed-packaging-types";
+import { resolveDatabaseUrl } from "./deployment-env";
 
 declare global {
   var __pgPool: Pool | undefined;
@@ -9,16 +10,7 @@ declare global {
 }
 
 function connectionString(): string {
-  const url =
-    process.env.POSTGRES_URL ||
-    process.env.POSTGRES_URL_NON_POOLING ||
-    process.env.DATABASE_URL;
-  if (!url) {
-    throw new Error(
-      "No Postgres connection string found. Set POSTGRES_URL (Vercel Postgres injects this automatically once the Storage integration is added)."
-    );
-  }
-  return url;
+  return resolveDatabaseUrl(process.env);
 }
 
 export function getPool(): Pool {

@@ -9,7 +9,7 @@ export interface OrderItemInput {
   productId: string;
   name: string;
   /** Chosen variant, when the product has variants. The browser sends only
-   *  this id: the SKU is resolved on the server (see resolveItemSkus). */
+   *  this id: name, SKU and prices are all filled in by the server (see order-pricing.ts). */
   variantId?: string | null;
   /** Internal supplier reference — filled in by the server, never by the browser. */
   sku?: string | null;
@@ -60,17 +60,22 @@ function isUniqueViolation(err: unknown): boolean {
   );
 }
 
-export async function createOrder(input: OrderInput): Promise<void> {
+/** Inserts the order and its lines in one transaction. Returns false — and
+ *  writes nothing — when an order with this id already exists: the caller
+ *  decides whether that is a harmless retry of the same request (see
+ *  order-replay.ts) or a clash. */
+export async function createOrder(input: OrderInput): Promise<boolean> {
   await ensureSchema();
   const pool = getPool();
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
     try {
-      await client.query(
+      const inserted = await client.query(
         `INSERT INTO orders
           (id, zone_id, subtotal, shipping_fee, free_shipping_reached, customer_name, customer_email, customer_phone, customer_address, customer_city, customer_apartment, customer_province, customer_postal_code, customer_country, payment_status, payment_method, mobile_money_operator, mobile_money_phone, mobile_money_transaction_id)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+         ON CONFLICT (id) DO NOTHING`,
         [
           input.id,
           input.zoneId,
@@ -93,6 +98,10 @@ export async function createOrder(input: OrderInput): Promise<void> {
           input.mobileMoneyTransactionId ?? null,
         ]
       );
+      if (inserted.rowCount === 0) {
+        await client.query("ROLLBACK");
+        return false;
+      }
     } catch (err) {
       if (isUniqueViolation(err)) throw new DuplicateTransactionIdError();
       throw err;
@@ -113,6 +122,7 @@ export async function createOrder(input: OrderInput): Promise<void> {
       );
     }
     await client.query("COMMIT");
+    return true;
   } catch (err) {
     await client.query("ROLLBACK");
     throw err;

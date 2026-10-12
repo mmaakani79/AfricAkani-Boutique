@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Josefin_Sans, Open_Sans } from "next/font/google";
+import { preload } from "react-dom";
+import "./fonts.css";
 import "./globals.css";
 import { ZoneProvider } from "@/context/zone-context";
 import { CartProvider } from "@/context/cart-context";
@@ -9,17 +10,13 @@ import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { ShippingBanner } from "@/components/layout/shipping-banner";
 
-const josefin = Josefin_Sans({
-  variable: "--font-brand",
-  subsets: ["latin"],
-  weight: ["600", "700"],
-});
-
-const openSans = Open_Sans({
-  variable: "--font-ui",
-  subsets: ["latin"],
-  weight: ["400", "700"],
-});
+// The two "latin" files carry every French character: load them right away, as
+// next/font did, so text appears directly in the right font (the other ranges
+// load on demand, only if a page needs them).
+const PRELOADED_FONTS = [
+  new URL("./fonts/josefin-sans-latin.woff2", import.meta.url),
+  new URL("./fonts/open-sans-latin.woff2", import.meta.url),
+];
 
 const SITE_URL = (
   process.env.NEXT_PUBLIC_SITE_URL || "https://www.africakani.com"
@@ -45,11 +42,11 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
+  for (const font of PRELOADED_FONTS) {
+    preload(font.href, { as: "font", type: "font/woff2", crossOrigin: "anonymous" });
+  }
   return (
-    <html
-      lang="fr"
-      className={`${josefin.variable} ${openSans.variable} h-full antialiased`}
-    >
+    <html lang="fr" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-ivory text-ink font-sans">
         <ZoneProvider>
           <CategoryProvider>

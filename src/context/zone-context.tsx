@@ -23,6 +23,14 @@ interface ZoneContextValue {
    *  defaults to 1, i.e. the base price, for callers that don't care (cards). */
   priceFor: (product: PublicProduct, quantity?: number) => number | null;
   format: (amount: number) => string;
+  /** Adopts a shipping rule the server just reported (after the customer
+   *  agreed to a price change), instead of waiting for a page reload. */
+  applyShippingSettings: (settings: ShippingSettings) => void;
+  /** The shipping rules of every zone exactly as Réglages holds them, or null
+   *  until they have really been loaded (and whenever they could not be): then
+   *  `zone` above only carries the code's built-in fallback values, which
+   *  must never be presented to the customer as the shop's real figures. */
+  liveShipping: Record<ZoneId, ShippingSettings> | null;
 }
 
 const ZoneContext = createContext<ZoneContextValue | null>(null);
@@ -51,19 +59,30 @@ export function ZoneProvider({ children }: { children: React.ReactNode }) {
   const [shipping, setShipping] = useState<Record<ZoneId, ShippingSettings>>(
     DEFAULT_SHIPPING
   );
+  const [shippingLive, setShippingLive] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/shipping-settings")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: Record<ZoneId, ShippingSettings> | null) => {
-        if (data && !cancelled) setShipping(data);
-      })
-      .catch(() => {
-        /* keep static fallback thresholds, no shipping fee ever blocks checkout */
-      });
+    const load = () => {
+      fetch("/api/shipping-settings")
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: Record<ZoneId, ShippingSettings> | null) => {
+          if (data && !cancelled) {
+            setShipping(data);
+            setShippingLive(true);
+          }
+        })
+        .catch(() => {
+          /* keep static fallback thresholds, no shipping fee ever blocks checkout */
+        });
+    };
+    load();
+    // A visitor who opened the site without a connection gets the real figures
+    // as soon as it comes back.
+    window.addEventListener("online", load);
     return () => {
       cancelled = true;
+      window.removeEventListener("online", load);
     };
   }, []);
 
@@ -89,6 +108,10 @@ export function ZoneProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const applyShippingSettings = useCallback((settings: ShippingSettings) => {
+    setShipping((prev) => ({ ...prev, [settings.zoneId]: settings }));
+  }, []);
+
   const value = useMemo<ZoneContextValue>(() => {
     const zoneSettings = shipping[zoneId];
     const zone: ZoneWithShipping = {
@@ -104,8 +127,10 @@ export function ZoneProvider({ children }: { children: React.ReactNode }) {
       priceFor: (product: PublicProduct, quantity = 1) =>
         priceForQuantity(product, zoneId, quantity),
       format: (amount: number) => formatPrice(amount, zoneId),
+      applyShippingSettings,
+      liveShipping: shippingLive ? shipping : null,
     };
-  }, [zoneId, setZoneId, shipping]);
+  }, [zoneId, setZoneId, shipping, shippingLive, applyShippingSettings]);
 
   return <ZoneContext.Provider value={value}>{children}</ZoneContext.Provider>;
 }

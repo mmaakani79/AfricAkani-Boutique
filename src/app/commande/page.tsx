@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Truck } from "lucide-react";
 import { useCart } from "@/context/cart-context";
@@ -12,9 +12,19 @@ import { saveOrder, type Order } from "@/lib/orders";
 import {
   createStripeCheckoutAction,
   createPaypalOrderAction,
+  previewCartPricesAction,
   submitOrderAction,
-  type OrderDraft,
 } from "./actions";
+import { PriceChangePanel } from "./price-change-panel";
+import type { OrderDraft } from "@/lib/order-draft";
+import { withTimeout } from "@/lib/with-timeout";
+import type { QuoteSummary } from "@/lib/order-pricing";
+import {
+  detectPriceChange,
+  type DisplayedPrices,
+  type PriceChangeLine,
+  type PriceChangeReport,
+} from "@/lib/price-change";
 import { MobileMoneyPanel } from "./mobile-money-panel";
 import {
   PaymentBadgeRow,
@@ -27,9 +37,18 @@ import { computeShippingFee, isBelowMinOrder } from "@/lib/shipping-calc";
 
 const PAYMENT_TIMEOUT_HOURS = getPaymentTimeoutHours();
 
+// How long the page waits for the server before telling the customer the order
+// was not recorded. A late answer is harmless: a retry reuses the same order
+// number, so it finds the order instead of creating a second one.
+const ORDER_SUBMIT_TIMEOUT_MS = 25_000;
+const PRICE_CHECK_TIMEOUT_MS = 12_000;
+
+const ORDER_NOT_SAVED_MESSAGE =
+  "Votre commande n'a pas été enregistrée : vérifiez votre connexion et réessayez. Votre panier et vos informations sont conservés, et un nouvel essai ne crée jamais de commande en double.";
+
 export default function CommandePage() {
-  const { items, subtotal, clearCart } = useCart();
-  const { zoneId, zone, setZoneId, format } = useZone();
+  const { items, subtotal, clearCart, removeItem, refreshProducts } = useCart();
+  const { zoneId, zone, setZoneId, format, applyShippingSettings } = useZone();
 
   const [orderId] = useState(
     () => `AK-${Date.now().toString(36).toUpperCase()}`
@@ -46,6 +65,17 @@ export default function CommandePage() {
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // True when the order could not be recorded (no network, too slow, server
+  // error): the error then comes with a "Réessayer" button.
+  const [canRetry, setCanRetry] = useState(false);
+  // Synchronous guard against a double click (state updates are asynchronous).
+  const submittingRef = useRef(false);
+  // "Le prix a changé": set when the server's current prices differ from the
+  // ones displayed. While it is open nothing has been created or charged.
+  const [priceChange, setPriceChange] = useState<PriceChangeReport | null>(null);
+  const [priceNotice, setPriceNotice] = useState<string | null>(null);
+  const [rechecking, setRechecking] = useState(false);
+  const priceChangeRef = useRef<HTMLDivElement>(null);
 
   const [mmConfig, setMmConfig] = useState<MobileMoneyConfig | null>(null);
   const [stripeConfigured, setStripeConfigured] = useState(false);
@@ -92,6 +122,17 @@ export default function CommandePage() {
     };
   }, []);
 
+  useEffect(() => {
+    // Another zone means other prices: any open price-change panel is obsolete.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPriceChange(null);
+    setPriceNotice(null);
+  }, [zoneId]);
+
+  useEffect(() => {
+    if (priceChange) priceChangeRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, [priceChange]);
+
   const isNorthAmerica = zoneId === "ca" || zoneId === "us";
 
   const mobileMoneyAvailable =
@@ -111,30 +152,155 @@ export default function CommandePage() {
     usingMobileMoney &&
     (!mmOperatorId || !mmPhone.trim() || !mmTransactionId.trim());
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  type CartItems = typeof items;
+
+  function lineName(i: CartItems[number]): string {
+    const variantLabel = i.variant
+      ? Object.entries(i.variant.attributes)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join(", ")
+      : null;
+    return variantLabel ? `${i.product.name} (${variantLabel})` : i.product.name;
+  }
+
+  /** The prices on screen for these lines, as the customer sees them. */
+  function displayedPrices(list: CartItems): DisplayedPrices {
+    const sub = list.reduce((sum, i) => sum + i.lineTotal, 0);
+    const fee = computeShippingFee(sub, zone);
+    return {
+      zoneId,
+      items: list.map((i) => ({
+        productId: i.product.id,
+        variantId: i.variant?.id ?? null,
+        name: lineName(i),
+        unitPrice: i.lineTotal / i.quantity,
+      })),
+      shippingFee: fee,
+      total: sub + fee,
+    };
+  }
+
+  /** Asks the server what this cart costs right now and compares it with what
+   *  is displayed. "unknown" = the server could not be reached or refused the
+   *  cart: the order call that follows reports that exactly as before. */
+  async function checkPrices(
+    list: CartItems
+  ): Promise<
+    { status: "changed"; report: PriceChangeReport } | { status: "same" } | { status: "unknown" }
+  > {
+    try {
+      const res = await withTimeout(
+        previewCartPricesAction({
+          zoneId,
+          currency: zone.currency,
+          items: list.map((i) => ({
+            productId: i.product.id,
+            variantId: i.variant?.id ?? null,
+            quantity: i.quantity,
+          })),
+        }),
+        PRICE_CHECK_TIMEOUT_MS
+      );
+      if (!res.ok) return { status: "unknown" };
+      const report = detectPriceChange(displayedPrices(list), res.preview);
+      return report ? { status: "changed", report } : { status: "same" };
+    } catch {
+      return { status: "unknown" };
+    }
+  }
+
+  function continueAtNewPrice() {
+    if (!priceChange || priceChange.hasUnavailable) return;
+    refreshProducts(priceChange.products);
+    applyShippingSettings(priceChange.shipping);
+    setPriceChange(null);
+    setPriceNotice(
+      `Les prix ont été mis à jour. Vérifiez le nouveau total, puis cliquez sur « ${submitLabel} » pour confirmer.`
+    );
+  }
+
+  async function removeLine(line: PriceChangeLine) {
+    removeItem(line.productId, line.variantId ?? undefined);
+    const remaining = items.filter(
+      (i) => !(i.product.id === line.productId && (i.variant?.id ?? null) === line.variantId)
+    );
+    setPriceChange(null);
+    setPriceNotice(null);
+    if (remaining.length === 0) return;
+    setRechecking(true);
+    const result = await checkPrices(remaining);
+    setRechecking(false);
+    if (result.status === "changed") setPriceChange(result.report);
+    else if (result.status === "unknown") {
+      setPriceNotice(
+        "Produit retiré. Les prix n'ont pas pu être revérifiés (connexion indisponible) : ils seront contrôlés au moment du paiement."
+      );
+    }
+  }
+
+  // Only used for the local "Mon compte" copy when the server could not be
+  // reached at all; whenever the server answers, its own figures are used.
+  function estimateFromCart(): QuoteSummary {
+    return {
+      subtotal,
+      shippingFee,
+      total,
+      freeShippingReached: reached,
+      items: items.map((i) => ({
+        productId: i.product.id,
+        variantId: i.variant?.id ?? null,
+        name: lineName(i),
+        quantity: i.quantity,
+        unitPrice: i.lineTotal / i.quantity,
+        lineTotal: i.lineTotal,
+      })),
+    };
+  }
+
+  const submitLabel = usingStripe
+    ? "Payer par carte"
+    : usingPaypal
+      ? "Payer avec PayPal"
+      : "Confirmer la commande";
+
+  async function handleSubmit(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    try {
+      await submitOrder();
+    } finally {
+      submittingRef.current = false;
+    }
+  }
+
+  async function submitOrder() {
     setSubmitError(null);
+    setCanRetry(false);
+    setPriceNotice(null);
     setSubmitting(true);
 
+    // Before anything is created or charged: is what the customer sees still
+    // what the server would charge? If not, show what changed and stop here.
+    const priceCheck = await checkPrices(items);
+    if (priceCheck.status === "changed") {
+      setSubmitting(false);
+      setPriceChange(priceCheck.report);
+      return;
+    }
+    setPriceChange(null);
+
+    // Choices only — never an amount. The server prices the order itself
+    // (prices, shipping, total) and sends its figures back in `result.order`.
     const draft: OrderDraft = {
       id: orderId,
       zoneId,
-      subtotal,
-      items: items.map((i) => {
-        const variantLabel = i.variant
-          ? Object.entries(i.variant.attributes)
-              .map(([k, v]) => `${k}: ${v}`)
-              .join(", ")
-          : null;
-        return {
-          productId: i.product.id,
-          name: variantLabel ? `${i.product.name} (${variantLabel})` : i.product.name,
-          variantId: i.variant?.id ?? null,
-          quantity: i.quantity,
-          unitPrice: i.lineTotal / i.quantity,
-          lineTotal: i.lineTotal,
-        };
-      }),
+      currency: zone.currency,
+      items: items.map((i) => ({
+        productId: i.product.id,
+        variantId: i.variant?.id ?? null,
+        quantity: i.quantity,
+      })),
       customer: {
         name,
         email,
@@ -181,49 +347,55 @@ export default function CommandePage() {
         return;
       }
 
+      const charged = redirectResult.order ?? estimateFromCart();
       saveOrder({
         id: draft.id,
         createdAt: new Date().toISOString(),
         zoneId,
-        subtotal,
-        shippingFee: redirectResult.shippingFee ?? shippingFee,
-        freeShippingReached: reached,
-        items: draft.items,
+        subtotal: charged.subtotal,
+        shippingFee: charged.shippingFee,
+        freeShippingReached: charged.freeShippingReached,
+        items: charged.items,
         customer: draft.customer,
         paymentMethod: usingStripe ? "stripe" : "paypal",
         mobileMoneyOperator: null,
         mobileMoneyTransactionId: null,
       });
       clearCart();
-      window.location.href = redirectResult.url;
+      window.location.assign(redirectResult.url);
       return;
     }
 
+    // WhatsApp and Mobile Money: the customer is shown a confirmation only once
+    // the server says the order is recorded. Any failure — no network, no answer
+    // in time, a server error — leaves the cart and the form as they are.
     let result;
     try {
-      result = await submitOrderAction(draft);
+      result = await withTimeout(submitOrderAction(draft), ORDER_SUBMIT_TIMEOUT_MS);
     } catch {
-      // The order still succeeds for the customer even if the admin-facing
-      // database write fails (e.g. no database configured yet) — estimate
-      // the shipping fee locally in that fallback case.
-      result = { ok: true as const, shippingFee };
+      setSubmitting(false);
+      setSubmitError(ORDER_NOT_SAVED_MESSAGE);
+      setCanRetry(true);
+      return;
     }
 
     setSubmitting(false);
 
-    if (!result.ok) {
-      setSubmitError(result.error ?? "Une erreur est survenue. Merci de réessayer.");
+    if (!result.ok || !result.order) {
+      setSubmitError(result.error ?? ORDER_NOT_SAVED_MESSAGE);
+      setCanRetry(!result.error);
       return;
     }
 
+    const charged = result.order;
     const order: Order = {
       id: draft.id,
       createdAt: new Date().toISOString(),
       zoneId,
-      subtotal,
-      shippingFee: result.shippingFee ?? shippingFee,
-      freeShippingReached: reached,
-      items: draft.items,
+      subtotal: charged.subtotal,
+      shippingFee: charged.shippingFee,
+      freeShippingReached: charged.freeShippingReached,
+      items: charged.items,
       customer: draft.customer,
       paymentMethod: draft.paymentMethod ?? null,
       mobileMoneyOperator: usingMobileMoney
@@ -524,10 +696,45 @@ export default function CommandePage() {
               continuer.
             </p>
           )}
+          {priceChange && (
+            <div ref={priceChangeRef}>
+              <PriceChangePanel
+                report={priceChange}
+                format={format}
+                busy={rechecking}
+                onContinue={continueAtNewPrice}
+                onRemove={removeLine}
+              />
+            </div>
+          )}
+          {priceNotice && (
+            <p
+              role="status"
+              data-testid="price-notice"
+              className="rounded-xl bg-brand-green/10 px-4 py-3 text-xs font-semibold text-brand-green-dark"
+            >
+              {priceNotice}
+            </p>
+          )}
           {submitError && (
-            <p className="rounded-xl bg-red-50 px-4 py-3 text-xs font-semibold text-red-600">
+            <p
+              role="alert"
+              data-testid="submit-error"
+              className="rounded-xl bg-red-50 px-4 py-3 text-xs font-semibold text-red-600"
+            >
               {submitError}
             </p>
+          )}
+          {submitError && canRetry && (
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={() => handleSubmit()}
+              data-testid="retry-order"
+              className="w-full rounded-full border-2 border-brand-green py-2.5 text-sm font-bold text-brand-green-dark hover:bg-ivory disabled:opacity-50"
+            >
+              Réessayer
+            </button>
           )}
 
           <button
@@ -535,13 +742,7 @@ export default function CommandePage() {
             disabled={belowMinOrder || submitting || mobileMoneyIncomplete}
             className="w-full rounded-full bg-brand-green py-3 text-sm font-bold text-ivory hover:bg-brand-green-dark disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {submitting
-              ? "Envoi…"
-              : usingStripe
-                ? "Payer par carte"
-                : usingPaypal
-                  ? "Payer avec PayPal"
-                  : "Confirmer la commande"}
+            {submitting ? "Envoi…" : submitLabel}
           </button>
         </form>
 

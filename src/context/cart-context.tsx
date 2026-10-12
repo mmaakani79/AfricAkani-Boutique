@@ -37,6 +37,9 @@ interface CartContextValue {
   removeItem: (productId: string, variantId?: string) => void;
   updateQuantity: (productId: string, quantity: number, variantId?: string) => void;
   clearCart: () => void;
+  /** Replaces the product data kept in the cart (prices, tiers, variants,
+   *  stock) with fresh data from the server — only after the customer agreed. */
+  refreshProducts: (products: PublicProduct[]) => void;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -114,6 +117,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = useCallback(() => setLines([]), []);
 
+  const refreshProducts = useCallback((fresh: PublicProduct[]) => {
+    setLines((prev) =>
+      prev.map((line) => {
+        const product = fresh.find((p) => p.id === line.product.id);
+        if (!product) return line;
+        const variant = line.variant
+          ? (product.variants?.find((v) => v.id === line.variant!.id) ?? line.variant)
+          : undefined;
+        // The price check doesn't join reviews/sales: keep what the cart had.
+        return {
+          ...line,
+          product: { ...product, rating: line.product.rating, soldCount: line.product.soldCount },
+          variant,
+        };
+      })
+    );
+  }, []);
+
   const items = useMemo<CartItem[]>(
     () =>
       lines.map((line) => ({
@@ -135,6 +156,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     removeItem,
     updateQuantity,
     clearCart,
+    refreshProducts,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
