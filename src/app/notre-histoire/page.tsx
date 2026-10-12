@@ -153,8 +153,8 @@ export default function NotreHistoire() {
             Découvrez la maison
           </h2>
           <p className="mx-auto mt-3 max-w-md text-sm text-ivory/85 sm:text-base">
-            Des produits naturels, halal, et utiles au quotidien — livrés
-            gratuitement.
+            Des produits naturels, halal, et utiles au quotidien, choisis avec
+            soin.
           </p>
           <Link
             href="/catalogue"

@@ -56,7 +56,7 @@ export default async function Home() {
             </h1>
             <p className="mt-5 max-w-xl text-base text-ivory/85 sm:text-lg">
               Produits naturels et halal, et sélection généraliste utile au
-              quotidien. Qualité vérifiée, du Bénin au Canada et aux États-Unis.
+              quotidien. AfricAkani vous livre en Afrique de l&rsquo;Ouest, au Canada et aux États-Unis.
             </p>
             <div className="mt-8 flex flex-col items-start gap-3 sm:flex-row sm:items-center">
               <Link
