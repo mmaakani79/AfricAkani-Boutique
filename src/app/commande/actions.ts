@@ -6,6 +6,7 @@ import {
   setOrderStripeSession,
   setOrderPaypalOrderId,
   DuplicateTransactionIdError,
+  getOrderById,
   type OrderDetail,
   type OrderInput,
 } from "@/lib/orders-db";
@@ -24,6 +25,7 @@ import {
   type QuoteSummary,
 } from "@/lib/order-pricing";
 import { getSiteUrl } from "@/lib/order-config";
+import { isSameOrderRequest, summaryFromStoredOrder } from "@/lib/order-replay";
 import { getStripeClient } from "@/lib/stripe";
 import { createPaypalOrder, isPaypalConfigured } from "@/lib/paypal";
 import {
@@ -170,12 +172,43 @@ async function sendOrderReceivedNotifications(orderDetail: OrderDetail): Promise
   }
 }
 
+const ORDER_NUMBER_CLASH: OrderSubmissionResult = {
+  ok: false,
+  error:
+    "Cette commande ne peut pas être enregistrée avec ce numéro. Rechargez la page, vérifiez votre panier et réessayez.",
+};
+
+/** The recorded order, when `draft` is a repeat of the request that created it:
+ *  the result the first attempt would have returned. null when no order has
+ *  this number; a refusal when the number belongs to a different request. */
+async function replayOfEarlierAttempt(draft: ValidatedDraft): Promise<OrderSubmissionResult | null> {
+  const stored = await getOrderById(draft.id);
+  if (!stored) return null;
+  const same = isSameOrderRequest(stored, {
+    zoneId: draft.zoneId,
+    customer: draft.customer,
+    wantsMobileMoney: draft.wantsMobileMoney,
+    mobileMoneyTransactionId: draft.mobileMoneyTransactionId,
+    lines: draft.lines,
+  });
+  if (!same) return ORDER_NUMBER_CLASH;
+  return { ok: true, shippingFee: stored.shippingFee, order: summaryFromStoredOrder(stored) };
+}
+
 export async function submitOrderAction(
   draft: OrderDraft
 ): Promise<OrderSubmissionResult> {
   const parsed = parseOrderDraft(draft);
   if (!parsed.ok) return parsed;
   const validated = parsed.draft;
+
+  // Idempotence: a retry (or a double click, or a lost response) carries the
+  // same order number. If that order is already recorded and is the same
+  // request, answer with it — before any other check, because the first
+  // attempt already consumed e.g. the Mobile Money transaction id.
+  const earlier = await replayOfEarlierAttempt(validated);
+  if (earlier) return earlier;
+
   const priced = await priceDraft(validated);
   if (!priced.ok) return priced;
   const { quote } = priced;
@@ -230,8 +263,9 @@ export async function submitOrderAction(
     mobileMoneyTransactionId,
   });
 
+  let created: boolean;
   try {
-    await createOrder(input);
+    created = await createOrder(input);
   } catch (err) {
     if (err instanceof DuplicateTransactionIdError) {
       return {
@@ -243,6 +277,14 @@ export async function submitOrderAction(
     throw err;
   }
 
+  if (!created) {
+    // Another attempt with this very order number was recorded between our
+    // check and our insert (two requests at once): same answer as a replay.
+    return (await replayOfEarlierAttempt(validated)) ?? ORDER_NUMBER_CLASH;
+  }
+
+  // Only now — the order is really recorded — are the e-mails sent. A replay
+  // never sends them again.
   await sendOrderReceivedNotifications(buildOrderDetail(input));
 
   return { ok: true, shippingFee: quote.shippingFee, order: summarizeQuote(quote) };
@@ -291,7 +333,10 @@ export async function createStripeCheckoutAction(
   });
 
   try {
-    await createOrder(input);
+    if (!(await createOrder(input))) {
+      console.error(`[stripe] Commande ${input.id} : ce numéro de commande existe déjà.`);
+      return { ok: false, error: "Erreur lors de la création de la commande." };
+    }
   } catch (err) {
     console.error(`[stripe] Commande ${input.id} : échec de création en base.`, err);
     return { ok: false, error: "Erreur lors de la création de la commande." };
@@ -369,7 +414,10 @@ export async function createPaypalOrderAction(
   });
 
   try {
-    await createOrder(input);
+    if (!(await createOrder(input))) {
+      console.error(`[paypal] Commande ${input.id} : ce numéro de commande existe déjà.`);
+      return { ok: false, error: "Erreur lors de la création de la commande." };
+    }
   } catch (err) {
     console.error(`[paypal] Commande ${input.id} : échec de création en base.`, err);
     return { ok: false, error: "Erreur lors de la création de la commande." };

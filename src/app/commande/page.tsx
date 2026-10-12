@@ -17,6 +17,7 @@ import {
 } from "./actions";
 import { PriceChangePanel } from "./price-change-panel";
 import type { OrderDraft } from "@/lib/order-draft";
+import { withTimeout } from "@/lib/with-timeout";
 import type { QuoteSummary } from "@/lib/order-pricing";
 import {
   detectPriceChange,
@@ -35,6 +36,15 @@ import { getPaymentTimeoutHours } from "@/lib/order-config";
 import { computeShippingFee, isBelowMinOrder } from "@/lib/shipping-calc";
 
 const PAYMENT_TIMEOUT_HOURS = getPaymentTimeoutHours();
+
+// How long the page waits for the server before telling the customer the order
+// was not recorded. A late answer is harmless: a retry reuses the same order
+// number, so it finds the order instead of creating a second one.
+const ORDER_SUBMIT_TIMEOUT_MS = 25_000;
+const PRICE_CHECK_TIMEOUT_MS = 12_000;
+
+const ORDER_NOT_SAVED_MESSAGE =
+  "Votre commande n'a pas été enregistrée : vérifiez votre connexion et réessayez. Votre panier et vos informations sont conservés, et un nouvel essai ne crée jamais de commande en double.";
 
 export default function CommandePage() {
   const { items, subtotal, clearCart, removeItem, refreshProducts } = useCart();
@@ -55,6 +65,11 @@ export default function CommandePage() {
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // True when the order could not be recorded (no network, too slow, server
+  // error): the error then comes with a "Réessayer" button.
+  const [canRetry, setCanRetry] = useState(false);
+  // Synchronous guard against a double click (state updates are asynchronous).
+  const submittingRef = useRef(false);
   // "Le prix a changé": set when the server's current prices differ from the
   // ones displayed. While it is open nothing has been created or charged.
   const [priceChange, setPriceChange] = useState<PriceChangeReport | null>(null);
@@ -174,15 +189,18 @@ export default function CommandePage() {
     { status: "changed"; report: PriceChangeReport } | { status: "same" } | { status: "unknown" }
   > {
     try {
-      const res = await previewCartPricesAction({
-        zoneId,
-        currency: zone.currency,
-        items: list.map((i) => ({
-          productId: i.product.id,
-          variantId: i.variant?.id ?? null,
-          quantity: i.quantity,
-        })),
-      });
+      const res = await withTimeout(
+        previewCartPricesAction({
+          zoneId,
+          currency: zone.currency,
+          items: list.map((i) => ({
+            productId: i.product.id,
+            variantId: i.variant?.id ?? null,
+            quantity: i.quantity,
+          })),
+        }),
+        PRICE_CHECK_TIMEOUT_MS
+      );
       if (!res.ok) return { status: "unknown" };
       const report = detectPriceChange(displayedPrices(list), res.preview);
       return report ? { status: "changed", report } : { status: "same" };
@@ -245,9 +263,20 @@ export default function CommandePage() {
       ? "Payer avec PayPal"
       : "Confirmer la commande";
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    try {
+      await submitOrder();
+    } finally {
+      submittingRef.current = false;
+    }
+  }
+
+  async function submitOrder() {
     setSubmitError(null);
+    setCanRetry(false);
     setPriceNotice(null);
     setSubmitting(true);
 
@@ -333,28 +362,32 @@ export default function CommandePage() {
         mobileMoneyTransactionId: null,
       });
       clearCart();
-      window.location.href = redirectResult.url;
+      window.location.assign(redirectResult.url);
       return;
     }
 
+    // WhatsApp and Mobile Money: the customer is shown a confirmation only once
+    // the server says the order is recorded. Any failure — no network, no answer
+    // in time, a server error — leaves the cart and the form as they are.
     let result;
     try {
-      result = await submitOrderAction(draft);
+      result = await withTimeout(submitOrderAction(draft), ORDER_SUBMIT_TIMEOUT_MS);
     } catch {
-      // The order still succeeds for the customer even if the admin-facing
-      // database write fails (e.g. no database configured yet) — estimate
-      // the amounts locally in that fallback case.
-      result = { ok: true as const, order: estimateFromCart() };
+      setSubmitting(false);
+      setSubmitError(ORDER_NOT_SAVED_MESSAGE);
+      setCanRetry(true);
+      return;
     }
 
     setSubmitting(false);
 
-    if (!result.ok) {
-      setSubmitError(result.error ?? "Une erreur est survenue. Merci de réessayer.");
+    if (!result.ok || !result.order) {
+      setSubmitError(result.error ?? ORDER_NOT_SAVED_MESSAGE);
+      setCanRetry(!result.error);
       return;
     }
 
-    const charged = result.order ?? estimateFromCart();
+    const charged = result.order;
     const order: Order = {
       id: draft.id,
       createdAt: new Date().toISOString(),
@@ -684,9 +717,24 @@ export default function CommandePage() {
             </p>
           )}
           {submitError && (
-            <p className="rounded-xl bg-red-50 px-4 py-3 text-xs font-semibold text-red-600">
+            <p
+              role="alert"
+              data-testid="submit-error"
+              className="rounded-xl bg-red-50 px-4 py-3 text-xs font-semibold text-red-600"
+            >
               {submitError}
             </p>
+          )}
+          {submitError && canRetry && (
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={() => handleSubmit()}
+              data-testid="retry-order"
+              className="w-full rounded-full border-2 border-brand-green py-2.5 text-sm font-bold text-brand-green-dark hover:bg-ivory disabled:opacity-50"
+            >
+              Réessayer
+            </button>
           )}
 
           <button
