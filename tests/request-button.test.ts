@@ -23,7 +23,7 @@ describe("couleurs : uniquement les dorés déjà présents sur le site", () => 
   });
 
   it("dégradé léger entre deux tons dérivés du doré, avec repli en couleur pleine", () => {
-    assert.match(requestCss, /--request-top: color-mix\(in srgb, var\(--color-gold\), #fff/);
+    assert.match(requestCss, /--request-top: color-mix\(in srgb, var\(--color-gold\), #000/);
     assert.match(requestCss, /--request-bottom: color-mix\(in srgb, var\(--color-gold\), #000/);
     const solid = requestCss.indexOf("background: var(--color-gold);");
     const gradient = requestCss.indexOf("background: linear-gradient(180deg");
@@ -38,9 +38,44 @@ describe("couleurs : uniquement les dorés déjà présents sur le site", () => 
   });
 });
 
+/** Luminance relative WCAG et contraste du blanc sur une couleur [r, g, b]. */
+const luminance = ([r, g, b]: number[]) => {
+  const f = (v: number) => (v / 255 <= 0.03928 ? v / 255 / 12.92 : ((v / 255 + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+};
+const whiteContrast = (rgb: number[]) => 1.05 / (luminance(rgb) + 0.05);
+
+describe("contraste du texte blanc (WCAG AA : au moins 4,5 : 1)", () => {
+  const goldHex = css.match(/--color-gold:\s*#([0-9a-fA-F]{6})/)![1];
+  const gold = [0, 2, 4].map((i) => parseInt(goldHex.slice(i, i + 2), 16));
+  const darkening = (name: string) =>
+    Number(requestCss.match(new RegExp(`--request-${name}: color-mix\\(in srgb, var\\(--color-gold\\), #000 (\\d+)%\\)`))![1]) / 100;
+  const tone = (p: number) => gold.map((v) => v * (1 - p));
+
+  it("le haut et le bas du dégradé sont le doré de la marque assombri : contraste ≥ 4,5 : 1", () => {
+    assert.equal(goldHex.toLowerCase(), "c9962c");
+    for (const name of ["top", "bottom"]) {
+      const ratio = whiteContrast(tone(darkening(name)));
+      assert.ok(ratio >= 4.5, `${name} : ${ratio.toFixed(2)} : 1`);
+    }
+  });
+
+  it("le bas est plus foncé que le haut (aspect glacé) et le dégradé reste léger", () => {
+    const top = darkening("top"), bottom = darkening("bottom");
+    assert.ok(bottom > top && bottom - top <= 0.2);
+  });
+
+  it("le survol éclaircit très peu et l'appui assombrit (le contraste ne baisse pas sous la norme)", () => {
+    const hover = Number(requestCss.match(/brightness\(([\d.]+)\)[^}]*inset 0 1px 0 rgba\(255, 255, 255, 0\.5\)/)![1]);
+    assert.ok(hover > 1 && hover <= 1.06, `survol : brightness(${hover})`);
+    const lightened = tone(darkening("top")).map((v) => Math.min(255, v * hover));
+    assert.ok(whiteContrast(lightened) >= 4.5);
+  });
+});
+
 describe("états", () => {
   it("survol : monte d'un cran et s'éclaircit, seulement sur les appareils à souris", () => {
-    assert.match(requestCss, /@media \(hover: hover\)[\s\S]*\.request-btn:hover[\s\S]*translateY\(-1px\)[\s\S]*brightness\(1\.07\)/);
+    assert.match(requestCss, /@media \(hover: hover\)[\s\S]*\.request-btn:hover[\s\S]*translateY\(-1px\)[\s\S]*brightness\(1\.05\)/);
   });
 
   it("appui : s'enfonce de 2 px, plus sombre, ombre resserrée — aussi via data-pressed (toucher)", () => {

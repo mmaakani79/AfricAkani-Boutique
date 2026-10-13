@@ -79,10 +79,12 @@ body {
 
 /* Bouton « Faire une demande » du pied de page : plein, doré de la marque, aspect
    glacé. Uniquement les dorés déjà présents sur le site (--color-gold, --color-gold-light) ;
-   les deux tons du dégradé en sont dérivés (un peu plus clair / un peu plus foncé). */
+   les deux tons du dégradé sont le doré de la marque assombri (même teinte), assez profond
+   pour que le texte blanc garde un contraste d'au moins 4,5 : 1 (WCAG AA) sur toute la
+   hauteur, au repos, au survol et à l'appui. */
 .request-btn {
-  --request-top: color-mix(in srgb, var(--color-gold), #fff 14%);
-  --request-bottom: color-mix(in srgb, var(--color-gold), #000 12%);
+  --request-top: color-mix(in srgb, var(--color-gold), #000 40%);
+  --request-bottom: color-mix(in srgb, var(--color-gold), #000 54%);
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -116,19 +118,19 @@ body {
 }
 
 
-/* Reflet discret sur le haut. */
 @media (min-width: 640px) {
   .request-btn {
     max-width: 238px;
   }
 }
 
+/* Reflet discret sur le haut. */
 .request-btn::before {
   content: "";
   position: absolute;
   inset: 1px 1px 52% 1px;
   border-radius: 9999px 9999px 40% 40% / 9999px 9999px 60% 60%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.04));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.02));
   pointer-events: none;
 }
 
@@ -150,7 +152,7 @@ body {
 @media (hover: hover) {
   .request-btn:hover {
     transform: translateY(-1px);
-    filter: brightness(1.07);
+    filter: brightness(1.05);
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.5),
       0 8px 18px rgba(0, 0, 0, 0.36),
