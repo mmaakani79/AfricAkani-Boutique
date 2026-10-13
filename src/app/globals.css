@@ -124,6 +124,30 @@ body {
   }
 }
 
+/* Variante « lien » (page Nos services) : même bouton, mais il s'adapte à son
+   texte au lieu d'avoir la largeur fixe du bouton du pied de page. */
+.request-btn--link {
+  width: auto;
+  max-width: 100%;
+  padding: 0.75rem 1.5rem;
+  text-decoration: none;
+}
+
+/* Le reflet garde la même hauteur que sur le bouton du pied de page, même quand
+   le texte passe sur plusieurs lignes : sinon la première ligne se retrouverait
+   sous un reflet blanc plus épais et le contraste tomberait sous 4,5 : 1. */
+.request-btn--link::before {
+  inset: 1px 1px auto 1px;
+  height: 22px;
+}
+
+@media (min-width: 640px) {
+  .request-btn--link {
+    max-width: 100%;
+    min-width: 14rem;
+  }
+}
+
 /* Reflet discret sur le haut. */
 .request-btn::before {
   content: "";
