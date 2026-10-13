@@ -7,9 +7,10 @@ import {
   ShieldCheck,
   MessageCircle,
   Mail,
+  ArrowRight,
 } from "lucide-react";
 import { Container } from "@/components/layout/container";
-import { CopyEmailButton } from "./copy-email-button";
+import { GoldLink } from "./gold-link";
 
 export const metadata: Metadata = {
   title: "Nos services — AfricAkani",
@@ -168,34 +169,25 @@ export default function ServicesPage() {
           <h2 className="font-brand text-3xl font-bold sm:text-4xl">
             Parlons de votre projet&nbsp;!
           </h2>
-          <div className="mx-auto mt-7 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-            <a
-              href={WHATSAPP_HREF}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-full bg-brand-gold px-7 py-3 text-sm font-bold text-brand-green-dark hover:bg-brand-gold-light"
-            >
-              <MessageCircle className="h-4 w-4" /> Écrire sur WhatsApp
-            </a>
-            <a
-              href={`mailto:${EMAIL}`}
-              className="inline-flex items-center gap-2 rounded-full border border-white/30 px-7 py-3 text-sm font-bold text-white hover:bg-white/10"
-            >
-              <Mail className="h-4 w-4" /> Envoyer un e-mail
-            </a>
+          <div className="mx-auto mt-8 flex w-full max-w-sm flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center">
+            <GoldLink href={WHATSAPP_HREF} external>
+              <MessageCircle className="h-[18px] w-[18px]" aria-hidden /> Écrire sur WhatsApp
+            </GoldLink>
+            <GoldLink href={`mailto:${EMAIL}`}>
+              <Mail className="h-[18px] w-[18px]" aria-hidden /> Envoyer un e-mail
+            </GoldLink>
           </div>
-          <div className="mx-auto mt-6 flex flex-col items-center gap-2">
-            <p className="font-mono text-sm font-semibold text-white sm:text-base">
-              {EMAIL}
-            </p>
-            <CopyEmailButton email={EMAIL} />
+          <p className="mt-5 text-sm text-white">{EMAIL}</p>
+
+          <div className="mx-auto mt-8 w-full max-w-xl border-t border-white/20 pt-6">
+            <p className="text-base font-semibold text-white">Projet déjà cadré ?</p>
+            <div className="mx-auto mt-4 flex w-full max-w-sm flex-col sm:max-w-none sm:flex-row sm:justify-center">
+              <GoldLink href="/contrat">
+                Remplir le cahier des charges et signer le contrat
+                <ArrowRight className="h-[18px] w-[18px]" aria-hidden />
+              </GoldLink>
+            </div>
           </div>
-          <p className="mt-8 text-xs text-white/60">
-            Projet déjà cadré ?{" "}
-            <a href="/contrat" className="font-semibold text-brand-gold-light underline-offset-2 hover:underline">
-              Remplir le cahier des charges et signer le contrat
-            </a>
-          </p>
         </Container>
       </section>
     </div>
