@@ -77,189 +77,112 @@ body {
   }
 }
 
-/* Scalloped "seal/stamp" button — used for the footer's product-request CTA */
-@property --scallop-angle {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
-}
-
-.scallop-btn {
+/* Bouton « Faire une demande » du pied de page : plein, doré de la marque, aspect
+   glacé. Uniquement les dorés déjà présents sur le site (--color-gold, --color-gold-light) ;
+   les deux tons du dégradé sont le doré de la marque assombri (même teinte), assez profond
+   pour que le texte blanc garde un contraste d'au moins 4,5 : 1 (WCAG AA) sur toute la
+   hauteur, au repos, au survol et à l'appui. */
+.request-btn {
+  --request-top: color-mix(in srgb, var(--color-gold), #000 40%);
+  --request-bottom: color-mix(in srgb, var(--color-gold), #000 54%);
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   box-sizing: border-box;
   width: 100%;
-  height: 56px;
-  border: none;
-  background: none;
-  padding: 0;
+  min-height: 52px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-gold-light);
+  border-radius: 9999px;
+  background: var(--color-gold);
+  background: linear-gradient(180deg, var(--request-top), var(--request-bottom));
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    0 6px 14px rgba(0, 0, 0, 0.32),
+    0 1px 2px rgba(0, 0, 0, 0.3);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 300ms ease-out;
+  touch-action: manipulation;
+  transition:
+    transform 150ms ease-out,
+    box-shadow 150ms ease-out,
+    filter 150ms ease-out;
 }
+
 
 @media (min-width: 640px) {
-  .scallop-btn {
-    width: 238px;
+  .request-btn {
+    max-width: 238px;
   }
 }
 
-.scallop-btn__ring {
+/* Reflet discret sur le haut. */
+.request-btn::before {
+  content: "";
   position: absolute;
-  inset: 0;
-  clip-path: url(#scallop-outer);
-  background: #2bff88;
-  filter: drop-shadow(0 0 4px rgba(43, 255, 136, 0.45))
-    drop-shadow(0 0 1.5px rgba(43, 255, 136, 0.55));
-  animation: scallop-breathe 3s ease-in-out infinite;
-}
-
-@keyframes scallop-breathe {
-  0%,
-  100% {
-    filter: drop-shadow(0 0 4px rgba(43, 255, 136, 0.4))
-      drop-shadow(0 0 1.5px rgba(43, 255, 136, 0.5));
-  }
-  50% {
-    filter: drop-shadow(0 0 9px rgba(43, 255, 136, 0.75))
-      drop-shadow(0 0 2.5px rgba(43, 255, 136, 0.65));
-  }
-}
-
-.scallop-btn__glass {
-  position: absolute;
-  inset: 2px;
-  clip-path: url(#scallop-inner);
-  background: rgba(5, 22, 16, 0.85);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-@supports not (
-  (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))
-) {
-  .scallop-btn__glass {
-    background: rgba(4, 16, 12, 0.95);
-  }
-}
-
-.scallop-btn__sparkle {
-  position: absolute;
-  inset: 2px;
-  clip-path: url(#scallop-inner);
+  inset: 1px 1px 52% 1px;
+  border-radius: 9999px 9999px 40% 40% / 9999px 9999px 60% 60%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.02));
   pointer-events: none;
-  background:
-    radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, transparent 70%) 12%
-      28% / 5px 5px no-repeat,
-    radial-gradient(circle, rgba(160, 255, 200, 0.85) 0%, transparent 70%) 86%
-      68% / 4px 4px no-repeat,
-    radial-gradient(circle, rgba(255, 255, 255, 0.7) 0%, transparent 70%) 92%
-      20% / 3px 3px no-repeat;
-  opacity: 0.3;
-  animation: scallop-twinkle 4s ease-in-out infinite;
 }
 
-@keyframes scallop-twinkle {
-  0%,
-  100% {
-    opacity: 0.2;
-  }
-  50% {
-    opacity: 0.55;
-  }
-}
-
-.scallop-btn__content {
+.request-btn > * {
   position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: #ffffff;
-  white-space: nowrap;
-  text-shadow:
-    0 0 4px rgba(160, 255, 200, 0.55),
-    0 2px 1px rgba(90, 58, 10, 0.7);
-  transition: text-shadow 300ms ease-out;
 }
 
-.scallop-btn__content svg {
+.request-btn svg {
   flex-shrink: 0;
-  transition: transform 300ms ease-out;
 }
 
-.scallop-btn:focus-visible {
-  outline: 2px solid #2bff88;
-  outline-offset: 4px;
-  border-radius: 8px;
+/* Clavier : contour net, doré clair. */
+.request-btn:focus-visible {
+  outline: 2px solid var(--color-gold-light);
+  outline-offset: 3px;
 }
 
+/* Survol (souris) : s'éclaircit très légèrement et monte d'un cran. */
 @media (hover: hover) {
-  .scallop-btn:hover {
-    transform: translateY(-2px);
-  }
-
-  .scallop-btn:hover .scallop-btn__ring {
-    background: conic-gradient(
-      from var(--scallop-angle),
-      #2bff88,
-      #b8ffd9,
-      #2bff88,
-      #7cffb0,
-      #2bff88
-    );
-    filter: drop-shadow(0 0 10px rgba(43, 255, 136, 0.95))
-      drop-shadow(0 0 4px rgba(43, 255, 136, 0.8));
-    animation: scallop-rotate 2.4s linear infinite;
-  }
-
-  .scallop-btn:hover .scallop-btn__content {
-    text-shadow:
-      0 0 8px rgba(160, 255, 200, 0.9),
-      0 2px 1px rgba(90, 58, 10, 0.8);
-  }
-
-  .scallop-btn:hover .scallop-btn__content svg {
-    transform: translateX(2px);
+  .request-btn:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.5),
+      0 8px 18px rgba(0, 0, 0, 0.36),
+      0 1px 2px rgba(0, 0, 0, 0.3);
   }
 }
 
-@keyframes scallop-rotate {
-  to {
-    --scallop-angle: 360deg;
-  }
+/* Appui (clic, doigt, touche Entrée/Espace) : le bouton s'enfonce. `data-pressed`
+   est posé par le composant pour que le toucher ne dépende pas de :active. */
+.request-btn:active,
+.request-btn[data-pressed="true"] {
+  transform: translateY(2px);
+  filter: brightness(0.93);
+  box-shadow:
+    inset 0 2px 3px rgba(0, 0, 0, 0.25),
+    0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-.scallop-btn:active {
-  transform: translateY(1px) scale(0.97);
-}
-
-.scallop-btn:active .scallop-btn__ring {
-  animation: none;
-  filter: drop-shadow(0 0 2px rgba(43, 255, 136, 0.35));
-}
-
+/* « Réduire les animations » : on garde les changements de couleur et d'ombre,
+   on supprime les mouvements. */
 @media (prefers-reduced-motion: reduce) {
-  .scallop-btn,
-  .scallop-btn__ring,
-  .scallop-btn__content,
-  .scallop-btn__content svg {
-    transition: none !important;
+  .request-btn {
+    transition:
+      box-shadow 150ms ease-out,
+      filter 150ms ease-out;
   }
-
-  .scallop-btn__ring {
-    animation: none !important;
-    filter: drop-shadow(0 0 6px rgba(43, 255, 136, 0.6)) !important;
-  }
-
-  .scallop-btn__sparkle {
-    animation: none !important;
-    opacity: 0.35 !important;
+  .request-btn:hover,
+  .request-btn:active,
+  .request-btn[data-pressed="true"] {
+    transform: none;
   }
 }
 

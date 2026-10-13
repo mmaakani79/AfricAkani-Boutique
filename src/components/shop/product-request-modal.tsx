@@ -12,6 +12,8 @@ const initialState: ProductRequestState = {};
 
 export function ProductRequestCard() {
   const [open, setOpen] = useState(false);
+  // Pressed look for touch screens and keyboards too (see .request-btn in globals.css).
+  const [pressed, setPressed] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -22,17 +24,6 @@ export function ProductRequestCard() {
 
   return (
     <>
-      <svg width="0" height="0" aria-hidden focusable="false" className="absolute">
-        <defs>
-          <clipPath id="scallop-outer" clipPathUnits="objectBoundingBox">
-            <path d={SCALLOP_OUTER_D} />
-          </clipPath>
-          <clipPath id="scallop-inner" clipPathUnits="objectBoundingBox">
-            <path d={SCALLOP_INNER_D} />
-          </clipPath>
-        </defs>
-      </svg>
-
       <div className="flex flex-col items-center rounded-2xl border border-brand-gold-light/40 p-4 text-center">
         <p className="text-sm font-bold text-brand-gold-light">
           Vous ne trouvez pas un produit ?
@@ -43,15 +34,15 @@ export function ProductRequestCard() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="scallop-btn mt-4"
+          onPointerDown={() => setPressed(true)}
+          onPointerUp={() => setPressed(false)}
+          onPointerLeave={() => setPressed(false)}
+          onPointerCancel={() => setPressed(false)}
+          data-pressed={pressed ? "true" : "false"}
+          className="request-btn mt-4"
         >
-          <span className="scallop-btn__ring" aria-hidden />
-          <span className="scallop-btn__glass" aria-hidden />
-          <span className="scallop-btn__sparkle" aria-hidden />
-          <span className="scallop-btn__content">
-            <Mail className="h-[18px] w-[18px]" aria-hidden />
-            Faire une demande
-          </span>
+          <Mail className="h-[18px] w-[18px]" aria-hidden />
+          Faire une demande
         </button>
       </div>
 
@@ -63,12 +54,6 @@ export function ProductRequestCard() {
     </>
   );
 }
-
-const SCALLOP_OUTER_D =
-  "M 0.029412 0.125000 A 0.029412 0.125000 0 0 1 0.088235 0.125000 A 0.029412 0.125000 0 0 1 0.147059 0.125000 A 0.029412 0.125000 0 0 1 0.205882 0.125000 A 0.029412 0.125000 0 0 1 0.264706 0.125000 A 0.029412 0.125000 0 0 1 0.323529 0.125000 A 0.029412 0.125000 0 0 1 0.382353 0.125000 A 0.029412 0.125000 0 0 1 0.441176 0.125000 A 0.029412 0.125000 0 0 1 0.500000 0.125000 A 0.029412 0.125000 0 0 1 0.558824 0.125000 A 0.029412 0.125000 0 0 1 0.617647 0.125000 A 0.029412 0.125000 0 0 1 0.676471 0.125000 A 0.029412 0.125000 0 0 1 0.735294 0.125000 A 0.029412 0.125000 0 0 1 0.794118 0.125000 A 0.029412 0.125000 0 0 1 0.852941 0.125000 A 0.029412 0.125000 0 0 1 0.911765 0.125000 A 0.029412 0.125000 0 0 1 0.970588 0.125000 A 0.029412 0.125000 0 0 1 0.970588 0.375000 A 0.029412 0.125000 0 0 1 0.970588 0.625000 A 0.029412 0.125000 0 0 1 0.970588 0.875000 A 0.029412 0.125000 0 0 1 0.911765 0.875000 A 0.029412 0.125000 0 0 1 0.852941 0.875000 A 0.029412 0.125000 0 0 1 0.794118 0.875000 A 0.029412 0.125000 0 0 1 0.735294 0.875000 A 0.029412 0.125000 0 0 1 0.676471 0.875000 A 0.029412 0.125000 0 0 1 0.617647 0.875000 A 0.029412 0.125000 0 0 1 0.558824 0.875000 A 0.029412 0.125000 0 0 1 0.500000 0.875000 A 0.029412 0.125000 0 0 1 0.441176 0.875000 A 0.029412 0.125000 0 0 1 0.382353 0.875000 A 0.029412 0.125000 0 0 1 0.323529 0.875000 A 0.029412 0.125000 0 0 1 0.264706 0.875000 A 0.029412 0.125000 0 0 1 0.205882 0.875000 A 0.029412 0.125000 0 0 1 0.147059 0.875000 A 0.029412 0.125000 0 0 1 0.088235 0.875000 A 0.029412 0.125000 0 0 1 0.029412 0.875000 A 0.029412 0.125000 0 0 1 0.029412 0.625000 A 0.029412 0.125000 0 0 1 0.029412 0.375000 A 0.029412 0.125000 0 0 1 0.029412 0.125000 Z";
-
-const SCALLOP_INNER_D =
-  "M 0.029915 0.134615 A 0.029915 0.134615 0 0 1 0.088675 0.134615 A 0.029915 0.134615 0 0 1 0.147436 0.134615 A 0.029915 0.134615 0 0 1 0.206197 0.134615 A 0.029915 0.134615 0 0 1 0.264957 0.134615 A 0.029915 0.134615 0 0 1 0.323718 0.134615 A 0.029915 0.134615 0 0 1 0.382479 0.134615 A 0.029915 0.134615 0 0 1 0.441239 0.134615 A 0.029915 0.134615 0 0 1 0.500000 0.134615 A 0.029915 0.134615 0 0 1 0.558761 0.134615 A 0.029915 0.134615 0 0 1 0.617521 0.134615 A 0.029915 0.134615 0 0 1 0.676282 0.134615 A 0.029915 0.134615 0 0 1 0.735043 0.134615 A 0.029915 0.134615 0 0 1 0.793803 0.134615 A 0.029915 0.134615 0 0 1 0.852564 0.134615 A 0.029915 0.134615 0 0 1 0.911325 0.134615 A 0.029915 0.134615 0 0 1 0.970085 0.134615 A 0.029915 0.134615 0 0 1 0.970085 0.378205 A 0.029915 0.134615 0 0 1 0.970085 0.621795 A 0.029915 0.134615 0 0 1 0.970085 0.865385 A 0.029915 0.134615 0 0 1 0.911325 0.865385 A 0.029915 0.134615 0 0 1 0.852564 0.865385 A 0.029915 0.134615 0 0 1 0.793803 0.865385 A 0.029915 0.134615 0 0 1 0.735043 0.865385 A 0.029915 0.134615 0 0 1 0.676282 0.865385 A 0.029915 0.134615 0 0 1 0.617521 0.865385 A 0.029915 0.134615 0 0 1 0.558761 0.865385 A 0.029915 0.134615 0 0 1 0.500000 0.865385 A 0.029915 0.134615 0 0 1 0.441239 0.865385 A 0.029915 0.134615 0 0 1 0.382479 0.865385 A 0.029915 0.134615 0 0 1 0.323718 0.865385 A 0.029915 0.134615 0 0 1 0.264957 0.865385 A 0.029915 0.134615 0 0 1 0.206197 0.865385 A 0.029915 0.134615 0 0 1 0.147436 0.865385 A 0.029915 0.134615 0 0 1 0.088675 0.865385 A 0.029915 0.134615 0 0 1 0.029915 0.865385 A 0.029915 0.134615 0 0 1 0.029915 0.621795 A 0.029915 0.134615 0 0 1 0.029915 0.378205 A 0.029915 0.134615 0 0 1 0.029915 0.134615 Z";
 
 function ProductRequestDialog({ onClose }: { onClose: () => void }) {
   const [state, formAction, pending] = useActionState(

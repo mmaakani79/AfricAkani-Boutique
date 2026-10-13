@@ -34,7 +34,7 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2 2xl:gap-3">
-          <div className="hidden sm:block">
+          <div className="hidden min-[1040px]:block">
             <ZoneSwitcher />
           </div>
           <SearchButton />
@@ -42,7 +42,7 @@ export function Header() {
           <MobileMenu />
         </div>
       </Container>
-      <div className="border-t border-brand-green/10 bg-white py-2 sm:hidden">
+      <div className="border-t border-brand-green/10 bg-white py-2 min-[1040px]:hidden">
         <Container>
           <ZoneSwitcher />
         </Container>
