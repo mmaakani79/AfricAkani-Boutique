@@ -68,7 +68,7 @@ export function buildClientContractEmail(contract: SignedContract): ContractEmai
     "",
     "Notre équipe vous recontactera prochainement au sujet de votre projet. Pour toute question, répondez simplement à cet e-mail.",
     "",
-    "L'équipe AkaGestSoft",
+    "L'équipe AfricAkani",
   ].filter((line): line is string => line !== null);
 
   return {

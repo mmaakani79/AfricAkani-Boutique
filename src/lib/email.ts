@@ -5,18 +5,31 @@ import type { SignedContract } from "./contracts-db";
 import { ZONES, formatPrice } from "@/data/zones";
 import { getAdminNotifyEmail, getPaymentTimeoutHours, getSiteUrl } from "./order-config";
 import { renderEmailHtml } from "./email-html";
+import { withInlineLogo } from "./email-logo";
 import {
   buildAdminContractEmail,
   buildClientContractEmail,
   contractPdfFilename,
 } from "./contract-email-content";
 
-function getClient(): Resend {
+/** What the senders below use of Resend: every message goes through here, so the
+ *  logo is attached inline to every e-mail whose HTML shows it. */
+interface Mailer {
+  emails: { send: Resend["emails"]["send"] };
+}
+
+function getClient(): Mailer {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     throw new Error("RESEND_API_KEY is not set.");
   }
-  return new Resend(apiKey);
+  const resend = new Resend(apiKey);
+  return {
+    emails: {
+      send: ((payload, options) =>
+        resend.emails.send(withInlineLogo(payload), options)) as Resend["emails"]["send"],
+    },
+  };
 }
 
 function getFrom(): string {
