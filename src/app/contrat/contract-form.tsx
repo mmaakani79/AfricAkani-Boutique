@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, FileText, Download } from "lucide-react";
-import { CONTRACT_SERVICES } from "@/lib/contract-types";
+import { CONTRACT_SERVICES, isValidContractId } from "@/lib/contract-types";
 import { SignaturePad, type SignaturePadHandle } from "@/components/shop/signature-pad";
 import { submitSignedContractAction } from "./actions";
 
@@ -39,8 +39,41 @@ function Field({
   );
 }
 
+const CONTRACT_ID_STORAGE_KEY = "africakani.contract.pendingId";
+
+function newContractId(): string {
+  const random = Array.from(crypto.getRandomValues(new Uint8Array(4)), (b) => (b % 36).toString(36))
+    .join("")
+    .toUpperCase();
+  return `CT-${Date.now().toString(36).toUpperCase()}-${random}`;
+}
+
+/** The reference identifies this signing attempt. Kept for the tab's lifetime
+ *  until the signature succeeds, so reloading the page (or retrying after a
+ *  dropped connection) re-sends the SAME reference: the server then stores one
+ *  contract and sends one set of e-mails, however many times it is submitted. */
+function pendingContractId(): string {
+  try {
+    const kept = sessionStorage.getItem(CONTRACT_ID_STORAGE_KEY);
+    if (kept && isValidContractId(kept)) return kept;
+    const fresh = newContractId();
+    sessionStorage.setItem(CONTRACT_ID_STORAGE_KEY, fresh);
+    return fresh;
+  } catch {
+    return newContractId(); // storage unavailable (private mode…): still unique per page load
+  }
+}
+
+function forgetPendingContractId(): void {
+  try {
+    sessionStorage.removeItem(CONTRACT_ID_STORAGE_KEY);
+  } catch {
+    /* nothing to forget */
+  }
+}
+
 export function ContractForm({ contractText }: { contractText: string }) {
-  const [contractId] = useState(() => `CT-${Date.now().toString(36).toUpperCase()}`);
+  const [contractId, setContractId] = useState<string | null>(null);
   const [readAccepted, setReadAccepted] = useState(false);
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
@@ -54,6 +87,8 @@ export function ContractForm({ contractText }: { contractText: string }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [signedContractId, setSignedContractId] = useState<string | null>(null);
+  const [clientCopySent, setClientCopySent] = useState(false);
+  const submittingRef = useRef(false);
   const signatureRef = useRef<SignaturePadHandle>(null);
 
   function toggleService(service: string) {
@@ -72,27 +107,50 @@ export function ContractForm({ contractText }: { contractText: string }) {
       return;
     }
 
+    // A ref, not just state: two clicks in the same instant must not both go through.
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSubmitting(true);
-    const result = await submitSignedContractAction({
-      id: contractId,
-      clientName,
-      clientEmail,
-      clientPhone,
-      companyName,
-      services,
-      projectDescription,
-      budget,
-      timeline,
-      notes,
-      signatureDataUrl,
-    });
-    setSubmitting(false);
 
-    if (!result.ok) {
-      setError(result.error ?? "Une erreur est survenue. Merci de réessayer.");
-      return;
+    const id = contractId ?? pendingContractId();
+    setContractId(id);
+
+    try {
+      const result = await submitSignedContractAction({
+        id,
+        clientName,
+        clientEmail,
+        clientPhone,
+        companyName,
+        services,
+        projectDescription,
+        budget,
+        timeline,
+        notes,
+        signatureDataUrl,
+      });
+
+      if (!result.ok) {
+        if (result.code === "bad_id") {
+          forgetPendingContractId();
+          setContractId(null);
+        }
+        setError(result.error ?? "Une erreur est survenue. Merci de réessayer.");
+        return;
+      }
+      forgetPendingContractId();
+      setClientCopySent(result.clientCopySent === true);
+      setSignedContractId(result.contractId ?? id);
+    } catch {
+      // Connection lost or server unreachable. The reference is kept, so trying
+      // again can't create a second contract if the first request did arrive.
+      setError(
+        "Connexion impossible pour le moment. Vérifiez votre connexion internet puis réessayez : votre contrat n'est enregistré qu'une seule fois."
+      );
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
     }
-    setSignedContractId(result.contractId ?? contractId);
   }
 
   if (signedContractId) {
@@ -105,6 +163,11 @@ export function ContractForm({ contractText }: { contractText: string }) {
         <p className="mt-2 text-sm text-ink/60">
           Votre contrat <span className="font-semibold">{signedContractId}</span> a
           bien été enregistré. Notre équipe vous recontactera prochainement.
+        </p>
+        <p className="mt-2 text-sm text-ink/60" data-testid="contract-copy-notice">
+          {clientCopySent
+            ? "Une copie PDF de votre contrat vient de vous être envoyée par e-mail. Pensez à vérifier vos courriers indésirables."
+            : "Nous vous transmettrons une copie PDF de votre contrat par e-mail."}
         </p>
         <Link
           href="/"

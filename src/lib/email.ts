@@ -5,13 +5,31 @@ import type { SignedContract } from "./contracts-db";
 import { ZONES, formatPrice } from "@/data/zones";
 import { getAdminNotifyEmail, getPaymentTimeoutHours, getSiteUrl } from "./order-config";
 import { renderEmailHtml } from "./email-html";
+import { withInlineLogo } from "./email-logo";
+import {
+  buildAdminContractEmail,
+  buildClientContractEmail,
+  contractPdfFilename,
+} from "./contract-email-content";
 
-function getClient(): Resend {
+/** What the senders below use of Resend: every message goes through here, so the
+ *  logo is attached inline to every e-mail whose HTML shows it. */
+interface Mailer {
+  emails: { send: Resend["emails"]["send"] };
+}
+
+function getClient(): Mailer {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     throw new Error("RESEND_API_KEY is not set.");
   }
-  return new Resend(apiKey);
+  const resend = new Resend(apiKey);
+  return {
+    emails: {
+      send: ((payload, options) =>
+        resend.emails.send(withInlineLogo(payload), options)) as Resend["emails"]["send"],
+    },
+  };
 }
 
 function getFrom(): string {
@@ -364,35 +382,46 @@ export async function sendCustomerReviewInvite(order: OrderDetail): Promise<void
   }
 }
 
-export async function sendAdminNewContractNotification(
-  contract: SignedContract
-): Promise<void> {
+/** Notification to the administrator when a contract is signed. No attachment. */
+export async function sendContractAdminEmail(contract: SignedContract): Promise<void> {
   const resend = getClient();
-  const to = getAdminNotifyEmail();
-  const siteUrl = getSiteUrl();
-
-  const subject = `Nouveau contrat signé : ${contract.id} — ${contract.clientName}`;
-  const lines = [
-    `Contrat ${contract.id} signé électroniquement par ${contract.clientName}.`,
-    contract.companyName ? `Entreprise : ${contract.companyName}` : null,
-    `Contact : ${contract.clientPhone} — ${contract.clientEmail}`,
-    `Service(s) : ${contract.services.join(", ") || "—"}`,
-    contract.budget ? `Budget estimé : ${contract.budget}` : null,
-    contract.timeline ? `Délai souhaité : ${contract.timeline}` : null,
-    "",
-    "Description du besoin :",
-    contract.projectDescription || "—",
-    "",
-    `Voir dans l'admin : ${siteUrl}/admin/contrats`,
-  ].filter((line): line is string => line !== null);
+  const { subject, lines } = buildAdminContractEmail(contract, getSiteUrl());
 
   const { error } = await resend.emails.send({
     from: getFrom(),
-    to,
+    to: getAdminNotifyEmail(),
     replyTo: contract.clientEmail || undefined,
     subject,
     text: lines.join("\n"),
     html: renderEmailHtml(subject, lines),
+  });
+
+  if (error) {
+    throw new Error(resendErrorMessage(error));
+  }
+}
+
+/** Confirmation to the client, with a PDF copy of the signed contract. Same
+ *  sender as the order e-mails; replies go to the admin address. */
+export async function sendContractClientEmail(
+  contract: SignedContract,
+  pdf: Buffer
+): Promise<void> {
+  const to = contract.clientEmail.trim();
+  if (!to.includes("@")) {
+    throw new Error("Adresse e-mail du client absente ou invalide.");
+  }
+  const resend = getClient();
+  const { subject, lines } = buildClientContractEmail(contract);
+
+  const { error } = await resend.emails.send({
+    from: getFrom(),
+    to,
+    replyTo: getAdminNotifyEmail(),
+    subject,
+    text: lines.join("\n"),
+    html: renderEmailHtml(subject, lines),
+    attachments: [{ filename: contractPdfFilename(contract), content: pdf }],
   });
 
   if (error) {

@@ -1,4 +1,8 @@
-import { getSiteUrl } from "./order-config";
+import {
+  EMAIL_LOGO_CID,
+  EMAIL_LOGO_DISPLAY_HEIGHT,
+  EMAIL_LOGO_DISPLAY_WIDTH,
+} from "./email-logo";
 
 function escapeHtml(value: string): string {
   return value
@@ -13,9 +17,13 @@ function escapeHtml(value: string): string {
  * Wraps the same plain-text lines used for an e-mail's `text` body into a
  * branded HTML version with the AfricAkani logo in the header — single
  * source of truth for content, so the two versions never drift apart.
+ *
+ * The logo is referenced by Content-ID (cid:), never by a web address: the
+ * sender attaches it to the message (see withInlineLogo in email-logo.ts). The
+ * header is white because the logo's name is dark green and gold: unreadable on
+ * the green brand colour.
  */
 export function renderEmailHtml(subject: string, lines: string[]): string {
-  const logoUrl = `${getSiteUrl()}/logo/medallion.png`;
   const body = lines
     .map((line) =>
       line === ""
@@ -37,13 +45,16 @@ export function renderEmailHtml(subject: string, lines: string[]): string {
         <td align="center">
           <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;">
             <tr>
-              <td style="background:#0e5a44;padding:22px 28px;" align="center">
+              <td style="height:6px;line-height:6px;font-size:1px;background:#0e5a44;">&nbsp;</td>
+            </tr>
+            <tr>
+              <td style="background:#ffffff;padding:22px 28px 18px;border-bottom:3px solid #e0b65a;" align="center">
                 <img
-                  src="${logoUrl}"
+                  src="cid:${EMAIL_LOGO_CID}"
                   alt="AfricAkani"
-                  width="60"
-                  height="60"
-                  style="display:block;border-radius:50%;"
+                  width="${EMAIL_LOGO_DISPLAY_WIDTH}"
+                  height="${EMAIL_LOGO_DISPLAY_HEIGHT}"
+                  style="display:block;margin:0 auto;width:${EMAIL_LOGO_DISPLAY_WIDTH}px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:bold;line-height:1.2;color:#0e5a44;text-align:center;"
                 />
               </td>
             </tr>
