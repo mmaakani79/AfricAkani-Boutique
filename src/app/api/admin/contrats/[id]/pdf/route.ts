@@ -24,6 +24,8 @@ export async function GET(
     headers: {
       "Content-Type": "application/pdf",
       "Content-Disposition": `inline; filename="contrat-${contract.id}.pdf"`,
+      // Personal data and a signature: never kept by a browser cache or a shared proxy.
+      "Cache-Control": "private, no-store",
     },
   });
 }

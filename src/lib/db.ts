@@ -297,6 +297,17 @@ CREATE TABLE IF NOT EXISTS signed_contracts (
   contract_text_snapshot TEXT NOT NULL,
   signature_data_url TEXT NOT NULL
 );
+
+-- E-mails sent when a contract is signed (admin notification + copy to the
+-- client). Additive only: old rows keep NULLs, shown as "not sent" in the admin.
+-- *_claimed_at is a short lease taken before sending so two simultaneous
+-- requests (double click, reload) can never send the same e-mail twice.
+ALTER TABLE signed_contracts ADD COLUMN IF NOT EXISTS admin_email_sent_at TIMESTAMPTZ;
+ALTER TABLE signed_contracts ADD COLUMN IF NOT EXISTS admin_email_error TEXT;
+ALTER TABLE signed_contracts ADD COLUMN IF NOT EXISTS admin_email_claimed_at TIMESTAMPTZ;
+ALTER TABLE signed_contracts ADD COLUMN IF NOT EXISTS client_email_sent_at TIMESTAMPTZ;
+ALTER TABLE signed_contracts ADD COLUMN IF NOT EXISTS client_email_error TEXT;
+ALTER TABLE signed_contracts ADD COLUMN IF NOT EXISTS client_email_claimed_at TIMESTAMPTZ;
 `;
 
 async function backfillProductSkus(): Promise<void> {
