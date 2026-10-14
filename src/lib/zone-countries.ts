@@ -20,13 +20,6 @@ interface Country {
 
 const COUNTRIES: Country[] = [
   { code: "BJ", name: "Bénin", aliases: ["Benin", "République du Bénin", "Republic of Benin", "BJ"] },
-  { code: "TG", name: "Togo", aliases: ["République togolaise", "TG"] },
-  { code: "BF", name: "Burkina Faso", aliases: ["Burkina", "BF"] },
-  { code: "CI", name: "Côte d'Ivoire", aliases: ["Cote d'Ivoire", "Cote dIvoire", "Ivory Coast", "CI"] },
-  { code: "ML", name: "Mali", aliases: ["ML"] },
-  { code: "NE", name: "Niger", aliases: ["NE"] },
-  { code: "SN", name: "Sénégal", aliases: ["Senegal", "SN"] },
-  { code: "GW", name: "Guinée-Bissau", aliases: ["Guinee Bissau", "Guinea-Bissau", "Guinea Bissau", "GW"] },
   { code: "CA", name: "Canada", aliases: ["CA"] },
   {
     code: "US",
@@ -49,11 +42,10 @@ const COUNTRIES: Country[] = [
 /** The countries each zone delivers to (ISO codes). THE table to validate: a
  *  country not listed under a zone is refused for that zone.
  *
- *  - bj: the West-African CFA-franc zone (UEMOA), which the shop presents as
- *    « Bénin & Afrique de l'Ouest » and prices in FCFA.
+ *  - bj: Benin only (the zone is priced in FCFA, but delivery is Benin only).
  *  - ca: Canada only.  us: United States only. */
 export const ZONE_COUNTRY_CODES: Record<ZoneId, readonly string[]> = {
-  bj: ["BJ", "TG", "BF", "CI", "ML", "NE", "SN", "GW"],
+  bj: ["BJ"],
   ca: ["CA"],
   us: ["US"],
 };
@@ -123,7 +115,7 @@ export function checkAddressCountry(zoneId: ZoneId, rawCountry: string | null | 
       ok: false,
       error:
         `Nous ne livrons pas encore en « ${typed} ». Pays desservis : ` +
-        `${listNames("bj")} (zone ${ZONES.bj.shortLabel}) ; ${listNames("ca")} ; ${listNames("us")}.`,
+        `${listNames("bj")} ; ${listNames("ca")} ; ${listNames("us")}.`,
     };
   }
 
