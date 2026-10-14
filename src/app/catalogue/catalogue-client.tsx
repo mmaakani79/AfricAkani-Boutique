@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { Search } from "lucide-react";
 import { ProductCard } from "@/components/shop/product-card";
 import { Container } from "@/components/layout/container";
+import { useZone } from "@/context/zone-context";
+import { visibleInZone } from "@/lib/zone-visibility";
 import type { Category, HalalStatus, PublicProduct } from "@/lib/types";
 
 const HALAL_FILTERS: { value: HalalStatus | "tous"; label: string }[] = [
@@ -21,6 +23,7 @@ export function CatalogueClient({
   categories: Category[];
 }) {
   const searchParams = useSearchParams();
+  const { zoneId } = useZone();
 
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
   const [categoryId, setCategoryId] = useState(
@@ -30,22 +33,35 @@ export function CatalogueClient({
     (searchParams.get("halal") as HalalStatus | null) ?? "tous"
   );
 
+  // Only what is sold in the visitor's zone: lists, search, categories and the
+  // count below all start from this, so they always agree with each other.
+  const inZone = useMemo(() => visibleInZone(products, zoneId), [products, zoneId]);
+  const visibleCategories = useMemo(() => {
+    const present = new Set(inZone.map((p) => p.categoryId));
+    return categories.filter((c) => present.has(c.id));
+  }, [categories, inZone]);
+  // A category with no product in this zone is not offered; a link to one (or a
+  // zone change while it was selected) falls back to all categories.
+  const activeCategoryId = visibleCategories.some((c) => c.id === categoryId)
+    ? categoryId
+    : "toutes";
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return products.filter((p) => {
-      if (categoryId !== "toutes" && p.categoryId !== categoryId) return false;
+    return inZone.filter((p) => {
+      if (activeCategoryId !== "toutes" && p.categoryId !== activeCategoryId) return false;
       if (halal !== "tous" && p.halal !== halal) return false;
       if (q && !p.name.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [products, query, categoryId, halal]);
+  }, [inZone, query, activeCategoryId, halal]);
 
   return (
     <Container className="py-10">
       <h1 className="font-brand text-3xl font-bold text-brand-green-dark">
         Catalogue
       </h1>
-      <p className="mt-2 text-sm text-ink/60">
+      <p className="mt-2 text-sm text-ink/60" data-testid="catalogue-count">
         {filtered.length} produit{filtered.length > 1 ? "s" : ""} disponible
         {filtered.length > 1 ? "s" : ""}
       </p>
@@ -83,20 +99,20 @@ export function CatalogueClient({
           type="button"
           onClick={() => setCategoryId("toutes")}
           className={`shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-semibold ${
-            categoryId === "toutes"
+            activeCategoryId === "toutes"
               ? "border-brand-gold bg-brand-gold text-brand-green-dark"
               : "border-brand-green/20 bg-white text-brand-green-dark hover:border-brand-green/40"
           }`}
         >
           Toutes les catégories
         </button>
-        {categories.map((c) => (
+        {visibleCategories.map((c) => (
           <button
             key={c.id}
             type="button"
             onClick={() => setCategoryId(c.id)}
             className={`shrink-0 rounded-full border px-3.5 py-1.5 text-xs font-semibold ${
-              categoryId === c.id
+              activeCategoryId === c.id
                 ? "border-brand-gold bg-brand-gold text-brand-green-dark"
                 : "border-brand-green/20 bg-white text-brand-green-dark hover:border-brand-green/40"
             }`}

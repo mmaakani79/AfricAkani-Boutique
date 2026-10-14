@@ -8,6 +8,7 @@
 // the order itself (see order-pricing.ts).
 
 import { ZONES } from "@/data/zones";
+import { checkAddressCountry } from "./zone-countries";
 import type { ZoneId } from "./types";
 
 /** Upper bound per cart line — far above any real order, low enough to refuse nonsense. */
@@ -171,6 +172,13 @@ export function parseOrderDraft(raw: unknown): ParseResult {
   if ([apartment, province, postalCode, country].some((v) => v === undefined)) {
     return { ok: false, error: INVALID_CUSTOMER };
   }
+  // The delivery country must belong to the chosen zone. Checked here, once, so
+  // every way of paying (WhatsApp, Mobile Money, Stripe, PayPal) is covered and
+  // nothing is created or charged for an address outside the zone. The country
+  // is then stored under its canonical name ("Etats-Unis" → "États-Unis").
+  const addressCheck = checkAddressCountry(zoneId, country);
+  if (!addressCheck.ok) return { ok: false, error: addressCheck.error };
+
   const customer: DraftCustomer = {
     name: c.name as string,
     email: c.email as string,
@@ -180,7 +188,7 @@ export function parseOrderDraft(raw: unknown): ParseResult {
     apartment,
     province,
     postalCode,
-    country,
+    country: addressCheck.country,
   };
 
   const mmOperator = optionalString(raw.mobileMoneyOperator);

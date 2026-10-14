@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { getAllProducts } from "@/lib/products-db";
+import { publiclyListed } from "@/lib/zone-visibility";
 
 const SITE_URL = (
   process.env.NEXT_PUBLIC_SITE_URL || "https://www.africakani.com"
@@ -15,7 +16,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/services`, changeFrequency: "monthly", priority: 0.5 },
   ];
 
-  const productPages: MetadataRoute.Sitemap = products.map((p) => ({
+  // A product sold in no zone is not public: it must not be advertised to search engines.
+  const productPages: MetadataRoute.Sitemap = publiclyListed(products).map((p) => ({
     url: `${SITE_URL}/produit/${p.slug}`,
     changeFrequency: "weekly",
     priority: 0.7,

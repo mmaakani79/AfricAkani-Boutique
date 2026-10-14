@@ -34,6 +34,8 @@ import {
 import { Container } from "@/components/layout/container";
 import { getPaymentTimeoutHours } from "@/lib/order-config";
 import { computeShippingFee, isBelowMinOrder } from "@/lib/shipping-calc";
+import { countriesForZone } from "@/lib/zone-countries";
+import { CartZoneNotice } from "@/components/shop/cart-zone-notice";
 
 const PAYMENT_TIMEOUT_HOURS = getPaymentTimeoutHours();
 
@@ -134,6 +136,14 @@ export default function CommandePage() {
   }, [priceChange]);
 
   const isNorthAmerica = zoneId === "ca" || zoneId === "us";
+
+  // The delivery country can only be one of the chosen zone's countries; when the
+  // zone changes, the choice falls back to the zone's first country. (The server
+  // checks it again: this list is only a convenience.)
+  const zoneCountries = countriesForZone(zoneId);
+  const deliveryCountry = zoneCountries.some((c) => c.name === country)
+    ? country
+    : zoneCountries[0].name;
 
   const mobileMoneyAvailable =
     zoneId === "bj" && (mmConfig?.operators.length ?? 0) > 0;
@@ -307,7 +317,7 @@ export default function CommandePage() {
         phone,
         address,
         city,
-        country: country.trim() || null,
+        country: deliveryCountry,
         ...(isNorthAmerica
           ? {
               apartment: apartment.trim() || null,
@@ -488,6 +498,9 @@ export default function CommandePage() {
   if (items.length === 0) {
     return (
       <Container className="py-24">
+        <div className="mx-auto max-w-xl">
+          <CartZoneNotice />
+        </div>
         <div className="mx-auto max-w-xl text-center">
           <p className="text-sm text-ink/60">
             Votre panier est vide.{" "}
@@ -503,6 +516,7 @@ export default function CommandePage() {
 
   return (
     <Container className="py-10">
+      <CartZoneNotice />
       <h1 className="font-brand text-3xl font-bold text-brand-green-dark">
         Finaliser la commande
       </h1>
@@ -578,7 +592,12 @@ export default function CommandePage() {
                   onChange={setPostalCode}
                   required
                 />
-                <Field label="Pays" value={country} onChange={setCountry} required />
+                <SelectField
+                  label="Pays"
+                  value={deliveryCountry}
+                  onChange={setCountry}
+                  options={zoneCountries.map((c) => c.name)}
+                />
               </div>
             </>
           ) : (
@@ -586,7 +605,12 @@ export default function CommandePage() {
               <Field label="Adresse de livraison" value={address} onChange={setAddress} required />
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Ville" value={city} onChange={setCity} required />
-                <Field label="Pays" value={country} onChange={setCountry} required />
+                <SelectField
+                  label="Pays"
+                  value={deliveryCountry}
+                  onChange={setCountry}
+                  options={zoneCountries.map((c) => c.name)}
+                />
               </div>
             </>
           )}
@@ -837,6 +861,38 @@ function Field({
         onChange={(e) => onChange(e.target.value)}
         className="w-full rounded-xl border border-brand-green/20 bg-ivory px-3.5 py-2.5 text-sm outline-none focus:border-brand-green"
       />
+    </label>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-xs font-semibold text-ink/60">
+        {label}
+      </span>
+      <select
+        required
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-xl border border-brand-green/20 bg-ivory px-3.5 py-2.5 text-sm outline-none focus:border-brand-green"
+      >
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
     </label>
   );
 }

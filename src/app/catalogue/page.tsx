@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { getAllProducts } from "@/lib/products-db";
 import { toPublicProduct } from "@/lib/public-product";
 import { getAllCategories } from "@/lib/categories-db";
+import { publiclyListed } from "@/lib/zone-visibility";
 import { CatalogueClient } from "./catalogue-client";
 
 export const metadata: Metadata = {
@@ -22,7 +23,12 @@ export default async function CataloguePage() {
 
   return (
     <Suspense fallback={null}>
-      <CatalogueClient products={products.map(toPublicProduct)} categories={categories} />
+      <CatalogueClient
+        // A product with no price in any zone is not part of the public catalogue.
+        // Which of the others is shown depends on the visitor's zone (in the browser).
+        products={publiclyListed(products).map(toPublicProduct)}
+        categories={categories}
+      />
     </Suspense>
   );
 }

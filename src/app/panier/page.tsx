@@ -9,6 +9,7 @@ import { CATEGORY_ICONS } from "@/lib/category-icons";
 import { PhotoPlaceholder } from "@/components/shop/photo-placeholder";
 import { Container } from "@/components/layout/container";
 import { computeShippingFee } from "@/lib/shipping-calc";
+import { CartZoneNotice } from "@/components/shop/cart-zone-notice";
 
 export default function PanierPage() {
   const { items, subtotal, updateQuantity, removeItem } = useCart();
@@ -26,6 +27,9 @@ export default function PanierPage() {
   if (items.length === 0) {
     return (
       <Container className="py-24">
+        <div className="mx-auto max-w-2xl">
+          <CartZoneNotice />
+        </div>
         <div className="mx-auto flex max-w-2xl flex-col items-center gap-4 text-center">
           <ShoppingCart
             className="h-12 w-12 text-brand-green/40"
@@ -51,6 +55,7 @@ export default function PanierPage() {
 
   return (
     <Container className="py-10">
+      <CartZoneNotice />
       <h1 className="font-brand text-3xl font-bold text-brand-green-dark">
         Mon panier
       </h1>

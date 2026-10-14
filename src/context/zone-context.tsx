@@ -19,6 +19,10 @@ interface ZoneContextValue {
   zoneId: ZoneId;
   zone: ZoneWithShipping;
   setZoneId: (zoneId: ZoneId) => void;
+  /** False until the zone remembered by the browser has been read: before that,
+   *  `zoneId` is only the default, and nothing may be decided from it (e.g. a
+   *  cart product removed because "it is not sold in the default zone"). */
+  zoneHydrated: boolean;
   /** The applicable unit price for that quantity (tiered pricing) — quantity
    *  defaults to 1, i.e. the base price, for callers that don't care (cards). */
   priceFor: (product: PublicProduct, quantity?: number) => number | null;
@@ -60,6 +64,7 @@ export function ZoneProvider({ children }: { children: React.ReactNode }) {
     DEFAULT_SHIPPING
   );
   const [shippingLive, setShippingLive] = useState(false);
+  const [zoneHydrated, setZoneHydrated] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -96,6 +101,8 @@ export function ZoneProvider({ children }: { children: React.ReactNode }) {
       }
     } catch {
       /* localStorage unavailable, keep default zone */
+    } finally {
+      setZoneHydrated(true);
     }
   }, []);
 
@@ -124,13 +131,14 @@ export function ZoneProvider({ children }: { children: React.ReactNode }) {
       zoneId,
       zone,
       setZoneId,
+      zoneHydrated,
       priceFor: (product: PublicProduct, quantity = 1) =>
         priceForQuantity(product, zoneId, quantity),
       format: (amount: number) => formatPrice(amount, zoneId),
       applyShippingSettings,
       liveShipping: shippingLive ? shipping : null,
     };
-  }, [zoneId, setZoneId, shipping, shippingLive, applyShippingSettings]);
+  }, [zoneId, setZoneId, zoneHydrated, shipping, shippingLive, applyShippingSettings]);
 
   return <ZoneContext.Provider value={value}>{children}</ZoneContext.Provider>;
 }
