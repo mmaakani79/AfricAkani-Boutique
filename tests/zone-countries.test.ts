@@ -23,13 +23,13 @@ const ZONES: ZoneId[] = ["bj", "ca", "us"];
 describe("table zone ↔ pays (à valider)", () => {
   it("contenu exact de la table", () => {
     assert.deepEqual(ZONE_COUNTRY_CODES, {
-      bj: ["BJ"],
+      bj: ["BJ", "TG", "BF", "CI", "ML", "NE", "SN", "GW"],
       ca: ["CA"],
       us: ["US"],
     });
     assert.deepEqual(
       countriesForZone("bj").map((c) => c.name),
-      ["Bénin"]
+      ["Bénin", "Togo", "Burkina Faso", "Côte d'Ivoire", "Mali", "Niger", "Sénégal", "Guinée-Bissau"]
     );
     assert.deepEqual(countriesForZone("ca").map((c) => c.name), ["Canada"]);
     assert.deepEqual(countriesForZone("us").map((c) => c.name), ["États-Unis"]);
@@ -51,11 +51,12 @@ describe("table zone ↔ pays (à valider)", () => {
 describe("reconnaissance des noms de pays (accents, casse, abréviations)", () => {
   const cases: [string, string | null][] = [
     ["Bénin", "BJ"], ["BENIN", "BJ"], ["  benin  ", "BJ"], ["Republic of Benin", "BJ"],
-    ["Togo", null], ["Burkina Faso", null], ["Côte d'Ivoire", null], ["Sénégal", null], ["Mali", null], ["Guinée-Bissau", null],
+    ["Côte d'Ivoire", "CI"], ["Côte d’Ivoire", "CI"], ["cote d ivoire", "CI"], ["Ivory Coast", "CI"],
+    ["Sénégal", "SN"], ["Senegal", "SN"], ["Guinée-Bissau", "GW"], ["Guinea Bissau", "GW"],
     ["Canada", "CA"], ["canada", "CA"], ["CA", "CA"],
     ["États-Unis", "US"], ["Etats-Unis", "US"], ["états unis", "US"], ["USA", "US"], ["U.S.A.", "US"],
     ["United States", "US"], ["United States of America", "US"], ["États-Unis d'Amérique", "US"],
-    ["Niger", null], ["Nigeria", null], ["Ghana", null], ["France", null], ["Guinée", null], ["", null], ["   ", null],
+    ["Niger", "NE"], ["Nigeria", null], ["Ghana", null], ["France", null], ["Guinée", null], ["", null], ["   ", null],
   ];
   for (const [input, expected] of cases) {
     it(`« ${input} » → ${expected ?? "inconnu"}`, () => assert.equal(countryCodeFromText(input), expected));
@@ -67,7 +68,7 @@ describe("checkAddressCountry : accepté / refusé avec un message clair", () =>
     assert.deepEqual(checkAddressCountry("ca", "canada"), { ok: true, country: "Canada" });
     assert.deepEqual(checkAddressCountry("us", "Etats-Unis"), { ok: true, country: "États-Unis" });
     assert.deepEqual(checkAddressCountry("bj", "benin"), { ok: true, country: "Bénin" });
-    assert.deepEqual(checkAddressCountry("bj", "Republic of Benin"), { ok: true, country: "Bénin" });
+    assert.deepEqual(checkAddressCountry("bj", "Ivory Coast"), { ok: true, country: "Côte d'Ivoire" });
   });
 
   it("refuse un pays d'une autre zone en citant les deux zones", () => {
@@ -79,8 +80,7 @@ describe("checkAddressCountry : accepté / refusé avec un message clair", () =>
 
     const r2 = checkAddressCountry("bj", "Canada");
     assert.ok(!r2.ok);
-    assert.match(r2.error, /pays desservis : Bénin\)/);
-    assert.doesNotMatch(r2.error, /Togo|Sénégal|Afrique de l'Ouest, /);
+    assert.match(r2.error, /pays desservis : Bénin, Togo/);
     assert.match(r2.error, /choisissez la zone « Canada »/);
   });
 
@@ -124,7 +124,7 @@ const PAYMENT_MODES: [string, Record<string, unknown>][] = [
 ];
 
 describe("commande : adresse cohérente acceptée, incohérente refusée (tous les modes de paiement)", () => {
-  const coherent: [ZoneId, string][] = [["bj", "Bénin"], ["ca", "Canada"], ["us", "États-Unis"]];
+  const coherent: [ZoneId, string][] = [["bj", "Bénin"], ["bj", "Togo"], ["ca", "Canada"], ["us", "États-Unis"]];
   for (const [mode, extra] of PAYMENT_MODES) {
     for (const [zone, country] of coherent) {
       it(`${mode} · zone ${zone} · ${country} : acceptée`, () => {
@@ -146,12 +146,6 @@ describe("commande : adresse cohérente acceptée, incohérente refusée (tous l
     it(`${mode} : pays sans zone, pays vide ou absent : refusés`, () => {
       assert.ok(!parseOrderDraft(draft("ca", "France", extra)).ok);
       assert.ok(!parseOrderDraft(draft("bj", "Nigeria", extra)).ok);
-      // les anciens voisins de la zone franc CFA ne sont plus desservis
-      for (const voisin of ["Togo", "Burkina Faso", "Côte d'Ivoire", "Mali", "Niger", "Sénégal", "Guinée-Bissau"]) {
-        const r = parseOrderDraft(draft("bj", voisin, extra));
-        assert.ok(!r.ok, voisin);
-        assert.match(r.error, /Nous ne livrons pas encore/);
-      }
       assert.ok(!parseOrderDraft(draft("ca", "", extra)).ok);
       assert.ok(!parseOrderDraft(draft("us", null, extra)).ok);
       assert.ok(!parseOrderDraft(draft("us", undefined, extra)).ok);
@@ -162,9 +156,9 @@ describe("commande : adresse cohérente acceptée, incohérente refusée (tous l
     const r = parseOrderDraft(draft("us", "usa"));
     assert.ok(r.ok);
     assert.equal(r.draft.customer.country, "États-Unis");
-    const r2 = parseOrderDraft(draft("bj", "BENIN"));
+    const r2 = parseOrderDraft(draft("bj", "COTE D'IVOIRE"));
     assert.ok(r2.ok);
-    assert.equal(r2.draft.customer.country, "Bénin");
+    assert.equal(r2.draft.customer.country, "Côte d'Ivoire");
   });
 
   it("un pays qui n'est pas du texte est refusé", () => {
