@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { Leaf, Truck, ShieldCheck, Globe2 } from "lucide-react";
 import { getAllCategories } from "@/lib/categories-db";
-import { getFeaturedProducts } from "@/lib/products-db";
+import { getAllProducts } from "@/lib/products-db";
 import { toPublicProduct } from "@/lib/public-product";
-import { ProductCard } from "@/components/shop/product-card";
-import { CategoryCard } from "@/components/shop/category-card";
+import { ZoneCategorySection, ZoneFeaturedSection } from "@/components/shop/zone-sections";
+import { categoryZones, publiclyListed } from "@/lib/zone-visibility";
 import { HeroCollage } from "@/components/shop/hero-collage";
 import { Container } from "@/components/layout/container";
 import { FreeShippingCardText } from "@/components/shop/free-shipping-card-text";
@@ -38,7 +38,11 @@ export const dynamic = "force-dynamic";
 export default async function Home() {
   const categories = await getAllCategories();
   const featuredCategories = categories.filter((c) => c.featuredHome);
-  const featuredProducts = (await getFeaturedProducts()).map(toPublicProduct);
+  // What the public may ever see (sold in at least one zone). Which of it a
+  // visitor sees depends on their zone, decided in the browser.
+  const listed = publiclyListed(await getAllProducts());
+  const featuredProducts = listed.filter((p) => p.featured).map(toPublicProduct);
+  const zonesByCategory = categoryZones(listed);
 
   return (
     <div>
@@ -102,44 +106,10 @@ export default async function Home() {
       </div>
 
       {/* Rayons phares */}
-      <Container className="pb-14 pt-16">
-        <p className="text-center text-xs font-bold uppercase tracking-widest text-brand-gold">
-          Nos rayons phares
-        </p>
-        <h2 className="mt-2 text-center font-brand text-3xl font-bold text-brand-green-dark">
-          Le meilleur de la maison
-        </h2>
-        <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-          {featuredCategories.map((category) => (
-            <CategoryCard key={category.id} category={category} />
-          ))}
-        </div>
-      </Container>
+      <ZoneCategorySection categories={featuredCategories} zonesByCategory={zonesByCategory} />
 
       {/* Produits mis en avant */}
-      <section className="bg-white py-14">
-        <Container>
-          <p className="text-center text-xs font-bold uppercase tracking-widest text-brand-gold">
-            Sélection
-          </p>
-          <h2 className="mt-2 text-center font-brand text-3xl font-bold text-brand-green-dark">
-            Produits mis en avant
-          </h2>
-          <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {featuredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-          <div className="mt-10 text-center">
-            <Link
-              href="/catalogue"
-              className="rounded-full border border-brand-green px-6 py-3 text-sm font-bold text-brand-green hover:bg-brand-green hover:text-ivory"
-            >
-              Voir tout le catalogue →
-            </Link>
-          </div>
-        </Container>
-      </section>
+      <ZoneFeaturedSection products={featuredProducts} />
     </div>
   );
 }

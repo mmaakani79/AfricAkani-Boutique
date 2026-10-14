@@ -6,7 +6,10 @@ import { getApprovedReviewsForProduct } from "@/lib/reviews-db";
 import { getCategoryById } from "@/lib/categories-db";
 import { getPackagingTypeById } from "@/lib/packaging-types-db";
 import { ProductGallery } from "@/components/shop/product-gallery";
-import { ProductCard } from "@/components/shop/product-card";
+import { ZoneRelatedProducts } from "@/components/shop/zone-sections";
+import { ProductZoneGate } from "./zone-gate";
+import { isAdminAuthed } from "@/lib/admin-api-auth";
+import { isSoldInAnyZone, publiclyListed } from "@/lib/zone-visibility";
 import { StarRatingDisplay } from "@/components/shop/star-rating";
 import { HALAL_LABELS } from "@/lib/packaging";
 import { ProductPurchasePanel } from "./purchase-panel";
@@ -21,7 +24,8 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
-  if (!product) return {};
+  // A product sold in no zone does not exist for the public: no title, no indexing.
+  if (!product || !isSoldInAnyZone(product)) return { robots: { index: false, follow: false } };
   return {
     title: `${product.name} — AfricAkani`,
     description: product.description,
@@ -38,13 +42,34 @@ export default async function ProductPage({
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
+  // Sold in no zone (no price anywhere): only the admin may open it, with a
+  // clear warning. For everyone else it does not exist.
+  const soldAnywhere = isSoldInAnyZone(product);
+  const admin = soldAnywhere ? false : await isAdminAuthed();
+  if (!soldAnywhere && !admin) notFound();
+
   const category = await getCategoryById(product.categoryId);
   const packagingType = await getPackagingTypeById(product.packaging);
-  const relatedProducts = await getRelatedProducts(product.id, product.categoryId);
+  // A wider pool than shown: the visitor's zone is only known in the browser,
+  // which keeps the first 4 sold in that zone (see ZoneRelatedProducts).
+  const relatedProducts = publiclyListed(
+    await getRelatedProducts(product.id, product.categoryId, 16)
+  );
   const reviews = await getApprovedReviewsForProduct(product.id);
 
   return (
     <Container className="py-10">
+      {admin && (
+        <p
+          role="note"
+          data-testid="admin-hidden-product"
+          className="mb-6 rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900"
+        >
+          Aperçu administrateur : ce produit n&rsquo;a de prix dans aucune zone, il est
+          invisible pour le public (boutique, recherche, accueil et lien direct).
+        </p>
+      )}
+      <ProductZoneGate productName={product.name} prices={product.prices} bypass={admin}>
       <div className="grid gap-8 md:grid-cols-2">
         <ProductGallery
           name={product.name}
@@ -170,18 +195,9 @@ export default async function ProductPage({
         )}
       </div>
 
-      {relatedProducts.length > 0 && (
-        <div className="mt-10">
-          <h2 className="font-brand text-xl font-bold text-brand-green-dark">
-            Vous aimerez aussi
-          </h2>
-          <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {relatedProducts.map((p) => (
-              <ProductCard key={p.id} product={toPublicProduct(p)} />
-            ))}
-          </div>
-        </div>
-      )}
+      </ProductZoneGate>
+
+      <ZoneRelatedProducts products={relatedProducts.map(toPublicProduct)} />
     </Container>
   );
 }

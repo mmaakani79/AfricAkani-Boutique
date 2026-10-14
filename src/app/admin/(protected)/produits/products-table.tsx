@@ -6,7 +6,8 @@ import { GripVertical, Pencil, Trash2 } from "lucide-react";
 import type { Category, Product } from "@/lib/types";
 import { CATEGORY_ICONS } from "@/lib/category-icons";
 import { PhotoPlaceholder } from "@/components/shop/photo-placeholder";
-import { formatPrice } from "@/data/zones";
+import { ZONES, formatPrice } from "@/data/zones";
+import { ALL_ZONE_IDS, isSoldInZone, zonesSoldIn } from "@/lib/zone-visibility";
 import { deleteProductAction, reorderProductsAction } from "../../actions";
 
 const SCROLL_EDGE_PX = 40;
@@ -268,6 +269,25 @@ export function ProductsTable({
                   </td>
                   <td className="px-4 py-3 font-semibold text-brand-green-dark">
                     {p.name}
+                    {zonesSoldIn(p).length === 0 ? (
+                      <span
+                        data-testid="hidden-product-badge"
+                        className="mt-1 block w-fit rounded-full bg-red-50 px-2.5 py-0.5 text-[11px] font-bold text-red-700"
+                      >
+                        Invisible en boutique : aucun prix dans aucune zone
+                      </span>
+                    ) : (
+                      <span className="mt-1 flex flex-wrap gap-1" data-testid="product-zones">
+                        {ALL_ZONE_IDS.filter((z) => isSoldInZone(p, z)).map((z) => (
+                          <span
+                            key={z}
+                            className="rounded-full bg-brand-green/10 px-2 py-0.5 text-[10px] font-bold text-brand-green-dark"
+                          >
+                            {ZONES[z].shortLabel}
+                          </span>
+                        ))}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-ink/60">
                     {category?.name ?? p.categoryId}

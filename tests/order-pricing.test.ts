@@ -85,13 +85,18 @@ const line = (productId: string, quantity: number, variantId: string | null = nu
 
 const CUSTOMER = { name: "A B", email: "a@b.c", phone: "1", address: "1 rue X", city: "Y" };
 
+// The delivery country must belong to the chosen zone (see zone-countries.test.ts):
+// by default the draft's address is in the zone it asks for.
+const COUNTRY_OF_ZONE: Record<string, string> = { bj: "Bénin", ca: "Canada", us: "États-Unis" };
+
 function rawDraft(over: Record<string, unknown> = {}) {
+  const zoneId = (over.zoneId as string | undefined) ?? "ca";
   return {
     id: "AK-TEST1",
     zoneId: "ca",
     currency: "CAD",
     items: [{ productId: "piment", variantId: null, quantity: 2 }],
-    customer: CUSTOMER,
+    customer: { ...CUSTOMER, country: COUNTRY_OF_ZONE[zoneId] },
     ...over,
   };
 }
