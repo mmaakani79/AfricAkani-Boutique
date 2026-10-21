@@ -10,6 +10,7 @@
     "test": "node --experimental-strip-types --disable-warning=ExperimentalWarning --import ./tests/register.mjs --test \"tests/*.test.ts\""
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "@vercel/blob": "^2.8.0",
     "exceljs": "^4.4.0",
     "lucide-react": "^1.47.0",
