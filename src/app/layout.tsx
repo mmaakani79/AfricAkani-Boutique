@@ -9,6 +9,7 @@ import { PackagingProvider } from "@/context/packaging-context";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { ShippingBanner } from "@/components/layout/shipping-banner";
+import { SiteAnalytics } from "@/components/layout/site-analytics";
 
 // The two "latin" files carry every French character: load them right away, as
 // next/font did, so text appears directly in the right font (the other ranges
@@ -60,6 +61,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             </PackagingProvider>
           </CategoryProvider>
         </ZoneProvider>
+        <SiteAnalytics />
       </body>
     </html>
   );

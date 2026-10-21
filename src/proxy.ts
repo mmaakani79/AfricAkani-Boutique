@@ -12,7 +12,7 @@ import { renderMaintenancePage } from "@/lib/maintenance-page";
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|icon.png|logo/|logos/|photos/).*)",
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|icon.png|logo/|logos/|photos/|_vercel/).*)",
   ],
 };
 
