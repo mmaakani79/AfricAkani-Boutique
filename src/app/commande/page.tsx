@@ -768,6 +768,29 @@ export default function CommandePage() {
           >
             {submitting ? "Envoi…" : submitLabel}
           </button>
+          {/* Plain links that open in a new tab: the form (and its payment
+              buttons) is untouched and nothing typed is lost. */}
+          <p data-testid="order-legal-links" className="text-center text-xs text-ink/60">
+            En passant commande, vous acceptez nos{" "}
+            <a
+              href="/conditions-de-vente"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-brand-green-dark underline underline-offset-2"
+            >
+              Conditions de vente
+            </a>{" "}
+            et notre{" "}
+            <a
+              href="/confidentialite"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-brand-green-dark underline underline-offset-2"
+            >
+              Politique de confidentialité
+            </a>
+            .
+          </p>
         </form>
 
         <div className="h-fit space-y-4 rounded-2xl bg-white p-5">
