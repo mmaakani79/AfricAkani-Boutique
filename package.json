@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --experimental-strip-types --disable-warning=ExperimentalWarning --import ./tests/register.mjs --test \"tests/*.test.ts\""
+    "test": "node --experimental-strip-types --disable-warning=ExperimentalWarning --import ./tests/register.mjs --test \"tests/*.test.ts\"",
+    "e2e": "bash e2e/run.sh"
   },
   "dependencies": {
     "@vercel/analytics": "^2.0.1",

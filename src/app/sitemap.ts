@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getAllProducts } from "@/lib/products-db";
 import { publiclyListed } from "@/lib/zone-visibility";
+import { LEGAL_PAGE_LIST } from "@/lib/legal-content";
 
 const SITE_URL = (
   process.env.NEXT_PUBLIC_SITE_URL || "https://www.africakani.com"
@@ -14,6 +15,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/catalogue`, changeFrequency: "daily", priority: 0.9 },
     { url: `${SITE_URL}/notre-histoire`, changeFrequency: "monthly", priority: 0.5 },
     { url: `${SITE_URL}/services`, changeFrequency: "monthly", priority: 0.5 },
+    ...LEGAL_PAGE_LIST.map((page) => ({
+      url: `${SITE_URL}${page.path}`,
+      changeFrequency: "yearly" as const,
+      priority: 0.3,
+    })),
   ];
 
   // A product sold in no zone is not public: it must not be advertised to search engines.

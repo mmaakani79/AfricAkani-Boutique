@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // End-to-end scripts: plain Node (CommonJS), not part of the site.
+    "e2e/**",
   ]),
 ]);
 

@@ -8,6 +8,7 @@ import { PaymentBadgeRow, MobileMoneyBadgeRow } from "@/components/shop/payment-
 import { isStripeConfigured } from "@/lib/stripe";
 import { isPaypalConfigured } from "@/lib/paypal";
 import { getMobileMoneyConfig } from "@/lib/mobile-money-db";
+import { LEGAL_PAGE_LIST } from "@/lib/legal-content";
 
 const LINKS = [
   { href: "/notre-histoire#benin", label: "Bénin & Afrique de l'Ouest" },
@@ -155,6 +156,22 @@ export async function Footer() {
               boxShadow: "0 0 8px 0 rgba(201, 150, 44, 0.35)",
             }}
           />
+        </Container>
+        <Container>
+          <nav aria-label="Informations légales" data-testid="footer-legal-links">
+            <ul className="flex flex-wrap justify-center gap-x-5 gap-y-1 pt-4 text-xs">
+              {LEGAL_PAGE_LIST.map((page) => (
+                <li key={page.path}>
+                  <Link
+                    href={page.path}
+                    className="inline-block py-1.5 text-ivory/80 underline decoration-transparent underline-offset-4 transition-colors hover:text-ivory hover:decoration-brand-gold-light"
+                  >
+                    {page.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
         </Container>
         <Container className="flex flex-col items-center justify-between gap-2 py-5 text-center text-xs text-ivory/60 sm:flex-row">
           <span>© 2026 AfricAkani</span>
