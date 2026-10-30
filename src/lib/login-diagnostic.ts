@@ -63,3 +63,26 @@ export function buildLoginDiagnostic(input: {
     ...(input.cause ? { cause: input.cause } : {}),
   };
 }
+
+const PREVIEW_HINT =
+  " Sur la prévisualisation, le mot de passe est celui défini pour l'environnement « Preview » de Vercel, pas celui de la production.";
+
+/** The sentence shown on the login page. It says what is wrong without ever revealing anything about
+ *  the password. On a Preview it adds where the password comes from, since that is the usual surprise. */
+export function loginRefusalMessage(input: {
+  resultat: LoginRefusal;
+  cause?: LoginDiagnostic["cause"];
+  env: Env;
+}): string {
+  const preview = isPreviewDiagnosticEnabled(input.env);
+  if (input.resultat === "mot-de-passe-incorrect") {
+    return `Mot de passe incorrect.${preview ? PREVIEW_HINT : ""}`;
+  }
+  if (input.cause === "garde-fou-base") {
+    return "La base de données de ce déploiement n'est pas utilisable : en prévisualisation, PREVIEW_DATABASE_URL doit être définie et pointer vers une base différente de la production. Connexion refusée par sécurité.";
+  }
+  if (input.cause === "admin-password-absente") {
+    return `ADMIN_PASSWORD n'est pas configuré côté serveur. Ajoutez cette variable d'environnement.${preview ? PREVIEW_HINT : ""}`;
+  }
+  return "Erreur interne pendant la connexion. Réessayez ; si cela continue, consultez les journaux de Vercel.";
+}
