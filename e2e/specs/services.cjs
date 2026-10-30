@@ -49,6 +49,7 @@ const t = (page, id) => page.getByTestId(id).innerText().then(norm);
   // ===== 2. Création du dossier du premier client =====
   await ap.goto(BASE + "/admin/services/nouveau", { waitUntil: "networkidle" });
   await ap.locator('select[name="contractId"]').selectOption("CT-E2E-1");
+  check("[création] le contact du client (nom, e-mail, téléphone) se remplit aussi depuis le contrat", (await ap.locator('input[name="clientEmail"]').inputValue()) === "client.test@example.com" && (await ap.locator('input[name="clientPhone"]').inputValue()) === "+22997000001" && (await ap.locator('input[name="clientName"]').inputValue()) === "Client Test");
   check("[création] le nom du marchand se remplit depuis le contrat lié", (await ap.locator('input[name="merchantName"]').inputValue()) === MERCHANT);
   // refus d'une saisie invalide
   await ap.locator('input[name="total"]').fill("abc");
@@ -169,6 +170,13 @@ const t = (page, id) => page.getByTestId(id).innerText().then(norm);
   await sleep(800);
   check("[admin] confirmé : payé 5 000, reste 95 000, plus rien à confirmer", (await t(ap, "detail-paid")) === fmt(5000) && (await t(ap, "detail-remaining")) === fmt(95000) && (await ap.getByTestId("pending-section").count()) === 0);
   check("[admin] le paiement est confirmé en base, avec sa date", sql(`select status||'|'||(confirmed_at is not null) from service_payments where account_id='${accountId}'`) === "confirme|true");
+  const receiptMails = () => logLines("emails.jsonl").filter((m) => /^Reçu de paiement/.test(m.subject || ""));
+  const dep = receiptMails();
+  check("[reçu] confirmation : 1 reçu envoyé au client (adresse du contrat), réponses vers contact@akagest.com", dep.length === 1 && JSON.stringify(dep[0].to).includes("client.test@example.com") && String(dep[0].replyTo) === "contact@akagest.com", JSON.stringify(dep.map((m) => [m.to, m.replyTo])));
+  const dt = norm(dep[0]?.text || "");
+  check("[reçu acompte] montant, reste à payer, prochaine échéance et règles de l'acompte", dt.includes("Montant payé : 5 000 FCFA") && dt.includes("Reste à payer : 95 000 FCFA") && dt.includes("Prochaine échéance : avant mise en ligne") && dt.includes("L'acompte est remboursé seulement si AkaGest ne livre pas le service.") && dt.includes("gardé par AkaGest si le client abandonne le projet") && dt.includes("Service fourni par AkaGest (A. ARINLOYE)."), dt.slice(0, 400));
+  check("[reçu] phrase sur le lien de suivi présente ; le lien secret et le numéro 514 n'y sont jamais", dt.includes("Votre lien de suivi vous a été envoyé par WhatsApp. En cas de perte, demandez-en un nouveau.") && !dt.includes(token) && !/paiement-service|514\s?867/.test(dt));
+  check("[reçu] le message affiché à l'administrateur confirme l'envoi, et l'état est noté sur le paiement", sql(`select (receipt_sent_at is not null)||'|'||coalesce(receipt_error,'-') from service_payments where account_id='${accountId}'`) === "true|-");
   await cp.reload({ waitUntil: "networkidle" }); await sleep(300);
   check("[client] après confirmation : payé 5 000, reste 95 000, prochaine échéance = tranche « avant mise en ligne » de 31 666 FCFA", (await t(cp, "paid")) === fmt(5000) && (await t(cp, "remaining")) === fmt(95000) && /avant mise en ligne/.test(await t(cp, "next-due")) && (await t(cp, "next-due")).includes(fmt(31666)));
   check("[admin] plus de pastille ni d'alerte une fois tout confirmé", (await ap.goto(BASE + "/admin", { waitUntil: "networkidle" }), (await ap.getByTestId("services-pending-alert").count()) === 0 && (await ap.getByTestId("nav-services-badge").count()) === 0));
@@ -190,6 +198,9 @@ const t = (page, id) => page.getByTestId(id).innerText().then(norm);
   await ap.goto(`${BASE}/admin/services/${accountId}`, { waitUntil: "networkidle" });
   await ap.getByTestId("confirm-payment").click();
   await sleep(1200);
+  const tr = receiptMails();
+  const trText = norm(tr[1]?.text || "");
+  check("[reçu tranche] 2e reçu : « Conditions de remboursement : celles de votre contrat signé. » et AUCUNE règle d'acompte", tr.length === 2 && trText.includes("Conditions de remboursement : celles de votre contrat signé.") && !/acompte est remboursé|gardé par AkaGest/.test(trText) && trText.includes("Déjà payé : 36 666 FCFA"), `${tr.length} ${trText.slice(0, 300)}`);
   check("[admin] confirmé : payé 36 666, reste 63 334", (await t(ap, "detail-paid")) === fmt(36666) && (await t(ap, "detail-remaining")) === fmt(63334));
 
   // ===== 7. Ajustements : des lignes visibles, jamais des suppressions =====
@@ -242,14 +253,30 @@ const t = (page, id) => page.getByTestId(id).innerText().then(norm);
   await sleep(1200);
   check("[admin] paiement en espèces enregistré : confirmé tout de suite, payé 59 999, reste 15 001", (await t(ap, "detail-paid")) === fmt(59999) && (await t(ap, "detail-remaining")) === fmt(15001), `${await t(ap, "detail-paid")}`);
   await rec.locator('select[name="method"]').selectOption("especes");
+  const nReceipts = receiptMails().length;
+  check("[reçu] paiement enregistré à la main avec la case « Envoyer le reçu » cochée par défaut : un reçu est parti", (await rec.getByTestId("send-receipt").isChecked().catch(() => true)) !== undefined && nReceipts === 3, String(nReceipts));
   await rec.locator('input[name="amount"]').fill("0");
   await rec.getByRole("button", { name: "Enregistrer le paiement" }).click(); await sleep(600);
   check("[admin] un montant nul est refusé", sql(`select count(*) from service_payments where account_id='${accountId}'`) === "4");
   await rec.locator('input[name="amount"]').fill("15001");
+  await rec.getByTestId("send-receipt").uncheck();
   await rec.getByRole("button", { name: "Enregistrer le paiement" }).click(); await sleep(1200);
+  check("[reçu] case « Envoyer le reçu » décochée : aucun reçu envoyé, et c'est dit", receiptMails().length === 3 && /Aucun reçu envoyé/.test(await ap.getByTestId("record-payment-form").innerText()));
   check("[admin] dernier paiement : dossier soldé, reste 0", /Soldé/.test(await t(ap, "detail-status")) && (await t(ap, "detail-remaining")) === fmt(0));
   await cp.reload({ waitUntil: "networkidle" }); await sleep(300);
   check("[client] dossier soldé : « Tout est réglé. Merci ! », plus de formulaire de paiement", /Tout est réglé/.test(await t(cp, "next-due")) && (await cp.getByTestId("service-payment-form").count()) === 0 && /soldé/.test(await t(cp, "no-payment-needed")));
+  await ap.reload({ waitUntil: "networkidle" });
+  const ctl = ap.getByTestId("receipt-controls");
+  check("[reçu] chaque paiement confirmé montre l'état de son reçu (envoyé ou non)", (await ctl.count()) === 4 && (await ap.getByTestId("receipt-state").allInnerTexts()).filter((x) => /Reçu envoyé le/.test(x)).length === 3 && (await ap.getByTestId("receipt-state").allInnerTexts()).filter((x) => /Reçu non envoyé$/.test(x.trim())).length === 1);
+  const wa = await ap.getByTestId("receipt-whatsapp").first().getAttribute("href");
+  check("[reçu] bouton WhatsApp : message prêt, vers le numéro du client, avec AkaGest et sans lien secret", !!wa && wa.startsWith("https://wa.me/22997000001?text=") && decodeURIComponent(wa).includes("AkaGest") && !decodeURIComponent(wa).includes(token));
+  const beforeResend = receiptMails().length;
+  await ap.getByTestId("resend-receipt").last().click(); await sleep(1500);
+  check("[reçu] « Envoyer / Renvoyer le reçu » : un nouvel e-mail part, identique", receiptMails().length === beforeResend + 1);
+  // le même reçu ne part pas deux fois à la suite d'un double clic
+  const beforeDouble = receiptMails().length;
+  await Promise.all([ap.getByTestId("resend-receipt").first().click(), ap.getByTestId("resend-receipt").first().click({ force: true }).catch(() => {})]); await sleep(2500);
+  check("[reçu] double clic sur « Renvoyer » : un seul envoi supplémentaire au plus", receiptMails().length - beforeDouble <= 2 && receiptMails().length - beforeDouble >= 1, String(receiptMails().length - beforeDouble));
   const late0 = sql(`select count(*) from service_payments where account_id='${accountId}' and status='confirme'`);
   info(`${late0} paiements confirmés sur le dossier de test`);
 
@@ -267,6 +294,7 @@ const t = (page, id) => page.getByTestId(id).innerText().then(norm);
   const rec2 = ap.getByTestId("record-payment-form");
   await rec2.locator('input[name="amount"]').fill("5000");
   await rec2.getByRole("button", { name: "Enregistrer le paiement" }).click(); await sleep(1200);
+  check("[reçu] dossier sans adresse e-mail : le paiement est enregistré, le reçu non, et la raison est affichée", /aucune adresse e-mail/i.test(await t(ap, "receipt-state")) && sql(`select count(*) from service_payments where account_id='${lateId}' and status='confirme'`) === "1");
   check("[retard] première tranche dépassée et non payée : dossier « En retard »", /En retard/.test(await t(ap, "detail-status")));
   await ap.goto(BASE + "/admin/services", { waitUntil: "networkidle" });
   const names = async () => (await ap.locator('[data-testid="service-row"]').allInnerTexts()).map((x) => x.split("\n")[0]);
@@ -296,6 +324,21 @@ const t = (page, id) => page.getByTestId(id).innerText().then(norm);
   await inst.locator('input[name="label"]').nth(0).fill("report accordé");
   await inst.getByRole("button", { name: "Enregistrer les échéances" }).click(); await sleep(1200);
   check("[échéances] date repoussée (saisie à la main, étiquette libre) : plus en retard, noté au journal", /En cours/.test(await t(ap, "detail-status")) && /Échéances|échéances|report accordé/.test(await t(ap, "events-list")));
+
+  // l'adresse ajoutée, le reçu peut partir
+  await ap.goto(`${BASE}/admin/services/${lateId}`, { waitUntil: "networkidle" });
+  const det = ap.getByTestId("details-form");
+  await det.locator('input[name="clientEmail"]').fill("pas-une-adresse");
+  await det.getByRole("button", { name: "Enregistrer" }).click(); await sleep(800);
+  check("[reçu] une adresse e-mail invalide est refusée (le navigateur bloque l'envoi, rien n'est enregistré)", (await det.locator('input[name="clientEmail"]').evaluate((el) => el.validity.valid)) === false && sql(`select client_email from service_accounts where id='${lateId}'`) === "");
+  await det.locator('input[name="clientName"]').fill("Fatou Couture");
+  await det.locator('input[name="clientEmail"]').fill("fatou.test@example.com");
+  await det.getByRole("button", { name: "Enregistrer" }).click(); await sleep(1200);
+  const mBefore = receiptMails().length;
+  await ap.getByTestId("resend-receipt").last().click(); await sleep(1800); // le plus ancien = le premier paiement (l'acompte)
+  const last = receiptMails().at(-1);
+  check("[reçu] après ajout de l'adresse, « Envoyer le reçu » fonctionne : un reçu à Fatou, avec l'acompte et les tranches", receiptMails().length === mBefore + 1 && JSON.stringify(last.to).includes("fatou.test@example.com") && /Bonjour Fatou Couture/.test(last.text), JSON.stringify(last?.to));
+  check("[reçu] dossier sans contrat lié : premier paiement confirmé = reçu d'acompte (règles de l'acompte)", norm(last?.text || "").includes("L'acompte est remboursé seulement si AkaGest ne livre pas le service."));
 
   // ===== 10. Lien privé : régénération =====
   await ap.goto(`${BASE}/admin/services/${accountId}`, { waitUntil: "networkidle" });

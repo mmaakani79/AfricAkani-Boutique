@@ -12,7 +12,15 @@ describe("paiements de services : base de données (ajouts seulement, rien ne s'
 
   it("uniquement de nouvelles tables, aucune modification des tables existantes", () => {
     const tables = [...services.matchAll(/CREATE TABLE IF NOT EXISTS (\w+)/g)].map((m) => m[1]);
-    assert.deepEqual(tables, ["service_accounts", "service_installments", "service_payments", "service_adjustments", "service_events"]);
+    assert.deepEqual(tables, [
+      "service_accounts",
+      "service_installments",
+      "service_payments",
+      "service_adjustments",
+      "service_events",
+      "client_shops",
+      "client_shop_events",
+    ]);
     assert.doesNotMatch(services, /ALTER TABLE (products|orders|order_items|signed_contracts|categories)/);
     assert.doesNotMatch(services, /DROP (TABLE|COLUMN)|TRUNCATE|DELETE FROM/i);
   });
@@ -21,7 +29,8 @@ describe("paiements de services : base de données (ajouts seulement, rien ne s'
     for (const t of ["service_accounts", "service_installments", "service_payments"]) {
       assert.match(services, new RegExp(`BEFORE DELETE ON ${t}`), t);
     }
-    for (const t of ["service_adjustments", "service_events"]) {
+    assert.match(services, /BEFORE DELETE ON client_shops/);
+    for (const t of ["service_adjustments", "service_events", "client_shop_events"]) {
       assert.match(services, new RegExp(`BEFORE UPDATE OR DELETE ON ${t}`), t);
     }
   });

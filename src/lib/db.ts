@@ -380,6 +380,43 @@ CREATE TABLE IF NOT EXISTS service_events (
   detail TEXT NOT NULL DEFAULT ''
 );
 
+-- Who receives the receipts (copied from the signed contract when the file is created, editable),
+-- and the state of the receipt e-mail of each payment. Additive only.
+ALTER TABLE service_accounts ADD COLUMN IF NOT EXISTS client_name TEXT NOT NULL DEFAULT '';
+ALTER TABLE service_accounts ADD COLUMN IF NOT EXISTS client_email TEXT NOT NULL DEFAULT '';
+ALTER TABLE service_accounts ADD COLUMN IF NOT EXISTS client_phone TEXT NOT NULL DEFAULT '';
+ALTER TABLE service_payments ADD COLUMN IF NOT EXISTS receipt_sent_at TIMESTAMPTZ;
+ALTER TABLE service_payments ADD COLUMN IF NOT EXISTS receipt_error TEXT;
+-- Short lease taken before sending, so a double click can never send the same receipt twice.
+ALTER TABLE service_payments ADD COLUMN IF NOT EXISTS receipt_claimed_at TIMESTAMPTZ;
+
+-- Client shops built by AkaGest and their on/off status (the "switch"). Status changes are manual,
+-- a suspension needs a reason, and every change is journaled (the journal is append-only).
+CREATE TABLE IF NOT EXISTS client_shops (
+  id TEXT PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  name TEXT NOT NULL,
+  domain TEXT NOT NULL DEFAULT '',
+  account_id TEXT REFERENCES service_accounts(id),
+  public_key TEXT NOT NULL UNIQUE,
+  status TEXT NOT NULL DEFAULT 'actif',
+  status_reason TEXT NOT NULL DEFAULT '',
+  status_changed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  suspended_at TIMESTAMPTZ,
+  delete_after DATE,
+  note TEXT NOT NULL DEFAULT ''
+);
+
+CREATE TABLE IF NOT EXISTS client_shop_events (
+  id BIGSERIAL PRIMARY KEY,
+  shop_id TEXT NOT NULL REFERENCES client_shops(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  kind TEXT NOT NULL,
+  from_status TEXT,
+  to_status TEXT,
+  reason TEXT NOT NULL DEFAULT ''
+);
+
 CREATE OR REPLACE FUNCTION service_forbid_change() RETURNS trigger AS $$
 BEGIN
   RAISE EXCEPTION 'service payment records are never deleted or rewritten (%).', TG_TABLE_NAME;
@@ -404,6 +441,14 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN
   CREATE TRIGGER service_events_append_only BEFORE UPDATE OR DELETE ON service_events
+    FOR EACH ROW EXECUTE FUNCTION service_forbid_change();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE TRIGGER client_shops_no_delete BEFORE DELETE ON client_shops
+    FOR EACH ROW EXECUTE FUNCTION service_forbid_change();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE TRIGGER client_shop_events_append_only BEFORE UPDATE OR DELETE ON client_shop_events
     FOR EACH ROW EXECUTE FUNCTION service_forbid_change();
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 `;

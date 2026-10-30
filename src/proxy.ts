@@ -43,6 +43,12 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // The status address of the client shops (/api/boutiques/<key>/statut) is read by those shops, not by
+  // visitors: it never depends on this shop being open or closed for maintenance.
+  if (pathname.startsWith("/api/boutiques/")) {
+    return NextResponse.next();
+  }
+
   if (
     pathname.startsWith("/api/cron") ||
     pathname.startsWith("/api/admin") ||

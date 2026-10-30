@@ -48,6 +48,9 @@ export function addMonths(date: string, months: number): string {
 
 export interface NewAccountInput {
   merchantName: string;
+  clientName: string;
+  clientEmail: string;
+  clientPhone: string;
   contractId: string | null;
   total: number;
   deposit: number;
@@ -58,7 +61,29 @@ export interface NewAccountInput {
   note: string;
 }
 
+const EMAIL_PATTERN = /^[^\s@<>"']+@[^\s@<>"']+\.[A-Za-z]{2,}$/;
+
+/** The client's contact details, where the receipts go. The e-mail is optional but must be valid when given. */
+export function parseClientContact(raw: {
+  clientName?: unknown;
+  clientEmail?: unknown;
+  clientPhone?: unknown;
+}): Parsed<{ clientName: string; clientEmail: string; clientPhone: string }> {
+  const clientEmail = text(raw.clientEmail, 160).toLowerCase();
+  if (clientEmail && !EMAIL_PATTERN.test(clientEmail)) {
+    return { ok: false, error: "L'adresse e-mail du client n'est pas valide." };
+  }
+  const clientPhone = text(raw.clientPhone, 30);
+  if (clientPhone && !/^\+?[0-9][0-9 .\-]{5,24}$/.test(clientPhone)) {
+    return { ok: false, error: "Le numéro de téléphone du client n'est pas valide (chiffres, espaces, +)." };
+  }
+  return { ok: true, value: { clientName: text(raw.clientName, 120), clientEmail, clientPhone } };
+}
+
 export function parseNewAccountInput(raw: {
+  clientName?: unknown;
+  clientEmail?: unknown;
+  clientPhone?: unknown;
   merchantName?: unknown;
   contractId?: unknown;
   total?: unknown;
@@ -73,6 +98,8 @@ export function parseNewAccountInput(raw: {
 }): Parsed<NewAccountInput> {
   const merchantName = text(raw.merchantName, 120);
   if (!merchantName) return { ok: false, error: "Indiquez le nom du marchand." };
+  const contact = parseClientContact(raw);
+  if (!contact.ok) return contact;
 
   const total = parseWholeAmount(raw.total);
   if (total === null || total < 1 || total > MAX_AMOUNT) {
@@ -117,6 +144,7 @@ export function parseNewAccountInput(raw: {
     ok: true,
     value: {
       merchantName,
+      ...contact.value,
       contractId: text(raw.contractId, 60) || null,
       total,
       deposit,

@@ -13,6 +13,7 @@ import {
   Tags,
   PackageOpen,
   Handshake,
+  Store,
 } from "lucide-react";
 import { logoutAction } from "../actions";
 import { getShopStatus } from "@/lib/site-settings-db";
@@ -139,6 +140,13 @@ export default async function AdminProtectedLayout({
                 {pendingServicePayments}
               </span>
             )}
+          </Link>
+          <Link
+            href="/admin/boutiques"
+            data-testid="nav-boutiques"
+            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-brand-green-dark hover:bg-ivory"
+          >
+            <Store className="h-4 w-4" /> Boutiques clientes
           </Link>
           <Link
             href="/admin/reglages"

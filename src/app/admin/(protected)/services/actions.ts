@@ -14,9 +14,11 @@ import {
   updateServiceAccountDetails,
   updateServiceInstallments,
 } from "@/lib/service-accounts-db";
+import { describeReceiptOutcome, sendServiceReceipt } from "@/lib/service-receipts";
 import {
   isValidIsoDate,
   parseAdjustment,
+  parseClientContact,
   parseAdminPayment,
   parseNewAccountInput,
   parseWholeAmount,
@@ -55,6 +57,9 @@ export async function createServiceAccountAction(
   await requireAdmin();
   const parsed = parseNewAccountInput({
     merchantName: formData.get("merchantName"),
+    clientName: formData.get("clientName"),
+    clientEmail: formData.get("clientEmail"),
+    clientPhone: formData.get("clientPhone"),
     contractId: formData.get("contractId"),
     total: formData.get("total"),
     deposit: formData.get("deposit"),
@@ -90,8 +95,13 @@ export async function recordPaymentAction(
   if (!parsed.ok) return { error: parsed.error };
   const payment = await recordAdminServicePayment(accountId, parsed.value);
   if (!payment) return { error: "Dossier introuvable." };
+  // "Envoyer le reçu" is ticked by default; the receipt never blocks the recording.
+  const sendReceipt = formData.get("sendReceipt") === "yes";
+  const receiptMessage = sendReceipt
+    ? ` ${describeReceiptOutcome(await sendServiceReceipt(accountId, payment.id))}`
+    : " Aucun reçu envoyé (case décochée).";
   refresh(accountId);
-  return { ok: true, message: "Paiement enregistré et confirmé." };
+  return { ok: true, message: `Paiement enregistré et confirmé.${receiptMessage}` };
 }
 
 export async function confirmPaymentAction(
@@ -103,8 +113,10 @@ export async function confirmPaymentAction(
   if (!payment || payment.accountId !== accountId) {
     return { error: "Ce paiement n'est plus en attente (déjà confirmé ou rejeté)." };
   }
+  // The receipt leaves as soon as the payment is confirmed; a failure is shown, never blocks.
+  const outcome = await sendServiceReceipt(accountId, paymentId);
   refresh(accountId);
-  return { ok: true, message: "Paiement confirmé." };
+  return { ok: true, message: `Paiement confirmé. ${describeReceiptOutcome(outcome)}` };
 }
 
 export async function rejectPaymentAction(
@@ -173,7 +185,14 @@ export async function updateDetailsAction(
   if (goLiveRaw && !isValidIsoDate(goLiveRaw)) return { error: "La date de mise en ligne n'est pas valide." };
   const followupAmount = parseWholeAmount(formData.get("followupAmount"));
   if (followupAmount === null || followupAmount < 0) return { error: "La mensualité de suivi doit être un nombre entier de FCFA." };
+  const contact = parseClientContact({
+    clientName: formData.get("clientName"),
+    clientEmail: formData.get("clientEmail"),
+    clientPhone: formData.get("clientPhone"),
+  });
+  if (!contact.ok) return { error: contact.error };
   const ok = await updateServiceAccountDetails(accountId, {
+    ...contact.value,
     goLiveDate: goLiveRaw || null,
     note: String(formData.get("note") ?? "").trim().slice(0, 500),
     followupAmount,
@@ -200,4 +219,21 @@ export async function regenerateLinkAction(
   if (!token) return { error: "Dossier introuvable." };
   refresh(accountId);
   return { ok: true, link: privateLink(token), message: "Nouveau lien créé. L'ancien ne fonctionne plus." };
+}
+
+/** Sends a payment's receipt again (or for the first time, if it could not leave). */
+export async function resendReceiptAction(
+  accountId: string,
+  paymentId: string
+): Promise<ServiceActionState> {
+  await requireAdmin();
+  const full = await getServiceAccountFull(accountId);
+  if (!full?.payments.some((p) => p.id === paymentId && p.status === "confirme")) {
+    return { error: "Seul un paiement confirmé a un reçu." };
+  }
+  const outcome = await sendServiceReceipt(accountId, paymentId, { force: true });
+  refresh(accountId);
+  return outcome.status === "sent"
+    ? { ok: true, message: describeReceiptOutcome(outcome) }
+    : { error: describeReceiptOutcome(outcome) };
 }

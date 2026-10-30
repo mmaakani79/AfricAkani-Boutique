@@ -13,11 +13,14 @@ import {
 } from "@/lib/service-account-math";
 import { PAYMENT_METHOD_LABELS } from "@/lib/service-validation";
 import { dateFr, dateTimeFr, fcfa } from "@/lib/service-format";
+import { buildReceiptForPayment } from "@/lib/service-receipts";
+import { receiptWhatsappHref } from "@/lib/service-receipt";
 import {
   AdjustmentForm,
   ConfirmRejectButtons,
   DetailsForm,
   InstallmentsForm,
+  ReceiptControls,
   RecordPaymentForm,
   RegenerateLinkForm,
 } from "@/components/admin/service-controls";
@@ -27,6 +30,7 @@ import {
   recordPaymentAction,
   regenerateLinkAction,
   rejectPaymentAction,
+  resendReceiptAction,
   updateDetailsAction,
   updateInstallmentsAction,
 } from "../actions";
@@ -202,6 +206,16 @@ export default async function ServiceAccountPage({ params }: { params: Promise<{
                 </span>
                 <span className="font-bold text-brand-green-dark">{fcfa(p.amount)}</span>
                 <span className="text-xs font-semibold text-ink/70">{PAYMENT_STATUS_LABELS[p.status]}</span>
+                {p.status === "confirme" && (
+                  <div className="w-full">
+                    <ReceiptControls
+                      resendAction={resendReceiptAction.bind(null, account.id, p.id)}
+                      whatsappHref={receiptWhatsappHref(account.clientPhone, buildReceiptForPayment(full, p.id)?.whatsappText ?? "")}
+                      sentAt={p.receiptSentAt}
+                      error={p.receiptError}
+                    />
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -237,6 +251,9 @@ export default async function ServiceAccountPage({ params }: { params: Promise<{
       <Section title="Informations du dossier" testId="details-section">
         <DetailsForm
           action={updateDetailsAction.bind(null, account.id)}
+          clientName={account.clientName}
+          clientEmail={account.clientEmail}
+          clientPhone={account.clientPhone}
           goLiveDate={account.goLiveDate}
           followupAmount={account.followupAmount}
           followupPeriod={account.followupPeriod}
@@ -251,7 +268,7 @@ export default async function ServiceAccountPage({ params }: { params: Promise<{
         </p>
         <RegenerateLinkForm
           action={regenerateLinkAction.bind(null, account.id)}
-          phone={contract?.clientPhone}
+          phone={account.clientPhone || contract?.clientPhone}
           merchantName={account.merchantName}
         />
       </Section>

@@ -16,6 +16,8 @@ export default async function NewServiceAccountPage() {
     id: c.id,
     label: `${c.companyName || c.clientName} — signé le ${new Date(c.createdAt).toLocaleDateString("fr-FR")} (${c.id})`,
     merchantName: c.companyName || c.clientName,
+    clientName: c.clientName,
+    email: c.clientEmail,
     phone: c.clientPhone,
   }));
   return (

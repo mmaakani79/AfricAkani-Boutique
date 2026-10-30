@@ -10,6 +10,8 @@ export interface ContractOption {
   id: string;
   label: string;
   merchantName: string;
+  clientName: string;
+  email: string;
   phone: string;
 }
 
@@ -21,6 +23,9 @@ export function NewAccountForm({ contracts }: { contracts: ContractOption[] }) {
   const { state, formAction, pending, onReset } = useKeptFormAction<NewServiceAccountState>(createServiceAccountAction, {});
   const [contractId, setContractId] = useState("");
   const [merchantName, setMerchantName] = useState("");
+  const [clientName, setClientName] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
+  const [clientPhone, setClientPhone] = useState("");
   const [count, setCount] = useState(3);
   const contract = contracts.find((c) => c.id === contractId);
 
@@ -28,7 +33,7 @@ export function NewAccountForm({ contracts }: { contracts: ContractOption[] }) {
     return (
       <div className="space-y-4 rounded-2xl bg-white p-5" data-testid="account-created">
         <p className="text-sm font-bold text-brand-green-dark">✓ Dossier créé ({state.accountId}).</p>
-        <PrivateLinkBox link={state.link} phone={contract?.phone} merchantName={merchantName} />
+        <PrivateLinkBox link={state.link} phone={clientPhone || contract?.phone} merchantName={merchantName} />
         <Link
           href={`/admin/services/${state.accountId}`}
           className="inline-block rounded-full bg-brand-green px-4 py-2 text-xs font-bold text-ivory hover:bg-brand-green-dark"
@@ -50,7 +55,11 @@ export function NewAccountForm({ contracts }: { contracts: ContractOption[] }) {
             onChange={(e) => {
               setContractId(e.target.value);
               const c = contracts.find((x) => x.id === e.target.value);
+              // The contract fills the empty fields; what is already typed is never overwritten.
               if (c && !merchantName) setMerchantName(c.merchantName);
+              if (c && !clientName) setClientName(c.clientName);
+              if (c && !clientEmail) setClientEmail(c.email);
+              if (c && !clientPhone) setClientPhone(c.phone);
             }}
             className={INPUT}
           >
@@ -73,6 +82,18 @@ export function NewAccountForm({ contracts }: { contracts: ContractOption[] }) {
             onChange={(e) => setMerchantName(e.target.value)}
             className={INPUT}
           />
+        </label>
+        <label className="block">
+          <span className={LABEL}>Client — nom (pour le reçu)</span>
+          <input name="clientName" type="text" maxLength={120} value={clientName} onChange={(e) => setClientName(e.target.value)} className={INPUT} />
+        </label>
+        <label className="block">
+          <span className={LABEL}>Client — e-mail (reçus)</span>
+          <input name="clientEmail" type="email" maxLength={160} value={clientEmail} onChange={(e) => setClientEmail(e.target.value)} className={INPUT} />
+        </label>
+        <label className="block sm:col-span-2">
+          <span className={LABEL}>Client — téléphone / WhatsApp (envoi du lien et du reçu)</span>
+          <input name="clientPhone" type="tel" maxLength={30} value={clientPhone} onChange={(e) => setClientPhone(e.target.value)} className={INPUT} />
         </label>
         <label className="block">
           <span className={LABEL}>Prix total (FCFA)</span>

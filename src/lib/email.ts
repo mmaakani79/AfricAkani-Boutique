@@ -231,6 +231,27 @@ export async function sendAdminServicePaymentSubmitted(params: {
   }
 }
 
+/** The receipt of a confirmed service payment. Sent from the shop's own sender; the client's replies go to `replyTo`. */
+export async function sendServicePaymentReceipt(params: {
+  to: string;
+  replyTo: string;
+  subject: string;
+  lines: string[];
+}): Promise<void> {
+  const resend = getClient();
+  const { error } = await resend.emails.send({
+    from: getFrom(),
+    to: params.to,
+    replyTo: params.replyTo,
+    subject: params.subject,
+    text: params.lines.join("\n"),
+    html: renderEmailHtml(params.subject, params.lines),
+  });
+  if (error) {
+    throw new Error(resendErrorMessage(error));
+  }
+}
+
 export async function sendCustomerOrderConfirmation(
   order: OrderDetail
 ): Promise<void> {

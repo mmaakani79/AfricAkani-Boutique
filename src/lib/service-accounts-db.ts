@@ -43,6 +43,9 @@ export interface ServicePayment {
   rejectReason: string | null;
   adminEmailSentAt: string | null;
   adminEmailError: string | null;
+  receiptSentAt: string | null;
+  receiptError: string | null;
+  receiptClaimedAt: string | null;
 }
 
 export interface ServiceAdjustment {
@@ -65,6 +68,10 @@ export interface ServiceAccount {
   id: string;
   createdAt: string;
   merchantName: string;
+  /** Where the receipts go (copied from the signed contract, editable). */
+  clientName: string;
+  clientEmail: string;
+  clientPhone: string;
   contractId: string | null;
   total: number;
   deposit: number;
@@ -91,7 +98,7 @@ export interface ServiceAccountSummary extends ServiceAccountFull {
 
 const ACCOUNT_COLUMNS = `id, created_at, merchant_name, contract_id, total_amount, deposit_amount,
   installments_count, to_char(go_live_date, 'YYYY-MM-DD') AS go_live_date, followup_amount,
-  followup_period, note, token_created_at`;
+  followup_period, note, token_created_at, client_name, client_email, client_phone`;
 
 interface AccountRow {
   id: string;
@@ -106,6 +113,9 @@ interface AccountRow {
   followup_period: string;
   note: string;
   token_created_at: Date;
+  client_name: string;
+  client_email: string;
+  client_phone: string;
 }
 
 function rowToAccount(r: AccountRow): ServiceAccount {
@@ -113,6 +123,9 @@ function rowToAccount(r: AccountRow): ServiceAccount {
     id: r.id,
     createdAt: r.created_at.toISOString(),
     merchantName: r.merchant_name,
+    clientName: r.client_name,
+    clientEmail: r.client_email,
+    clientPhone: r.client_phone,
     contractId: r.contract_id,
     total: r.total_amount,
     deposit: r.deposit_amount,
@@ -127,7 +140,8 @@ function rowToAccount(r: AccountRow): ServiceAccount {
 
 const PAYMENT_COLUMNS = `id, account_id, created_at, amount, method, status, source,
   to_char(paid_on, 'YYYY-MM-DD') AS paid_on, mm_operator, mm_phone, mm_transaction_id, reference,
-  confirmed_at, rejected_at, reject_reason, admin_email_sent_at, admin_email_error`;
+  confirmed_at, rejected_at, reject_reason, admin_email_sent_at, admin_email_error,
+  receipt_sent_at, receipt_error, receipt_claimed_at`;
 
 interface PaymentRow {
   id: string;
@@ -147,6 +161,9 @@ interface PaymentRow {
   reject_reason: string | null;
   admin_email_sent_at: Date | null;
   admin_email_error: string | null;
+  receipt_sent_at: Date | null;
+  receipt_error: string | null;
+  receipt_claimed_at: Date | null;
 }
 
 const iso = (d: Date | null): string | null => (d ? d.toISOString() : null);
@@ -170,6 +187,9 @@ function rowToPayment(r: PaymentRow): ServicePayment {
     rejectReason: r.reject_reason,
     adminEmailSentAt: iso(r.admin_email_sent_at),
     adminEmailError: r.admin_email_error,
+    receiptSentAt: iso(r.receipt_sent_at),
+    receiptError: r.receipt_error,
+    receiptClaimedAt: iso(r.receipt_claimed_at),
   };
 }
 
@@ -325,8 +345,9 @@ export async function createServiceAccount(
     await client.query(
       `INSERT INTO service_accounts
          (id, merchant_name, contract_id, total_amount, deposit_amount, installments_count,
-          go_live_date, followup_amount, followup_period, note, token_hash)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          go_live_date, followup_amount, followup_period, note, token_hash,
+          client_name, client_email, client_phone)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
       [
         id,
         input.merchantName,
@@ -339,6 +360,9 @@ export async function createServiceAccount(
         input.followupPeriod,
         input.note,
         hashServiceToken(token),
+        input.clientName,
+        input.clientEmail,
+        input.clientPhone,
       ]
     );
     for (let i = 0; i < input.installments.length; i++) {
@@ -403,20 +427,38 @@ export async function updateServiceInstallments(
 
 export async function updateServiceAccountDetails(
   accountId: string,
-  details: { goLiveDate: string | null; note: string; followupAmount: number; followupPeriod: "month" | "quarter" }
+  details: {
+    goLiveDate: string | null;
+    note: string;
+    followupAmount: number;
+    followupPeriod: "month" | "quarter";
+    clientName: string;
+    clientEmail: string;
+    clientPhone: string;
+  }
 ): Promise<boolean> {
   await ensureSchema();
   const { rowCount } = await getPool().query(
-    `UPDATE service_accounts SET go_live_date = $2, note = $3, followup_amount = $4, followup_period = $5
+    `UPDATE service_accounts SET go_live_date = $2, note = $3, followup_amount = $4, followup_period = $5,
+            client_name = $6, client_email = $7, client_phone = $8
       WHERE id = $1`,
-    [accountId, details.goLiveDate, details.note, details.followupAmount, details.followupPeriod]
+    [
+      accountId,
+      details.goLiveDate,
+      details.note,
+      details.followupAmount,
+      details.followupPeriod,
+      details.clientName,
+      details.clientEmail,
+      details.clientPhone,
+    ]
   );
   if (!rowCount) return false;
   await addEvent(
     getPool(),
     accountId,
     "dossier_modifie",
-    `Mise en ligne : ${details.goLiveDate ?? "non fixée"} ; mensualité de suivi : ${details.followupAmount} FCFA (${details.followupPeriod === "quarter" ? "trimestre" : "mois"}).`
+    `Mise en ligne : ${details.goLiveDate ?? "non fixée"} ; mensualité de suivi : ${details.followupAmount} FCFA (${details.followupPeriod === "quarter" ? "trimestre" : "mois"}) ; contact du client : ${details.clientName || "—"}, ${details.clientEmail || "pas d'e-mail"}, ${details.clientPhone || "pas de téléphone"}.`
   );
   return true;
 }
@@ -635,4 +677,40 @@ export async function addServiceAdjustment(
   );
   await addEvent(pool, accountId, "ajustement", `${input.kind} de ${input.amount} FCFA : ${input.reason}`);
   return { id, accountId, createdAt: rows[0].created_at.toISOString(), ...input };
+}
+
+// ---- Receipts -----------------------------------------------------------------------------------
+
+const RECEIPT_LEASE_MINUTES = 2;
+
+/** Takes the right to send a payment's receipt. False when it was already sent (unless `force`), or is
+ *  being sent right now (a double click, two tabs): the same receipt never leaves twice by accident. */
+export async function claimServiceReceipt(paymentId: string, force: boolean): Promise<boolean> {
+  await ensureSchema();
+  const { rowCount } = await getPool().query(
+    `UPDATE service_payments SET receipt_claimed_at = now()
+      WHERE id = $1 AND status = 'confirme'
+        AND ($2::boolean OR receipt_sent_at IS NULL)
+        AND (receipt_claimed_at IS NULL OR receipt_claimed_at < now() - ($3::int * interval '1 minute'))`,
+    [paymentId, force, RECEIPT_LEASE_MINUTES]
+  );
+  return (rowCount ?? 0) > 0;
+}
+
+export async function markServiceReceiptSent(paymentId: string, accountId: string, to: string): Promise<void> {
+  const pool = getPool();
+  await pool.query(
+    "UPDATE service_payments SET receipt_sent_at = now(), receipt_error = NULL, receipt_claimed_at = NULL WHERE id = $1",
+    [paymentId]
+  );
+  await addEvent(pool, accountId, "recu_envoye", `Reçu du paiement ${paymentId} envoyé à ${to}.`);
+}
+
+export async function markServiceReceiptFailed(paymentId: string, accountId: string, error: string): Promise<void> {
+  const pool = getPool();
+  await pool.query("UPDATE service_payments SET receipt_error = $2, receipt_claimed_at = NULL WHERE id = $1", [
+    paymentId,
+    error.slice(0, 300),
+  ]);
+  await addEvent(pool, accountId, "recu_echec", `Reçu du paiement ${paymentId} non envoyé : ${error.slice(0, 200)}`);
 }

@@ -5,6 +5,7 @@ import {
   isValidIsoDate,
   parseAdjustment,
   parseAdminPayment,
+  parseClientContact,
   parseMobileMoneySubmission,
   parseNewAccountInput,
   parseWholeAmount,
@@ -145,5 +146,35 @@ describe("lien secret", () => {
   });
   it("identifiants courts sans caractères ambigus", () => {
     for (let i = 0; i < 50; i++) assert.match(randomServiceId("SV"), /^SV-[A-HJKMNP-Z2-9]{8}$/);
+  });
+});
+
+describe("coordonnées du client (reçus)", () => {
+  it("accepte un contact complet, ou vide", () => {
+    const r = parseClientContact({ clientName: " Awa Test ", clientEmail: " AWA.Test@Example.com ", clientPhone: "+229 97 00 00 01" });
+    assert.ok(r.ok);
+    assert.deepEqual(r.value, { clientName: "Awa Test", clientEmail: "awa.test@example.com", clientPhone: "+229 97 00 00 01" });
+    const empty = parseClientContact({});
+    assert.ok(empty.ok);
+    assert.deepEqual(empty.value, { clientName: "", clientEmail: "", clientPhone: "" });
+  });
+  it("refuse une adresse ou un numéro invalide", () => {
+    for (const email of ["pas-une-adresse", "a@b", "a b@c.com", "<x>@c.com"]) assert.ok(!parseClientContact({ clientEmail: email }).ok, email);
+    for (const phone of ["abc", "12", "+", "97 00 <b>"]) assert.ok(!parseClientContact({ clientPhone: phone }).ok, phone);
+  });
+  it("la création d'un dossier garde ces coordonnées", () => {
+    const r = parseNewAccountInput({
+      merchantName: "Marchand",
+      clientName: "Awa",
+      clientEmail: "awa@example.com",
+      clientPhone: "+22997000001",
+      total: "100000",
+      installmentCount: "2",
+      dates: ["2026-11-30", "2026-12-30"],
+    });
+    assert.ok(r.ok);
+    assert.equal(r.value.clientEmail, "awa@example.com");
+    assert.equal(r.value.clientPhone, "+22997000001");
+    assert.ok(!parseNewAccountInput({ merchantName: "Marchand", clientEmail: "faux", total: "100000", installmentCount: "2", dates: ["2026-11-30", "2026-12-30"] }).ok);
   });
 });

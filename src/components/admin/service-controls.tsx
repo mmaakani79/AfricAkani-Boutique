@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useKeptFormAction } from "@/components/use-kept-form-action";
+import { safely } from "@/components/admin/safe-action";
 import { Check, Copy, MessageCircle, X } from "lucide-react";
 import type {
   RegenerateLinkState,
@@ -119,6 +120,10 @@ export function RecordPaymentForm({
         <span className={LABEL}>Référence (identifiant de transaction, note…)</span>
         <input name="reference" type="text" maxLength={120} className={INPUT} />
       </label>
+      <label className="flex items-center gap-2 text-xs text-ink/80 sm:col-span-2">
+        <input type="checkbox" name="sendReceipt" value="yes" defaultChecked className="h-4 w-4" data-testid="send-receipt" />
+        Envoyer le reçu au client (e-mail)
+      </label>
       <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
         <button type="submit" disabled={pending} className={PRIMARY}>
           <Check className="h-3.5 w-3.5" /> {pending ? "Enregistrement…" : "Enregistrer le paiement"}
@@ -148,10 +153,10 @@ export function ConfirmRejectButtons({
           type="button"
           disabled={pending}
           data-testid="confirm-payment"
-          onClick={() => startTransition(async () => setConfirmState(await confirmAction()))}
+          onClick={() => startTransition(async () => setConfirmState(await safely(confirmAction)))}
           className={PRIMARY}
         >
-          <Check className="h-3.5 w-3.5" /> {pending ? "Confirmation…" : "Confirmer la réception"}
+          <Check className="h-3.5 w-3.5" /> {pending ? "Confirmation…" : "Confirmer la réception (le reçu part au client)"}
         </button>
         <button
           type="button"
@@ -249,12 +254,18 @@ export function InstallmentsForm({
 
 export function DetailsForm({
   action,
+  clientName,
+  clientEmail,
+  clientPhone,
   goLiveDate,
   followupAmount,
   followupPeriod,
   note,
 }: {
   action: Action;
+  clientName: string;
+  clientEmail: string;
+  clientPhone: string;
   goLiveDate: string | null;
   followupAmount: number;
   followupPeriod: "month" | "quarter";
@@ -263,6 +274,18 @@ export function DetailsForm({
   const { state, formAction, pending, onReset } = useKeptFormAction<ServiceActionState>(action, {});
   return (
     <form action={formAction} onReset={onReset} className="grid gap-3 sm:grid-cols-3" data-testid="details-form">
+      <label className="block">
+        <span className={LABEL}>Client — nom (pour le reçu)</span>
+        <input name="clientName" type="text" maxLength={120} defaultValue={clientName} className={INPUT} />
+      </label>
+      <label className="block">
+        <span className={LABEL}>Client — e-mail (reçus)</span>
+        <input name="clientEmail" type="email" maxLength={160} defaultValue={clientEmail} className={INPUT} />
+      </label>
+      <label className="block">
+        <span className={LABEL}>Client — téléphone / WhatsApp</span>
+        <input name="clientPhone" type="tel" maxLength={30} defaultValue={clientPhone} className={INPUT} />
+      </label>
       <label className="block">
         <span className={LABEL}>Date de mise en ligne</span>
         <input name="goLiveDate" type="date" defaultValue={goLiveDate ?? ""} className={INPUT} />
@@ -319,6 +342,52 @@ export function RegenerateLinkForm({
       </form>
       <Result state={state} />
       {state.link && <PrivateLinkBox link={state.link} phone={phone} merchantName={merchantName} />}
+    </div>
+  );
+}
+
+/** The receipt of one confirmed payment: its state, a button to send it again, and the WhatsApp message ready to send. */
+export function ReceiptControls({
+  resendAction,
+  whatsappHref,
+  sentAt,
+  error,
+}: {
+  resendAction: () => Promise<ServiceActionState>;
+  whatsappHref: string | null;
+  sentAt: string | null;
+  error: string | null;
+}) {
+  const [result, setResult] = useState<ServiceActionState>({});
+  const [pending, startTransition] = useTransition();
+  return (
+    <div className="mt-1.5 space-y-1.5" data-testid="receipt-controls">
+      <p className={`text-xs font-semibold ${error ? "text-red-700" : sentAt ? "text-brand-green-dark" : "text-ink/60"}`} data-testid="receipt-state">
+        {error ? `Reçu non envoyé : ${error}` : sentAt ? `Reçu envoyé le ${new Date(sentAt).toLocaleString("fr-FR", { timeZone: "Africa/Porto-Novo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}` : "Reçu non envoyé"}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={pending}
+          data-testid="resend-receipt"
+          onClick={() => startTransition(async () => setResult(await safely(resendAction)))}
+          className="min-h-10 rounded-full border border-brand-green/30 bg-white px-4 py-2 text-xs font-bold text-brand-green-dark hover:bg-ivory disabled:opacity-60"
+        >
+          {pending ? "Envoi…" : sentAt ? "Renvoyer le reçu par e-mail" : "Envoyer le reçu par e-mail"}
+        </button>
+        {whatsappHref && (
+          <a
+            href={whatsappHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-testid="receipt-whatsapp"
+            className="flex min-h-10 items-center gap-1.5 rounded-full border border-brand-green/30 bg-white px-4 py-2 text-xs font-bold text-brand-green-dark hover:bg-ivory"
+          >
+            <MessageCircle className="h-3.5 w-3.5" /> Reçu par WhatsApp
+          </a>
+        )}
+      </div>
+      <Result state={result} />
     </div>
   );
 }
