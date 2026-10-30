@@ -189,6 +189,48 @@ export async function sendAdminNewOrderNotification(
   }
 }
 
+/** Tells the admin that a client has just submitted a payment on their private page (Mobile Money, to confirm).
+ *  The message never contains the client's secret link. */
+export async function sendAdminServicePaymentSubmitted(params: {
+  accountId: string;
+  merchantName: string;
+  paymentId: string;
+  amount: number;
+  operator: string | null;
+  phone: string | null;
+  transactionId: string | null;
+  remainingAfter: number;
+}): Promise<void> {
+  const resend = getClient();
+  const to = getAdminNotifyEmail();
+  const siteUrl = getSiteUrl();
+  const amount = formatPrice(params.amount, "bj");
+  const subject = `Paiement de service à confirmer — ${params.merchantName} — ${amount}`;
+  const lines = [
+    `${params.merchantName} vient de soumettre un paiement de ${amount}.`,
+    "",
+    `Dossier : ${params.accountId}`,
+    `Paiement : ${params.paymentId}`,
+    `Moyen : Mobile Money${params.operator ? ` (${params.operator})` : ""} — en attente de votre confirmation`,
+    `Numéro du client : ${params.phone ?? "—"}`,
+    `Identifiant de transaction : ${params.transactionId ?? "—"}`,
+    `Reste à payer si vous confirmez : ${formatPrice(Math.max(0, params.remainingAfter), "bj")}`,
+    "",
+    "Vérifiez la réception sur votre compte Mobile Money, puis confirmez ou rejetez le paiement :",
+    `${siteUrl}/admin/services/${params.accountId}`,
+  ];
+  const { error } = await resend.emails.send({
+    from: getFrom(),
+    to,
+    subject,
+    text: lines.join("\n"),
+    html: renderEmailHtml(subject, lines),
+  });
+  if (error) {
+    throw new Error(resendErrorMessage(error));
+  }
+}
+
 export async function sendCustomerOrderConfirmation(
   order: OrderDetail
 ): Promise<void> {

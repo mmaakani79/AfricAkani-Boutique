@@ -16,6 +16,7 @@ import { TestEmailButton } from "@/components/admin/test-email-button";
 import { ShopStatusToggle } from "@/components/admin/shop-status-toggle";
 import { getShopStatus } from "@/lib/site-settings-db";
 import { SalesChartSection } from "@/components/admin/sales-chart";
+import { getServicesDashboardStats } from "@/lib/service-accounts-db";
 
 export const metadata: Metadata = {
   title: "Tableau de bord — Admin AfricAkani",
@@ -25,10 +26,12 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboard() {
-  const [stats, initialSales, shopStatus] = await Promise.all([
+  const [stats, initialSales, shopStatus, services] = await Promise.all([
     getDashboardStats(),
     getSalesOverTime("day"),
     getShopStatus(),
+    // Services are reported apart from the shop's sales; a failed read never breaks the dashboard.
+    getServicesDashboardStats().catch(() => null),
   ]);
   const revenueByZone = new Map(
     stats.revenueByZone.map((r) => [r.zoneId, r])
@@ -106,6 +109,52 @@ export default async function AdminDashboard() {
             Voir ces commandes →
           </span>
         </Link>
+      )}
+
+      {services && services.accountCount > 0 && (
+        <section className="mt-6 rounded-2xl bg-white p-5 shadow-sm" data-testid="services-dashboard">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-brand-gold">
+              Services — à part des ventes de la boutique
+            </h2>
+            <Link
+              href="/admin/services"
+              className="text-xs font-bold text-brand-green-dark hover:underline"
+            >
+              Voir les dossiers →
+            </Link>
+          </div>
+          {services.pendingCount > 0 && (
+            <Link
+              href="/admin/services?status=a_confirmer"
+              data-testid="services-pending-alert"
+              className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900"
+            >
+              <span>
+                {services.pendingCount} paiement{services.pendingCount > 1 ? "s" : ""} de service à confirmer
+              </span>
+              <span className="text-xs">Confirmer →</span>
+            </Link>
+          )}
+          <dl className="mt-3 grid grid-cols-2 gap-3 text-sm lg:grid-cols-4">
+            <div className="rounded-xl bg-ivory p-3">
+              <dt className="text-[11px] text-ink/50">Dossiers</dt>
+              <dd className="font-bold text-brand-green-dark">{services.accountCount}</dd>
+            </div>
+            <div className="rounded-xl bg-ivory p-3">
+              <dt className="text-[11px] text-ink/50">Encaissé</dt>
+              <dd className="font-bold text-brand-green-dark">{formatPrice(services.collected, "bj")}</dd>
+            </div>
+            <div className="rounded-xl bg-ivory p-3">
+              <dt className="text-[11px] text-ink/50">Reste à payer</dt>
+              <dd className="font-bold text-brand-green-dark">{formatPrice(services.remaining, "bj")}</dd>
+            </div>
+            <div className="rounded-xl bg-ivory p-3">
+              <dt className="text-[11px] text-ink/50">En retard</dt>
+              <dd className="font-bold text-brand-green-dark">{services.lateCount}</dd>
+            </div>
+          </dl>
+        </section>
       )}
 
       <SalesChartSection initialSeries={initialSales} />

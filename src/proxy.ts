@@ -37,6 +37,12 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // A client's private payment page is independent of the shop: it stays reachable
+  // while the shop is closed for maintenance (clients must always be able to pay).
+  if (pathname === "/paiement-service" || pathname.startsWith("/paiement-service/")) {
+    return NextResponse.next();
+  }
+
   if (
     pathname.startsWith("/api/cron") ||
     pathname.startsWith("/api/admin") ||

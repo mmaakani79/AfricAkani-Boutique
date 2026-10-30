@@ -308,6 +308,104 @@ ALTER TABLE signed_contracts ADD COLUMN IF NOT EXISTS admin_email_claimed_at TIM
 ALTER TABLE signed_contracts ADD COLUMN IF NOT EXISTS client_email_sent_at TIMESTAMPTZ;
 ALTER TABLE signed_contracts ADD COLUMN IF NOT EXISTS client_email_error TEXT;
 ALTER TABLE signed_contracts ADD COLUMN IF NOT EXISTS client_email_claimed_at TIMESTAMPTZ;
+
+-- Payment files for the services AkaGest builds for clients ("Services" in the admin).
+-- Additive only and fully separate from products and orders. Amounts are whole FCFA.
+-- Nothing here is ever deleted: the guards below refuse DELETE, and the history
+-- tables (adjustments, events) refuse UPDATE too. A payment only moves from
+-- "soumis" to "confirme" or "rejete".
+CREATE TABLE IF NOT EXISTS service_accounts (
+  id TEXT PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  merchant_name TEXT NOT NULL,
+  contract_id TEXT,
+  total_amount INTEGER NOT NULL CHECK (total_amount > 0),
+  deposit_amount INTEGER NOT NULL DEFAULT 5000 CHECK (deposit_amount >= 0),
+  installments_count SMALLINT NOT NULL CHECK (installments_count BETWEEN 2 AND 4),
+  go_live_date DATE,
+  followup_amount INTEGER NOT NULL DEFAULT 3000,
+  followup_period TEXT NOT NULL DEFAULT 'month',
+  note TEXT NOT NULL DEFAULT '',
+  token_hash TEXT NOT NULL UNIQUE,
+  token_created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS service_installments (
+  account_id TEXT NOT NULL REFERENCES service_accounts(id),
+  position SMALLINT NOT NULL,
+  label TEXT NOT NULL DEFAULT '',
+  due_date DATE NOT NULL,
+  PRIMARY KEY (account_id, position)
+);
+
+CREATE TABLE IF NOT EXISTS service_payments (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL REFERENCES service_accounts(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  amount INTEGER NOT NULL CHECK (amount > 0),
+  method TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'soumis',
+  source TEXT NOT NULL DEFAULT 'client',
+  paid_on DATE,
+  mm_operator TEXT,
+  mm_phone TEXT,
+  mm_transaction_id TEXT,
+  reference TEXT NOT NULL DEFAULT '',
+  confirmed_at TIMESTAMPTZ,
+  rejected_at TIMESTAMPTZ,
+  reject_reason TEXT,
+  admin_email_sent_at TIMESTAMPTZ,
+  admin_email_error TEXT
+);
+CREATE INDEX IF NOT EXISTS service_payments_account_idx ON service_payments (account_id);
+-- The same Mobile Money transaction can never be counted twice (a double click, a reused SMS code).
+CREATE UNIQUE INDEX IF NOT EXISTS service_payments_txid_unique
+  ON service_payments (lower(mm_transaction_id))
+  WHERE mm_transaction_id IS NOT NULL AND status <> 'rejete';
+
+CREATE TABLE IF NOT EXISTS service_adjustments (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL REFERENCES service_accounts(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  kind TEXT NOT NULL,
+  amount INTEGER NOT NULL,
+  reason TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS service_events (
+  id BIGSERIAL PRIMARY KEY,
+  account_id TEXT NOT NULL REFERENCES service_accounts(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  kind TEXT NOT NULL,
+  detail TEXT NOT NULL DEFAULT ''
+);
+
+CREATE OR REPLACE FUNCTION service_forbid_change() RETURNS trigger AS $$
+BEGIN
+  RAISE EXCEPTION 'service payment records are never deleted or rewritten (%).', TG_TABLE_NAME;
+END;
+$$ LANGUAGE plpgsql;
+
+DO $$ BEGIN
+  CREATE TRIGGER service_accounts_no_delete BEFORE DELETE ON service_accounts
+    FOR EACH ROW EXECUTE FUNCTION service_forbid_change();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE TRIGGER service_installments_no_delete BEFORE DELETE ON service_installments
+    FOR EACH ROW EXECUTE FUNCTION service_forbid_change();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE TRIGGER service_payments_no_delete BEFORE DELETE ON service_payments
+    FOR EACH ROW EXECUTE FUNCTION service_forbid_change();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE TRIGGER service_adjustments_append_only BEFORE UPDATE OR DELETE ON service_adjustments
+    FOR EACH ROW EXECUTE FUNCTION service_forbid_change();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN
+  CREATE TRIGGER service_events_append_only BEFORE UPDATE OR DELETE ON service_events
+    FOR EACH ROW EXECUTE FUNCTION service_forbid_change();
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 `;
 
 async function backfillProductSkus(): Promise<void> {

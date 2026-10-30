@@ -20,6 +20,9 @@ describe("filtre des statistiques : pages d'administration jamais comptées", ()
     `${SITE}/admin?x=1#y`,
     `${SITE}/ADMIN/produits`,
     "/admin/reglages",
+    `${SITE}/paiement-service/Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MDEyMzQ1Njc4OTA`,
+    `${SITE}/paiement-service/Zm9vYmFyYmF6cXV4MTIzNDU2Nzg5MDEyMzQ1Njc4OTA/contrat`,
+    "/paiement-service/abc",
     "http://localhost:4602/admin/produits",
   ]) {
     it(`${url} : non envoyé`, () => assert.equal(filterAnalyticsEvent(view(url)), null));

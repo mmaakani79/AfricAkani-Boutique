@@ -324,7 +324,9 @@ describe("la signature n'est jamais bloquée par les e-mails", () => {
 
   it("migration additive uniquement : colonnes ajoutées, rien de supprimé", () => {
     const db = read("src/lib/db.ts");
-    const block = db.slice(db.indexOf("-- E-mails sent when a contract is signed"), db.indexOf("`;", db.indexOf("-- E-mails sent when a contract is signed")));
+    // Le bloc des contrats s'arrête où commence celui des dossiers de paiement de services (tables neuves, testées dans services-structure.test.ts).
+    const start = db.indexOf("-- E-mails sent when a contract is signed");
+    const block = db.slice(start, db.indexOf("-- Payment files for the services", start));
     assert.equal((block.match(/ADD COLUMN IF NOT EXISTS/g) ?? []).length, 6);
     assert.ok(!/DROP|DELETE|TRUNCATE|ALTER COLUMN|NOT NULL/i.test(block.replace(/^--.*$/gm, "")), "aucune opération destructive ni contrainte bloquante");
   });
@@ -358,6 +360,13 @@ describe("accès aux contrats : réservés à l'administrateur", () => {
       "src/app/admin/(protected)/contrats/page.tsx",
       "src/app/admin/(protected)/contrats/actions.ts",
       "src/app/api/admin/contrats/[id]/pdf/route.ts",
+      // Dossiers de paiement de services : pages d'administration (connexion exigée)...
+      "src/app/admin/(protected)/services/actions.ts",
+      "src/app/admin/(protected)/services/nouveau/page.tsx",
+      "src/app/admin/(protected)/services/[id]/page.tsx",
+      // ... et le PDF du contrat que le CLIENT consulte en lecture seule : uniquement par son
+      // lien privé secret (jamais par un numéro), son propre contrat, rien d'autre.
+      "src/app/paiement-service/[token]/contrat/route.ts",
     ];
     assert.deepEqual(offenders.filter((f) => !allowed.includes(f)), []);
   });

@@ -2,7 +2,7 @@
 // it can be unit-tested; used as the `beforeSend` of the analytics component.
 //
 // Two rules:
-//  1. Nothing from the admin area is counted (/admin and everything under it).
+//  1. Nothing from the admin area or from a client's private payment page is counted.
 //  2. Only the page path is kept: everything after "?" (order ids, payment
 //     tokens, search words...) and after "#" is cut off before sending. Order
 //     numbers travel in addresses such as /suivi?commande=AK-... and
@@ -13,11 +13,13 @@ interface UrlEvent {
   url: string;
 }
 
-const ADMIN_PREFIX = "/admin";
+// Areas never counted: the admin, and the clients' private payment pages (their secret
+// link is part of the address: it must never reach a statistics tool).
+const UNCOUNTED_PREFIXES = ["/admin", "/paiement-service"];
 
 function isAdminPath(pathname: string): boolean {
   const path = pathname.toLowerCase();
-  return path === ADMIN_PREFIX || path.startsWith(`${ADMIN_PREFIX}/`);
+  return UNCOUNTED_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
 }
 
 /** `null` = do not send this event; otherwise the event with a clean address. */

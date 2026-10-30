@@ -58,4 +58,16 @@ function launch() {
 
 const noOverflow = (page) => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
 
-module.exports = { BASE, OUT, DB_URL, ADMIN_PW, SIZES, check, info, sleep, finish, sql, logLines, providerCalls, launch, noOverflow, devices };
+/** Logs in to the admin in a fresh browser context (1280 px) and returns it. */
+async function adminContext(browser, size = "desktop") {
+  const ctx = await browser.newContext({ ...SIZES[size], serviceWorkers: "block" });
+  await ctx.route("**/_vercel/**", (r) => r.fulfill({ status: 404, body: "" }));
+  const page = await ctx.newPage();
+  await page.goto(BASE + "/admin/login");
+  await page.locator('input[type="password"]').fill(ADMIN_PW);
+  await page.locator('input[type="password"]').press("Enter");
+  await page.waitForURL(/\/admin\/?$/);
+  return { ctx, page };
+}
+
+module.exports = { BASE, OUT, DB_URL, ADMIN_PW, SIZES, check, info, sleep, finish, sql, logLines, providerCalls, launch, noOverflow, devices, adminContext };

@@ -10,7 +10,7 @@ Ces scripts pilotent un vrai navigateur (Chromium, via Playwright) sur une **cop
 
 ```bash
 npm ci                       # une fois
-e2e/run.sh                   # tout : build + les 3 specs (≈ 10 minutes)
+e2e/run.sh                   # tout : build + les 4 specs (≈ 15 minutes)
 e2e/run.sh legal             # un seul spec (noms des fichiers de specs/, sans .cjs)
 e2e/run.sh legal zones       # plusieurs
 E2E_SKIP_BUILD=1 e2e/run.sh legal    # réutilise le build .next existant (plus rapide)
@@ -40,6 +40,7 @@ Réglages possibles : `E2E_PORT` (4603), `E2E_MOCK_PORT` (4810), `E2E_OUT`, `E2E
 |---|---|
 | `legal` | 4 pages légales : texte identique au texte validé (`tests/fixtures/pages-legales.md`), titres, liens du pied de page dans les 3 zones, liens près du bouton de paiement, plan du site, 320/375/768/1280 px, contraste, hors ligne, paiements toujours fonctionnels |
 | `analytics` | Vercel Web Analytics : adresses nettoyées (rien après « ? »), admin jamais compté, `/_vercel/` hors maintenance, site utilisable sans le script, hors ligne, commande complète |
+| `services` | Paiements de services (lot 1) : dossier d'un marchand, acompte de 5 000 FCFA en Mobile Money soumis par le client puis confirmé/rejeté, page privée par lien secret (rien d'autre du site), ajustements (lignes jamais effacées, refus de la base), tranches, retard, filtres, notification, statistiques à part, hors ligne, 320–1280 px |
 | `zones` | Visibilité des produits par zone, lien direct « Non disponible dans votre zone », panier au changement de zone, pays de livraison cohérent avec la zone pour WhatsApp / Mobile Money / Stripe / PayPal (commandes falsifiées refusées, aucun appel au fournisseur), 320–1280 px, hors ligne |
 
 `tools/measure.cjs` n'est pas un spec : il mesure le poids du JavaScript et les temps d'affichage
