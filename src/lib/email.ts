@@ -4,7 +4,7 @@ import { formatOrderAddress, type OrderDetail, type OrderSummary } from "./order
 import type { SignedContract } from "./contracts-db";
 import { ZONES, formatPrice } from "@/data/zones";
 import { getAdminNotifyEmail, getPaymentTimeoutHours, getSiteUrl } from "./order-config";
-import { renderEmailHtml } from "./email-html";
+import { renderEmailHtml, renderReceiptEmail } from "./email-html";
 import { withInlineLogo } from "./email-logo";
 import {
   buildAdminContractEmail,
@@ -244,8 +244,7 @@ export async function sendServicePaymentReceipt(params: {
     to: params.to,
     replyTo: params.replyTo,
     subject: params.subject,
-    text: params.lines.join("\n"),
-    html: renderEmailHtml(params.subject, params.lines),
+    ...renderReceiptEmail(params.subject, params.lines),
   });
   if (error) {
     throw new Error(resendErrorMessage(error));
@@ -288,8 +287,7 @@ export async function sendCustomerOrderConfirmation(
     from: getFrom(),
     to: order.customerEmail,
     subject,
-    text: lines.join("\n"),
-    html: renderEmailHtml(subject, lines),
+    ...renderReceiptEmail(subject, lines),
   });
 
   if (error) {
@@ -402,8 +400,7 @@ export async function sendCustomerPaymentConfirmed(
     from: getFrom(),
     to: order.customerEmail,
     subject,
-    text: lines.join("\n"),
-    html: renderEmailHtml(subject, lines),
+    ...renderReceiptEmail(subject, lines),
   });
 
   if (error) {
@@ -482,8 +479,7 @@ export async function sendContractClientEmail(
     to,
     replyTo: getAdminNotifyEmail(),
     subject,
-    text: lines.join("\n"),
-    html: renderEmailHtml(subject, lines),
+    ...renderReceiptEmail(subject, lines),
     attachments: [{ filename: contractPdfFilename(contract), content: pdf }],
   });
 

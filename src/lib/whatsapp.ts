@@ -1,5 +1,6 @@
 import { formatPrice } from "@/data/zones";
 import type { OrderSummary } from "./orders-db";
+import { withReceiptSloganText } from "./receipt-slogan";
 
 function normalizePhone(phone: string): string {
   return phone.replace(/[^\d+]/g, "").replace(/^00/, "+");
@@ -20,5 +21,5 @@ export function whatsappPaymentConfirmedHref(order: OrderSummary): string {
   const phone = normalizePhone(order.customerPhone).replace(/^\+/, "");
   const total = order.subtotal + order.shippingFee;
   const message = `Bonjour ${order.customerName.split(" ")[0] || ""}, AfricAkani a bien reçu votre paiement de ${formatPrice(total, order.zoneId)} pour la commande ${order.id}. Merci !`;
-  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(withReceiptSloganText(message))}`;
 }

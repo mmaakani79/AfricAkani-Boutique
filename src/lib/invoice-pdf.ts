@@ -4,6 +4,7 @@ import path from "node:path";
 import { ZONES, formatPrice } from "@/data/zones";
 import { ORDER_STATUS_LABELS, PAYMENT_STATUS_LABELS } from "./order-labels";
 import { formatOrderAddress, type OrderDetail } from "./orders-db";
+import { RECEIPT_SLOGAN } from "./receipt-slogan";
 
 const GREEN = "#0e5a44";
 const GOLD = "#c9962c";
@@ -226,6 +227,15 @@ export async function generateInvoicePdf(order: OrderDetail): Promise<Buffer> {
       doc.page.height - 60,
       { width: contentWidth, align: "center" }
     );
+
+  // --- Slogan, below the footer mentions ---
+  // The footer sits inside the bottom margin; lift the margin so PDFKit does not open a second page.
+  doc.page.margins.bottom = 0;
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(13)
+    .fillColor(GREEN)
+    .text(RECEIPT_SLOGAN, marginX, doc.page.height - 40, { width: contentWidth, align: "center", lineBreak: false });
 
   doc.end();
   return finished;

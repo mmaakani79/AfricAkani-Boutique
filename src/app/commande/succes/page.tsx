@@ -7,6 +7,7 @@ import { capturePaypalOrder } from "@/lib/paypal";
 import { getOrderById, markPaypalOrderPaid, setOrderEmailError } from "@/lib/orders-db";
 import { formatEmailError, sendCustomerPaymentConfirmed } from "@/lib/email";
 import { formatPrice } from "@/data/zones";
+import { ReceiptSlogan } from "@/components/receipt-slogan";
 
 export const metadata: Metadata = {
   title: "Commande confirmée — AfricAkani",
@@ -156,6 +157,7 @@ export default async function CommandeSuccesPage({
         >
           Suivre ma commande
         </Link>
+        <ReceiptSlogan />
       </div>
     </Container>
   );

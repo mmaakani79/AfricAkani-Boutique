@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CheckCircle2, FileText, Download } from "lucide-react";
 import { CONTRACT_SERVICES, isValidContractId } from "@/lib/contract-types";
 import { SignaturePad, type SignaturePadHandle } from "@/components/shop/signature-pad";
+import { ReceiptSlogan } from "@/components/receipt-slogan";
 import { submitSignedContractAction } from "./actions";
 
 function Field({
@@ -175,6 +176,7 @@ export function ContractForm({ contractText }: { contractText: string }) {
         >
           Retour à l&rsquo;accueil
         </Link>
+        <ReceiptSlogan />
       </div>
     );
   }

@@ -174,7 +174,7 @@ describe("message WhatsApp", () => {
     assert.match(t, /^Bonjour Awa, AkaGest a bien reçu votre acompte de 5 000 FCFA le 2 novembre 2026 \(reçu SP-DEPOSIT1\)\./);
     assert.match(t, /Reste à payer : 95 000 FCFA\./);
     assert.match(t, /Prochaine échéance : avant mise en ligne, 30 novembre 2026, 31 666 FCFA\./);
-    assert.match(t, /Service fourni par AkaGest \(A\. ARINLOYE\)\./);
+    assert.match(t, /Service fourni par AkaGest\. /);
     assert.match(t, /Acompte remboursé seulement si AkaGest ne livre pas ; gardé si le client abandonne le projet\./);
   });
   it("le reçu d'une tranche renvoie au contrat, sans règle d'acompte", () => {

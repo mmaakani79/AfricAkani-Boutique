@@ -7,12 +7,13 @@
 
 import type { AccountState, NextDue } from "./service-account-math";
 import { dateFr, fcfa } from "./service-format";
+import { withReceiptSloganText } from "./receipt-slogan";
 import { PAYMENT_METHOD_LABELS } from "./service-validation";
 
 /** Where a client's replies to a receipt go. The message itself is sent from the shop's domain. */
 export const SERVICE_REPLY_TO = "contact@akagest.com";
 
-export const PROVIDER_LINE = "Service fourni par AkaGest (A. ARINLOYE).";
+export const PROVIDER_LINE = "Service fourni par AkaGest.";
 export const CONTRACT_REFUND_LINE = "Conditions de remboursement : celles de votre contrat signé.";
 export const TRACKING_LINK_LINE =
   "Votre lien de suivi vous a été envoyé par WhatsApp. En cas de perte, demandez-en un nouveau.";
@@ -109,8 +110,9 @@ export function buildServiceReceipt(input: {
       : CONTRACT_REFUND_LINE,
     "Merci !",
   ].join(" ");
+  const whatsappWithSlogan = withReceiptSloganText(whatsappText);
 
-  return { subject, lines, whatsappText };
+  return { subject, lines, whatsappText: whatsappWithSlogan };
 }
 
 /** "https://wa.me/<number>?text=…" for the receipt, or null when the client has no usable number. */

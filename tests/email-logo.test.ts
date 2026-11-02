@@ -253,7 +253,7 @@ describe("les 12 e-mails du site, envoyés pour de vrai vers un faux Resend, sur
     const mail = sent.find((s) => s.label === "contrat-client")!.mail;
     const names = (mail.attachments ?? []).map((a) => a.filename).sort();
     assert.deepEqual(names, ["africakani-logo.png", "contrat-CT-MGX4F2K9-7QHD.pdf"]);
-    assert.ok(mail.text.trim().endsWith("L'équipe AfricAkani"));
+    assert.ok(mail.text.trim().endsWith("Votre Satisfaction, Notre Réussite !") && mail.text.includes("L'équipe AfricAkani"));
     assert.ok(!/AkaGestSoft/.test(mail.text));
   });
 

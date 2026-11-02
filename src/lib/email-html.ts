@@ -1,3 +1,4 @@
+import { RECEIPT_SLOGAN, withReceiptSlogan } from "./receipt-slogan";
 import {
   EMAIL_LOGO_CID,
   EMAIL_LOGO_DISPLAY_HEIGHT,
@@ -23,7 +24,21 @@ function escapeHtml(value: string): string {
  * header is white because the logo's name is dark green and gold: unreadable on
  * the green brand colour.
  */
-export function renderEmailHtml(subject: string, lines: string[]): string {
+export function renderEmailHtml(
+  subject: string,
+  lines: string[],
+  { receipt = false }: { receipt?: boolean } = {}
+): string {
+  // Receipts and confirmations end with the slogan, below the existing mentions.
+  const sloganRow = receipt
+    ? `
+            <tr>
+              <td data-receipt-slogan="1" align="center" style="padding:18px 20px 22px;background:#0e5a44;color:#ffffff;font-size:18px;line-height:1.4;font-weight:bold;">
+                ${escapeHtml(RECEIPT_SLOGAN)}
+              </td>
+            </tr>`
+    : "";
+
   const body = lines
     .map((line) =>
       line === ""
@@ -70,11 +85,22 @@ export function renderEmailHtml(subject: string, lines: string[]): string {
                   technologie et bien plus, livrés en Afrique de l'Ouest, au Canada et aux États-Unis.
                 </p>
               </td>
-            </tr>
+            </tr>${sloganRow}
           </table>
         </td>
       </tr>
     </table>
   </body>
 </html>`;
+}
+
+/**
+ * The e-mail body of a RECEIPT or CONFIRMATION sent to a client: the plain text and the HTML both end
+ * with the slogan. Every such e-mail is built with this, never with `renderEmailHtml` alone.
+ */
+export function renderReceiptEmail(subject: string, lines: string[]): { text: string; html: string } {
+  return {
+    text: withReceiptSlogan(lines).join("\n"),
+    html: renderEmailHtml(subject, lines, { receipt: true }),
+  };
 }

@@ -14,6 +14,8 @@ import {
 } from "@/lib/service-account-math";
 import { PAYMENT_METHOD_LABELS } from "@/lib/service-validation";
 import { dateFr, dateTimeFr, fcfa } from "@/lib/service-format";
+import { ReceiptSlogan } from "@/components/receipt-slogan";
+import { PROVIDER_LINE } from "@/lib/service-receipt";
 import { ServicePaymentForm } from "./payment-form";
 import { submitServicePaymentAction } from "./actions";
 
@@ -261,7 +263,8 @@ export default async function ServicePrivatePage({
         </section>
       )}
 
-      <p className="mt-6 text-center text-xs text-ink/50">Service fourni par AkaGest (A. ARINLOYE).</p>
+      <p className="mt-6 text-center text-xs text-ink/50">{PROVIDER_LINE}</p>
+      <ReceiptSlogan className="mt-4" />
     </div>
   );
 }
