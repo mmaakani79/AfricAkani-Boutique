@@ -160,6 +160,10 @@ describe("courriels envoyés pour de vrai vers un faux Resend", () => {
     await run("invitation-avis", () => email.sendCustomerReviewInvite(order));
     await run("commande-annulee", () => email.sendCustomerOrderCancelled(order));
     await run("contrat-admin", () => email.sendContractAdminEmail(contract));
+    // Mêmes champs qu'un vrai contrat : retours Windows saisis par le client, accents, guillemets, espaces insécables.
+    const crlf: SignedContract = { ...contract, id: "CT-CRLF-0001", projectDescription: "Un site.\r\n\r\nDeuxième ligne « guillemets » é è à\u00a0:\u202fok", notes: "Note 1\r\nNote 2", budget: "50\u202f000 FCFA" };
+    await run("contrat-admin-crlf", () => email.sendContractAdminEmail(crlf));
+    await run("contrat-client-crlf", () => email.sendContractClientEmail(crlf, Buffer.from("%PDF-1.4 faux pdf")));
   });
 
   after(async () => {
@@ -172,6 +176,16 @@ describe("courriels envoyés pour de vrai vers un faux Resend", () => {
 
   const RECEIPTS = ["recu-service", "recu-service-test", "commande-client", "paiement-confirme", "contrat-client"];
   const NOT_RECEIPTS = ["commande-admin", "commande-expediee", "rappel", "invitation-avis", "commande-annulee", "contrat-admin"];
+
+  it("courriels : aucun « Ð » ni caractère de contrôle (hors retours à la ligne), même avec des retours Windows saisis par le client", () => {
+    const control = new RegExp("[\\u0000-\\u0008\\u000b\\u000c\\u000e-\\u001f\\u007f-\\u009f]|\u00d0");
+    for (const { label, mail } of sent) {
+      assert.ok(!control.test(mail.text), `${label} : texte`);
+      assert.ok(!control.test(mail.html), `${label} : HTML`);
+    }
+    const admin = sent.find((s) => s.label === "contrat-admin-crlf")!.mail;
+    assert.ok(admin.text.includes("Deuxième ligne « guillemets » é è à"), "accents et guillemets intacts");
+  });
 
   it("les reçus et confirmations au client se terminent par le slogan (texte ET HTML, en dernier)", () => {
     for (const label of RECEIPTS) {

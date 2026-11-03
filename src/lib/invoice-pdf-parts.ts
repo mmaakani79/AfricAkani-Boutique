@@ -6,6 +6,7 @@ import PDFDocument from "pdfkit";
 import fs from "node:fs";
 import path from "node:path";
 import { SUPPLIER_ADDRESS } from "./business-info";
+import { pdfSafeText } from "./pdf-text";
 import { RECEIPT_SLOGAN } from "./receipt-slogan";
 
 export type PdfDoc = InstanceType<typeof PDFDocument>;
@@ -28,8 +29,9 @@ export const ENDING_RESERVED = 100;
  *  narrow no-break space (U+202F) that `toLocaleString("fr-FR")` uses as a
  *  thousands separator — swap it for a plain space so amounts render correctly. */
 export function money(value: string): string {
-  // The minus sign (U+2212) has no glyph either: a plain hyphen stands for it.
-  return value.replace(/[\u202f\u00a0]/g, " ").replace(/\u2212/g, "-");
+  // pdfSafeText: line breaks, exotic spaces, the minus sign, control characters… (see pdf-text.ts).
+  // The no-break spaces of amounts become plain spaces so that a column of amounts lines up.
+  return pdfSafeText(value).split("\u00a0").join(" ");
 }
 
 function loadLogoBuffer(): Buffer | null {

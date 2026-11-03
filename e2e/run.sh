@@ -11,7 +11,7 @@ source e2e/lib/env.sh
 mkdir -p "$E2E_OUT"
 
 SPECS=("$@")
-[ ${#SPECS[@]} -eq 0 ] && SPECS=(legal analytics zones services boutiques connexion)
+[ ${#SPECS[@]} -eq 0 ] && SPECS=(legal analytics zones services boutiques connexion contrat)
 
 cleanup() {
   for f in "$E2E_OUT"/next.pid "$E2E_OUT"/mock.pid; do

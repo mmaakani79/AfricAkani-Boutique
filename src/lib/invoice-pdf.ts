@@ -1,6 +1,7 @@
 import { ZONES, formatPrice } from "@/data/zones";
 import { ORDER_STATUS_LABELS, PAYMENT_STATUS_LABELS } from "./order-labels";
 import { formatOrderAddress, type OrderDetail } from "./orders-db";
+import { pdfSafeText } from "./pdf-text";
 import {
   GOLD,
   GREEN,
@@ -31,7 +32,7 @@ export async function generateInvoicePdf(order: OrderDetail): Promise<Buffer> {
 
   // --- Meta row (left) + bill-to block (right) ---
   let y = 132;
-  doc.fillColor(INK).font("Helvetica-Bold").fontSize(12).text(`N° ${order.id}`, marginX, y);
+  doc.fillColor(INK).font("Helvetica-Bold").fontSize(12).text(pdfSafeText(`N° ${order.id}`), marginX, y);
   doc
     .fillColor(MUTED)
     .font("Helvetica")
@@ -60,7 +61,8 @@ export async function generateInvoicePdf(order: OrderDetail): Promise<Buffer> {
     .fillColor(GOLD)
     .text("FACTURÉ À", billX, y, { width: billWidth });
   // Each block is cut at a few lines ("…") so a very long name or address cannot grow the page.
-  const clampedText = (text: string, x: number, top: number, width: number, maxLines: number): number => {
+  const clampedText = (raw: string, x: number, top: number, width: number, maxLines: number): number => {
+    const text = pdfSafeText(raw);
     const lineHeight = doc.currentLineHeight(true);
     const height = Math.min(doc.heightOfString(text, { width }), lineHeight * maxLines);
     doc.text(text, x, top, { width, height, ellipsis: true });
@@ -99,7 +101,8 @@ export async function generateInvoicePdf(order: OrderDetail): Promise<Buffer> {
   for (const item of order.items) {
     doc.font("Helvetica").fontSize(9.5).fillColor(INK);
     const lineHeight = doc.currentLineHeight(true);
-    const nameHeight = Math.min(doc.heightOfString(item.productName, { width: nameWidth }), lineHeight * MAX_ITEM_NAME_LINES);
+    const itemName = pdfSafeText(item.productName);
+    const nameHeight = Math.min(doc.heightOfString(itemName, { width: nameWidth }), lineHeight * MAX_ITEM_NAME_LINES);
     const rowHeight = Math.max(nameHeight, 14) + 4;
     // Room for this row, the totals, the payment line and the bottom of the page.
     if (y + rowHeight > doc.page.height - ENDING_RESERVED - 160) {
@@ -107,7 +110,7 @@ export async function generateInvoicePdf(order: OrderDetail): Promise<Buffer> {
       y = 50;
       doc.font("Helvetica").fontSize(9.5).fillColor(INK);
     }
-    doc.text(item.productName, colProduct, y, { width: nameWidth, height: nameHeight, ellipsis: true });
+    doc.text(itemName, colProduct, y, { width: nameWidth, height: nameHeight, ellipsis: true });
     doc.text(String(item.quantity), colQty, y, { width: 40, align: "right" });
     doc.text(money(formatPrice(item.unitPrice, order.zoneId)), colPrice, y, { width: 70, align: "right" });
     doc.text(money(formatPrice(item.lineTotal, order.zoneId)), colTotal, y, { width: 70, align: "right" });
@@ -152,9 +155,11 @@ export async function generateInvoicePdf(order: OrderDetail): Promise<Buffer> {
       .fontSize(9)
       .fillColor(MUTED)
       .text(
-        `Paiement : Mobile Money (${order.mobileMoneyOperator})${
-          order.mobileMoneyTransactionId ? ` — transaction ${order.mobileMoneyTransactionId}` : ""
-        }`,
+        pdfSafeText(
+          `Paiement : Mobile Money (${order.mobileMoneyOperator})${
+            order.mobileMoneyTransactionId ? ` — transaction ${order.mobileMoneyTransactionId}` : ""
+          }`
+        ),
         marginX,
         y,
         { width: contentWidth }
@@ -171,7 +176,7 @@ export async function generateInvoicePdf(order: OrderDetail): Promise<Buffer> {
       .fontSize(9)
       .fillColor(MUTED)
       .text(
-        `Paiement : PayPal${order.paypalCaptureId ? ` — capture ${order.paypalCaptureId}` : ""}`,
+        pdfSafeText(`Paiement : PayPal${order.paypalCaptureId ? ` — capture ${order.paypalCaptureId}` : ""}`),
         marginX,
         y,
         { width: contentWidth }

@@ -7,6 +7,7 @@ import type { ServiceAccountFull } from "./service-accounts-db";
 import { ADJUSTMENT_KIND_LABELS, SCHEDULE_STATUS_LABELS, todayInBenin } from "./service-account-math";
 import { dateFr, fcfa } from "./service-format";
 import { CONTRACT_REFUND_LINE, PROVIDER_LINE, depositPaymentIds } from "./service-receipt";
+import { pdfOneLine } from "./pdf-text";
 import { PAYMENT_METHOD_LABELS } from "./service-validation";
 import {
   GOLD,
@@ -50,7 +51,7 @@ export async function generateServiceInvoicePdf(
       .font(opts.bold ? "Helvetica-Bold" : "Helvetica")
       .fontSize(opts.size ?? 9)
       .fillColor(opts.color ?? INK)
-      .text(money(text), x, y, { width, height: doc.currentLineHeight(true), ellipsis: true, align: opts.align ?? "left", lineBreak: false });
+      .text(money(pdfOneLine(text)), x, y, { width, height: doc.currentLineHeight(true), ellipsis: true, align: opts.align ?? "left", lineBreak: false });
   };
   const sectionTitle = (title: string, y: number): number => {
     y = ensureSpace(doc, y, 60);
@@ -65,7 +66,7 @@ export async function generateServiceInvoicePdf(
   // --- Number, date and merchant (left) + bill-to block (right) ---
   let y = 132;
   const clientName = account.clientName.trim() || account.merchantName;
-  doc.fillColor(INK).font("Helvetica-Bold").fontSize(12).text(`N° ${account.id}`, marginX, y, { width: contentWidth / 2, lineBreak: false, ellipsis: true });
+  doc.fillColor(INK).font("Helvetica-Bold").fontSize(12).text(pdfOneLine(`N° ${account.id}`), marginX, y, { width: contentWidth / 2, lineBreak: false, ellipsis: true });
   cell(`Date : ${dateFr(today)}`, marginX, y + 18, contentWidth / 2 - 10, { color: MUTED });
   cell(`Dossier ouvert le ${dateFr(account.createdAt.slice(0, 10))}`, marginX, y + 32, contentWidth / 2 - 10, { color: MUTED });
   cell(`Boutique : ${account.merchantName}`, marginX, y + 46, contentWidth / 2 - 10, { color: MUTED });
