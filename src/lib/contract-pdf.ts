@@ -2,6 +2,7 @@ import PDFDocument from "pdfkit";
 import fs from "node:fs";
 import path from "node:path";
 import type { SignedContract } from "./contracts-db";
+import { formatSignedAtUtc } from "./contract-datetime";
 import { pdfSafeText } from "./pdf-text";
 
 const GREEN = "#0e5a44";
@@ -88,13 +89,7 @@ export async function generateContractPdf(contract: SignedContract): Promise<Buf
     .font("Helvetica")
     .fontSize(9)
     .text(
-      `Signé le ${new Date(contract.createdAt).toLocaleDateString("fr-FR", {
-        day: "2-digit",
-        month: "long",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })}`,
+      pdfSafeText(`Signé le ${formatSignedAtUtc(contract.createdAt)}`),
       marginX,
       y + 18
     );
@@ -179,13 +174,7 @@ export async function generateContractPdf(contract: SignedContract): Promise<Buf
     .fontSize(8.5)
     .fillColor(MUTED)
     .text(
-      pdfSafeText(`Signé électroniquement par ${contract.clientName} le ${new Date(contract.createdAt).toLocaleDateString("fr-FR", {
-        day: "2-digit",
-        month: "long",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })}.`),
+      pdfSafeText(`Signé électroniquement par ${contract.clientName} le ${formatSignedAtUtc(contract.createdAt)}.`),
       marginX,
       y,
       { width: contentWidth }

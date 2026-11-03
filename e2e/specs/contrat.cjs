@@ -3,7 +3,7 @@
 // aucun caractère parasite (« Ð »), la signature entière, mobile et ordinateur, hors ligne.
 const fs = require("fs");
 const { execFileSync } = require("child_process");
-const { BASE, OUT, SIZES, check, info, sleep, finish, sql, launch, noOverflow, adminContext } = require("../lib/common.cjs");
+const { BASE, OUT, SIZES, check, info, sleep, finish, sql, logLines, launch, noOverflow, adminContext } = require("../lib/common.cjs");
 
 // Texte du contrat tel qu'un administrateur Windows l'enregistre : retours « \r\n », lignes vides entre les articles,
 // guillemets français, accents, espace insécable (U+00A0) et espace fine insécable (U+202F) avant les « : ».
@@ -132,6 +132,15 @@ function signatureBoxes(pdfFile, page) {
     check(`[PDF ${w}px] guillemets français, accents, espaces insécables : « le service », é è ê à ç œ ñ, « 2. Prix : 50 000 FCFA »`, norm.includes("« le service »") && norm.includes("é è ê à ç œ ñ") && /2\. Prix : 50 000 FCFA/.test(norm) && !txt.includes("/"), norm.slice(norm.indexOf("1. Objet"), norm.indexOf("1. Objet") + 200));
     check(`[PDF ${w}px] description du besoin sur plusieurs lignes, sans caractère parasite`, /Un site\.\s*\n\s*\n\s*Deuxième paragraphe avec « guillemets » et accents é è à\./.test(txt.replace(/ /g, " ")));
 
+    // Fuseau écrit : l'heure du PDF est l'heure UTC enregistrée, suivie de « UTC » (en-tête et légende de la signature).
+    const utcTime = sql(`select to_char(created_at at time zone 'UTC','HH24:MI') from signed_contracts where id='${id}'`);
+    const flat = txt.replace(/\s+/g, " ");
+    check(`[PDF ${w}px] en-tête et légende de la signature disent « à ${utcTime} UTC » (l'heure enregistrée, fuseau écrit)`, new RegExp(`Signé le \\d{2} \\S+ \\d{4} à ${utcTime} UTC`).test(flat) && new RegExp(`Signé électroniquement par Signataire ${w} le \\d{2} \\S+ \\d{4} à ${utcTime} UTC\\.`).test(flat), flat.slice(flat.indexOf("Signé"), flat.indexOf("Signé") + 120));
+    await admin.page.goto(BASE + "/admin/contrats", { waitUntil: "networkidle" });
+    const listText = (await admin.page.locator("body").innerText()).replace(/\s+/g, " ");
+    check(`[admin ${w}px] la liste des contrats affiche la même date avec « UTC »`, listText.includes(`${id} — `) && new RegExp(`${id} — \\d{2} \\S+ \\d{4} à ${utcTime} UTC`).test(listText), listText.slice(listText.indexOf(id), listText.indexOf(id) + 80));
+    const clientMail = logLines("emails.jsonl").find((m) => (m.subject || "").startsWith(`Votre contrat ${id}`));
+    check(`[courriel ${w}px] le courriel de confirmation au client écrit le fuseau : « (heure de Cotonou) »`, !!clientMail && /signé électroniquement le .* à \d{2}:\d{2} \(heure de Cotonou\)\./.test(clientMail.text || ""), clientMail ? (clientMail.text || "").slice(0, 200) : "courriel absent");
     const pages = (fs.readFileSync(file).toString("latin1").match(/\/Type \/Page\b(?!s)/g) || []).length;
     const sig = signatureBoxes(file, pages === 1 ? 1 : 2);
     // Le cadre dessiné va de 2 % à 98 % en largeur et en hauteur : mêmes proportions que la zone, à 4 % près de marge.
