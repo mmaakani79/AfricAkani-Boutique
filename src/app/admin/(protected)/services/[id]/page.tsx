@@ -92,9 +92,18 @@ export default async function ServiceAccountPage({ params }: { params: Promise<{
             )}
           </p>
         </div>
-        <span className={`rounded-full px-3 py-1 text-xs font-bold ${STATUS_STYLE[state.status]}`} data-testid="detail-status">
-          {ACCOUNT_STATUS_LABELS[state.status]}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href={`/api/admin/services/${account.id}/facture`}
+            data-testid="admin-invoice-link"
+            className="inline-flex min-h-10 items-center gap-1.5 rounded-full border border-brand-green/30 bg-white px-4 py-2 text-xs font-bold text-brand-green-dark hover:bg-ivory"
+          >
+            Télécharger la facture (PDF)
+          </a>
+          <span className={`rounded-full px-3 py-1 text-xs font-bold ${STATUS_STYLE[state.status]}`} data-testid="detail-status">
+            {ACCOUNT_STATUS_LABELS[state.status]}
+          </span>
+        </div>
       </div>
 
       <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4" data-testid="detail-totals">

@@ -78,9 +78,9 @@ describe("reçu de paiement de service", () => {
   });
   it("phrase du fournisseur : « Service fourni par AkaGest. » partout, sans « (A. ARINLOYE) »", () => {
     assert.equal(PROVIDER_LINE, "Service fourni par AkaGest.");
-    assert.ok(receipt.lines.includes("Service fourni par AkaGest."));
+    assert.ok(receipt.closing.includes("Service fourni par AkaGest."));
     assert.ok(receipt.whatsappText.includes("Service fourni par AkaGest."));
-    assert.ok(!/ARINLOYE/.test(receipt.lines.join("\n") + receipt.whatsappText));
+    assert.ok(!/ARINLOYE/.test([...receipt.lines, ...receipt.closing].join("\n") + receipt.whatsappText));
   });
   it("le message WhatsApp du reçu se termine par le slogan", () => assert.ok(receipt.whatsappText.endsWith(EXACT)));
   it("la phrase du fournisseur n'a plus « (A. ARINLOYE) » nulle part dans le code du module", () => {
@@ -147,9 +147,9 @@ describe("courriels envoyés pour de vrai vers un faux Resend", () => {
       state: { adjustedTotal: 100000, paid: 5000, remaining: 95000, reductions: 0, next: null },
       deposit: true,
     });
-    await run("recu-service", () => email.sendServicePaymentReceipt({ to: "awa@example.com", replyTo: "contact@akagest.com", subject: receipt.subject, lines: receipt.lines }));
+    await run("recu-service", () => email.sendServicePaymentReceipt({ to: "awa@example.com", replyTo: "contact@akagest.com", subject: receipt.subject, lines: receipt.lines, closing: receipt.closing }));
     await run("recu-service-test", () =>
-      email.sendServicePaymentReceipt({ to: "admin-test@example.com", replyTo: "contact@akagest.com", subject: `[TEST] ${receipt.subject}`, lines: ["[TEST — prévisualisation] Ce reçu n'a PAS été envoyé au client.", "", ...receipt.lines] })
+      email.sendServicePaymentReceipt({ to: "admin-test@example.com", replyTo: "contact@akagest.com", subject: `[TEST] ${receipt.subject}`, lines: ["[TEST — prévisualisation] Ce reçu n'a PAS été envoyé au client.", "", ...receipt.lines], closing: receipt.closing })
     );
     await run("commande-client", () => email.sendCustomerOrderConfirmation(order));
     await run("paiement-confirme", () => email.sendCustomerPaymentConfirmed(order));

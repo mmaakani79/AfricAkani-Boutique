@@ -16,6 +16,9 @@ import { computeAccountState } from "@/lib/service-account-math";
 import { buildReceiptForPayment } from "@/lib/service-receipts";
 import type { ServiceAccountFull, ServicePayment } from "@/lib/service-accounts-db";
 
+/** Detail then concluding block: the whole text of a receipt. */
+const allText = (r: { lines: string[]; closing: string[] }) => [...r.lines, "", ...r.closing].join("\n");
+
 const ROOT = path.resolve(import.meta.dirname, "..");
 const read = (p: string) => fs.readFileSync(path.join(ROOT, p), "utf8");
 
@@ -80,7 +83,7 @@ describe("reçu de l'acompte", () => {
     assert.equal(r.subject.replace(/[\u202f\u00a0]/g, " "), "Reçu de paiement — Volaille Djougou (TEST) — 5 000 FCFA");
   });
   it("montant, date, moyen, numéro de reçu", () => {
-    const t = r!.lines.join("\n");
+    const t = allText(r!);
     assert.match(t, /Bonjour Awa Test,/);
     assert.match(t, /Nous avons bien reçu votre acompte/);
     assert.match(t, /Reçu n° SP-DEPOSIT1/);
@@ -89,14 +92,14 @@ describe("reçu de l'acompte", () => {
     assert.match(t, /Moyen : Mobile Money \(MTN\)/);
   });
   it("situation du dossier AU MOMENT de l'acompte (le paiement de la tranche, plus tard, n'est pas compté)", () => {
-    const t = r!.lines.join("\n").replace(/[  ]/g, " ");
+    const t = allText(r!).replace(/[  ]/g, " ");
     assert.match(t, /Prix total : 100 000 FCFA/);
     assert.match(t, /Déjà payé : 5 000 FCFA/);
     assert.match(t, /Reste à payer : 95 000 FCFA/);
     assert.match(t, /Prochaine échéance : avant mise en ligne — 30 novembre 2026 — 31 666 FCFA/);
   });
   it("rappelle la règle de l'acompte et la fourniture par AkaGest, pas la phrase des tranches", () => {
-    const t = r!.lines.join("\n");
+    const t = allText(r!);
     assert.ok(t.includes(PROVIDER_LINE));
     for (const line of DEPOSIT_REFUND_LINES) assert.ok(t.includes(line), line);
     assert.ok(!t.includes(CONTRACT_REFUND_LINE));
@@ -109,7 +112,7 @@ describe("reçu de l'acompte", () => {
 describe("reçu d'une tranche", () => {
   const r = buildReceiptForPayment(fullAccount([DEPOSIT, TRANCHE]), "SP-TRANCHE1");
   it("aucune règle de remboursement, seulement le renvoi au contrat signé", () => {
-    const t = r!.lines.join("\n");
+    const t = allText(r!);
     assert.ok(t.includes("Conditions de remboursement : celles de votre contrat signé."));
     for (const line of DEPOSIT_REFUND_LINES) assert.ok(!t.includes(line), line);
     assert.doesNotMatch(t, /acompte est remboursé|gardé par AkaGest/);
@@ -117,7 +120,7 @@ describe("reçu d'une tranche", () => {
     assert.match(t, /Moyen : Espèces/);
   });
   it("la situation inclut l'acompte et cette tranche", () => {
-    const t = r!.lines.join("\n").replace(/[  ]/g, " ");
+    const t = allText(r!).replace(/[  ]/g, " ");
     assert.match(t, /Déjà payé : 36 666 FCFA/);
     assert.match(t, /Reste à payer : 63 334 FCFA/);
     assert.match(t, /Prochaine échéance : mise en ligne — 30 décembre 2026 — 31 666 FCFA/);
@@ -125,7 +128,7 @@ describe("reçu d'une tranche", () => {
   it("une tranche sans étiquette s'appelle « Tranche N »", () => {
     const full = fullAccount([DEPOSIT, TRANCHE, pay("SP-T2", 31_666, "2026-12-01T09:00:00.000Z")]);
     const r2 = buildReceiptForPayment(full, "SP-T2");
-    assert.match(r2!.lines.join("\n"), /Prochaine échéance : Tranche 3 — 30 janvier 2027/);
+    assert.match(allText(r2!), /Prochaine échéance : Tranche 3 — 30 janvier 2027/);
   });
 });
 
@@ -136,14 +139,14 @@ describe("dans tous les reçus", () => {
   ];
   it("la phrase sur le lien de suivi (jamais le lien lui-même)", () => {
     for (const r of all) {
-      const t = r.lines.join("\n");
+      const t = allText(r);
       assert.ok(t.includes("Votre lien de suivi vous a été envoyé par WhatsApp. En cas de perte, demandez-en un nouveau."));
       assert.ok(t.includes(TRACKING_LINK_LINE));
       assert.doesNotMatch(t, /paiement-service|https?:\/\//i);
     }
   });
   it("aucun numéro 514 …, aucun secret", () => {
-    for (const r of all) assert.doesNotMatch(r.lines.join("\n") + r.whatsappText, /514[\s.\-]*867|token|secret|mot de passe/i);
+    for (const r of all) assert.doesNotMatch(allText(r) + r.whatsappText, /514[\s.\-]*867|token|secret|mot de passe/i);
   });
   it("les réponses vont à contact@akagest.com", () => {
     assert.equal(SERVICE_REPLY_TO, "contact@akagest.com");
@@ -153,13 +156,13 @@ describe("dans tous les reçus", () => {
   it("dossier soldé : « Votre dossier est soldé. Merci ! »", () => {
     const paid = pay("SP-ALL", 100_000, "2026-11-25T09:00:00.000Z");
     const r = buildReceiptForPayment(fullAccount([paid]), "SP-ALL")!;
-    assert.match(r.lines.join("\n"), /Votre dossier est soldé\. Merci !/);
-    assert.doesNotMatch(r.lines.join("\n"), /Prochaine échéance/);
+    assert.match(allText(r), /Votre dossier est soldé\. Merci !/);
+    assert.doesNotMatch(allText(r), /Prochaine échéance/);
   });
   it("réduction accordée : le total est dit « après réductions »", () => {
     const adj = [{ id: "SA-1", accountId: "SV-TEST0001", createdAt: "2026-11-01T00:00:00.000Z", kind: "reduction" as const, amount: 25_000, reason: "Parrainage" }];
     const r = buildReceiptForPayment(fullAccount([DEPOSIT], adj), "SP-DEPOSIT1")!;
-    assert.match(r.lines.join("\n").replace(/[  ]/g, " "), /Prix total \(après réductions\) : 75 000 FCFA/);
+    assert.match(allText(r).replace(/[  ]/g, " "), /Prix total \(après réductions\) : 75 000 FCFA/);
   });
   it("un paiement non confirmé n'a pas de reçu", () => {
     assert.equal(buildReceiptForPayment(fullAccount([DEPOSIT, pay("SP-WAIT", 100, null)]), "SP-WAIT"), null);

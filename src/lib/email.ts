@@ -12,6 +12,21 @@ import {
   contractPdfFilename,
 } from "./contract-email-content";
 
+const TEAM_SIGNATURE = "L'équipe AfricAkani";
+
+/** The team signature that ends a customer e-mail is the (centered) closing block of its receipt; the rest is the detail. */
+function splitSignature(lines: string[]): { lines: string[]; closing: string[] } {
+  if (lines[lines.length - 1] !== TEAM_SIGNATURE) return { lines, closing: [] };
+  const detail = lines.slice(0, -1);
+  while (detail.length > 0 && detail[detail.length - 1] === "") detail.pop();
+  return { lines: detail, closing: [TEAM_SIGNATURE] };
+}
+
+function closingArgs(lines: string[]): [string[], string[]] {
+  const { lines: detail, closing } = splitSignature(lines);
+  return [detail, closing];
+}
+
 /** What the senders below use of Resend: every message goes through here, so the
  *  logo is attached inline to every e-mail whose HTML shows it. */
 interface Mailer {
@@ -236,7 +251,10 @@ export async function sendServicePaymentReceipt(params: {
   to: string;
   replyTo: string;
   subject: string;
+  /** The receipt detail (left-aligned). */
   lines: string[];
+  /** The concluding block before the slogan (centered). */
+  closing?: string[];
 }): Promise<void> {
   const resend = getClient();
   const { error } = await resend.emails.send({
@@ -244,7 +262,7 @@ export async function sendServicePaymentReceipt(params: {
     to: params.to,
     replyTo: params.replyTo,
     subject: params.subject,
-    ...renderReceiptEmail(params.subject, params.lines),
+    ...renderReceiptEmail(params.subject, params.lines, params.closing),
   });
   if (error) {
     throw new Error(resendErrorMessage(error));
@@ -287,7 +305,7 @@ export async function sendCustomerOrderConfirmation(
     from: getFrom(),
     to: order.customerEmail,
     subject,
-    ...renderReceiptEmail(subject, lines),
+    ...renderReceiptEmail(subject, ...closingArgs(lines)),
   });
 
   if (error) {
@@ -400,7 +418,7 @@ export async function sendCustomerPaymentConfirmed(
     from: getFrom(),
     to: order.customerEmail,
     subject,
-    ...renderReceiptEmail(subject, lines),
+    ...renderReceiptEmail(subject, ...closingArgs(lines)),
   });
 
   if (error) {
@@ -479,7 +497,7 @@ export async function sendContractClientEmail(
     to,
     replyTo: getAdminNotifyEmail(),
     subject,
-    ...renderReceiptEmail(subject, lines),
+    ...renderReceiptEmail(subject, ...closingArgs(lines)),
     attachments: [{ filename: contractPdfFilename(contract), content: pdf }],
   });
 

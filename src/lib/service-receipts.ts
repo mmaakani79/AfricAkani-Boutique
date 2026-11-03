@@ -37,6 +37,7 @@ export function buildReceiptForPayment(full: ServiceAccountFull, paymentId: stri
     payment,
     state,
     deposit: isDepositReceipt(full.payments, paymentId),
+    asOf: todayInBenin(Date.parse(at)),
   });
 }
 
@@ -84,6 +85,7 @@ export async function sendServiceReceipt(
         replyTo: SERVICE_REPLY_TO,
         subject: testNotice.length > 0 ? `[TEST] ${receipt.subject}` : receipt.subject,
         lines: [...testNotice, ...receipt.lines],
+        closing: receipt.closing,
       });
     } catch (err) {
       const error = formatEmailError(err);

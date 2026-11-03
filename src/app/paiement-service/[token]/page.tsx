@@ -248,6 +248,20 @@ export default async function ServicePrivatePage({
         )}
       </section>
 
+      <section className="mt-4 rounded-2xl bg-white p-5" aria-label="Facture">
+        <h2 className="text-sm font-bold uppercase tracking-wider text-brand-gold">Votre facture</h2>
+        <a
+          href={`/paiement-service/${token}/facture`}
+          data-testid="invoice-link"
+          className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-full border-2 border-brand-green px-4 py-2 text-sm font-bold text-brand-green-dark hover:bg-ivory"
+        >
+          <FileText className="h-4 w-4" aria-hidden /> Télécharger la facture (PDF)
+        </a>
+        {state.remaining > 0 && (
+          <p className="mt-2 text-xs text-ink/60">Elle indique ce qui est déjà payé et le solde restant à régler.</p>
+        )}
+      </section>
+
       {hasContract && (
         <section className="mt-4 rounded-2xl bg-white p-5" aria-label="Contrat">
           <h2 className="text-sm font-bold uppercase tracking-wider text-brand-gold">Votre contrat</h2>
@@ -263,8 +277,9 @@ export default async function ServicePrivatePage({
         </section>
       )}
 
-      <p className="mt-6 text-center text-xs text-ink/50">{PROVIDER_LINE}</p>
-      <ReceiptSlogan className="mt-4" />
+      <ReceiptSlogan>
+        <p>{PROVIDER_LINE}</p>
+      </ReceiptSlogan>
     </div>
   );
 }

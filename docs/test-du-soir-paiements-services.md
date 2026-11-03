@@ -35,6 +35,13 @@ Aucun vrai paiement. Ne rien faire sur le site de production. Ne jamais écrire 
 - **Ajustements** : ajoutez une réduction puis une correction → les lignes restent visibles, rien ne s'efface ; le total ajusté change.
 - Mettre une date de tranche dans le passé non payée → statut « en retard ».
 
+## 4 bis. Reçu, facture et slogan
+- Le reçu par courriel : le détail (n°, marchand, montants, situation) est à gauche ; en dessous, « Service fourni par AkaGest. », les conditions de remboursement, la phrase sur le lien WhatsApp et « Pour toute question… » sont **centrés**, puis la ligne de pied, puis le bandeau vert « Votre Satisfaction, Notre Réussite ! ».
+- 1er reçu (acompte) : règles de l'acompte. Reçus suivants : seulement « Conditions de remboursement : celles de votre contrat signé. » (c'est voulu).
+- Si l'échéance suivante est déjà passée, le reçu écrit « échéance dépassée » à la place de la date.
+- Page privée du client : bouton **Télécharger la facture (PDF)**. Même bouton dans le dossier côté admin. Le PDF : en-tête vert, « FACTURE », numéro du dossier, « Facturé à », paiements confirmés, total payé, reste à payer, tranches à venir, mentions centrées, ligne de pied avec africakani.com, slogan. Le lien privé n'y figure jamais. Tant que le dossier n'est pas soldé, le titre dit « Facture — solde restant à payer : … ».
+- Facture d'une commande (suivi ou « Mon compte ») : la ligne de pied contient africakani.com ; elle reste sur une seule page.
+
 ## 5. Boutiques clientes (menu **Boutiques clientes**)
 - Ajouter une boutique fictive (domaine fictif).
 - Suspendre : le motif est obligatoire, une confirmation est demandée. Réactiver : un clic.

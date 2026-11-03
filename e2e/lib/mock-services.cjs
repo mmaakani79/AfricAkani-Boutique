@@ -46,7 +46,7 @@ http
       if (host === "api.resend.com") {
         let body = {};
         try { body = JSON.parse(raw); } catch { /* not JSON */ }
-        fs.appendFileSync(MAIL_LOG, JSON.stringify({ to: body.to, replyTo: body.reply_to ?? body.replyTo, subject: body.subject, text: body.text }) + "\n");
+        fs.appendFileSync(MAIL_LOG, JSON.stringify({ to: body.to, replyTo: body.reply_to ?? body.replyTo, subject: body.subject, text: body.text, html: body.html }) + "\n");
         return json(res, { id: `e2e-email-${n}` });
       }
       json(res, { error: "unknown host " + host }, 404);

@@ -42,10 +42,13 @@ export function isDepositReceipt(payments: ReceiptPayment[], paymentId: string):
   return confirmed[0]?.id === paymentId;
 }
 
-function nextDueText(next: NextDue | null): string {
+/** A due date already behind the day the receipt is issued is not shown as a date: it is overdue. */
+export const OVERDUE_TEXT = "échéance dépassée";
+
+function nextDueText(next: NextDue | null, asOf: string): string {
   if (!next) return "Votre dossier est soldé. Merci !";
   const what = next.kind === "deposit" ? "Acompte" : next.label || `Tranche ${next.position}`;
-  const when = next.dueDate ? ` — ${dateFr(next.dueDate)}` : "";
+  const when = next.dueDate ? ` — ${next.dueDate < asOf ? OVERDUE_TEXT : dateFr(next.dueDate)}` : "";
   return `Prochaine échéance : ${what}${when} — ${fcfa(next.amount)}`;
 }
 
@@ -56,8 +59,10 @@ function methodText(payment: ReceiptPayment): string {
 
 export interface BuiltReceipt {
   subject: string;
-  /** Plain-text lines (a "" is a blank line): also the source of the HTML version. */
+  /** Plain-text lines of the receipt detail (a "" is a blank line): left-aligned, also the source of the HTML version. */
   lines: string[];
+  /** The concluding block right before the slogan (provider, refund terms, tracking sentence): centered. */
+  closing: string[];
   whatsappText: string;
 }
 
@@ -67,10 +72,13 @@ export function buildServiceReceipt(input: {
   payment: ReceiptPayment;
   state: Pick<AccountState, "adjustedTotal" | "paid" | "remaining" | "reductions" | "next">;
   deposit: boolean;
+  /** YYYY-MM-DD: the day the receipt is issued, to tell an overdue due date from a coming one. Default: the day of the payment. */
+  asOf?: string;
 }): BuiltReceipt {
   const { merchantName, payment, state, deposit } = input;
   const who = input.clientName.trim() || merchantName;
   const date = dateFr(payment.paidOn ?? payment.confirmedAt?.slice(0, 10) ?? payment.createdAt.slice(0, 10));
+  const asOf = input.asOf ?? payment.confirmedAt?.slice(0, 10) ?? payment.createdAt.slice(0, 10);
   const subject = `Reçu de paiement — ${merchantName} — ${fcfa(payment.amount)}`;
 
   const lines = [
@@ -88,8 +96,10 @@ export function buildServiceReceipt(input: {
     state.reductions > 0 ? `Prix total (après réductions) : ${fcfa(state.adjustedTotal)}` : `Prix total : ${fcfa(state.adjustedTotal)}`,
     `Déjà payé : ${fcfa(Math.max(0, state.paid))}`,
     `Reste à payer : ${fcfa(state.remaining)}`,
-    nextDueText(state.next),
-    "",
+    nextDueText(state.next, asOf),
+  ];
+
+  const closing = [
     PROVIDER_LINE,
     "",
     ...(deposit ? ["Remboursement de l'acompte", ...DEPOSIT_REFUND_LINES.map((l) => `• ${l}`)] : [CONTRACT_REFUND_LINE]),
@@ -99,7 +109,7 @@ export function buildServiceReceipt(input: {
   ];
 
   const next = state.next
-    ? `Prochaine échéance : ${state.next.kind === "deposit" ? "acompte" : state.next.label || `tranche ${state.next.position}`}${state.next.dueDate ? `, ${dateFr(state.next.dueDate)}` : ""}, ${fcfa(state.next.amount)}.`
+    ? `Prochaine échéance : ${state.next.kind === "deposit" ? "acompte" : state.next.label || `tranche ${state.next.position}`}${state.next.dueDate ? `, ${state.next.dueDate < asOf ? OVERDUE_TEXT : dateFr(state.next.dueDate)}` : ""}, ${fcfa(state.next.amount)}.`
     : "Votre dossier est soldé. Merci !";
   const whatsappText = [
     `Bonjour ${who.split(" ")[0] || who}, AkaGest a bien reçu ${deposit ? "votre acompte" : "votre paiement"} de ${fcfa(payment.amount)} le ${date} (reçu ${payment.id}).`,
@@ -112,7 +122,7 @@ export function buildServiceReceipt(input: {
   ].join(" ");
   const whatsappWithSlogan = withReceiptSloganText(whatsappText);
 
-  return { subject, lines, whatsappText: whatsappWithSlogan };
+  return { subject, lines, closing, whatsappText: whatsappWithSlogan };
 }
 
 /** "https://wa.me/<number>?text=…" for the receipt, or null when the client has no usable number. */

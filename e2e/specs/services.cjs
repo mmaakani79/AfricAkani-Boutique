@@ -78,7 +78,7 @@ const t = (page, id) => page.getByTestId(id).innerText().then(norm);
     const resp = await page.goto(link, { waitUntil: "networkidle" }); await sleep(500);
     check(`[client ${w}px] la page privée répond (200) et affiche le marchand`, resp.status() === 200 && (await page.locator("h1").innerText()) === MERCHANT);
     const hrefs = await page.locator("a").evaluateAll((as) => as.map((a) => a.getAttribute("href")));
-    check(`[client ${w}px] rien d'autre du site : ni bandeau, ni en-tête, ni pied de page, ni panier ; seul lien : le contrat`, (await page.locator("header a, footer, nav").count()) === 0 && hrefs.length === 1 && hrefs[0].endsWith("/contrat"), JSON.stringify(hrefs));
+    check(`[client ${w}px] rien d'autre du site : ni bandeau, ni en-tête, ni pied de page, ni panier ; seuls liens : la facture et le contrat`, (await page.locator("header a, footer, nav").count()) === 0 && hrefs.length === 2 && hrefs.some((h) => h.endsWith("/contrat")) && hrefs.some((h) => h.endsWith("/facture")), JSON.stringify(hrefs));
     check(`[client ${w}px] total 100 000, payé 0, reste 100 000`, (await t(page, "total")) === fmt(100000) && (await t(page, "paid")) === fmt(0) && (await t(page, "remaining")) === fmt(100000));
     check(`[client ${w}px] prochaine échéance : l'acompte de 5 000 FCFA, à régler maintenant`, /Acompte/.test(await t(page, "next-due")) && /maintenant/.test(await t(page, "next-due")) && (await t(page, "next-due")).includes(fmt(5000)));
     const sched = (await t(page, "schedule"));
@@ -87,6 +87,11 @@ const t = (page, id) => page.getByTestId(id).innerText().then(norm);
     const slBox = await sl.boundingBox();
     const lastBottom = await page.evaluate(() => Math.max(...[...document.querySelectorAll("main p, main h1, main a, p, a")].filter((e) => !e.closest('[data-testid="receipt-slogan"]') && e.getAttribute("data-testid") !== "receipt-slogan").map((e) => e.getBoundingClientRect().bottom + window.scrollY)));
     check(`[client ${w}px] « Service fourni par AkaGest. » puis le slogan « Votre Satisfaction, Notre Réussite ! » tout en bas, lisible, dans l'écran`, (await page.locator("body").innerText()).includes("Service fourni par AkaGest.") && !(await page.locator("body").innerText()).includes("ARINLOYE") && (await sl.count()) === 1 && (await sl.innerText()).trim() === "Votre Satisfaction, Notre Réussite !" && !!slBox && slBox.x >= 0 && slBox.x + slBox.width <= w + 0.5 && slBox.y + (await page.evaluate(() => window.scrollY)) >= lastBottom - 1, JSON.stringify(slBox));
+    { const prov = await page.getByText("Service fourni par AkaGest.").boundingBox();
+      const sloganBox = await sl.boundingBox();
+      check(`[client ${w}px] la conclusion « Service fourni par AkaGest. » est centrée, au-dessus du slogan`, !!prov && !!sloganBox && Math.abs(prov.x + prov.width / 2 - w / 2) < 2 && prov.y < sloganBox.y, JSON.stringify({ prov, sloganBox })); }
+    { const inv = await page.getByTestId("invoice-link").boundingBox();
+      check(`[client ${w}px] bouton « Télécharger la facture (PDF) » visible, facile à toucher (≥ 44 px), dans l'écran`, !!inv && inv.height >= 44 && inv.x >= 0 && inv.x + inv.width <= w + 0.5 && (await page.getByTestId("invoice-link").innerText()).includes("Télécharger la facture (PDF)"), JSON.stringify(inv)); }
     check(`[client ${w}px] aucun débordement horizontal, formulaire utilisable`, (await noOverflow(page)) && (await page.getByTestId("service-payment-form").count()) === 1);
     if (size === "mobile320" || size === "desktop") {
       const box = await page.getByTestId("service-payment-form").locator('button[type="submit"]').boundingBox();
@@ -176,6 +181,10 @@ const t = (page, id) => page.getByTestId(id).innerText().then(norm);
   check("[admin] le paiement est confirmé en base, avec sa date", sql(`select status||'|'||(confirmed_at is not null) from service_payments where account_id='${accountId}'`) === "confirme|true");
   const receiptMails = () => logLines("emails.jsonl").filter((m) => /^Reçu de paiement/.test(m.subject || ""));
   const dep = receiptMails();
+  { const html = dep[0]?.html || "";
+    const start = html.indexOf('data-receipt-closing="1"');
+    const closing = html.slice(start, html.indexOf("</td>", start));
+    check("[reçu] courriel : la conclusion (fourni par AkaGest, remboursement de l'acompte, lien de suivi, question) est centrée ; le détail (montants, situation) reste à gauche ; le slogan ferme le message", start > 0 && /align="center"/.test(closing) && /text-align:center/.test(closing) && closing.includes("Service fourni par AkaGest.") && closing.includes("Remboursement de l") && closing.includes("Votre lien de suivi") && closing.includes("Pour toute question") && !closing.includes("Montant payé") && html.indexOf("Montant payé") < start && html.indexOf("Votre Satisfaction, Notre Réussite !") > html.indexOf("Boutique généraliste africaine") && (dep[0].text || "").trimEnd().endsWith("Votre Satisfaction, Notre Réussite !"), closing.slice(0, 300)); }
   check("[reçu] confirmation : 1 reçu envoyé au client (adresse du contrat), réponses vers contact@akagest.com", dep.length === 1 && JSON.stringify(dep[0].to).includes("client.test@example.com") && String(dep[0].replyTo) === "contact@akagest.com", JSON.stringify(dep.map((m) => [m.to, m.replyTo])));
   const dt = norm(dep[0]?.text || "");
   check("[reçu acompte] montant, reste à payer, prochaine échéance et règles de l'acompte", dt.includes("Montant payé : 5 000 FCFA") && dt.includes("Reste à payer : 95 000 FCFA") && dt.includes("Prochaine échéance : avant mise en ligne") && dt.includes("L'acompte est remboursé seulement si AkaGest ne livre pas le service.") && dt.includes("gardé par AkaGest si le client abandonne le projet") && dt.includes("Service fourni par AkaGest.") && !dt.includes("ARINLOYE") && dt.includes("Votre Satisfaction, Notre Réussite !"), dt.slice(0, 400));
@@ -392,6 +401,61 @@ const t = (page, id) => page.getByTestId(id).innerText().then(norm);
     await f2.locator('button[type="submit"]').click(); await off.page.getByTestId("service-payment-success").waitFor({ timeout: 15000 }).catch(() => {});
     check("[retour en ligne] le même envoi passe ensuite normalement", sql(`select count(*) from service_payments where account_id='${lateId}' and mm_transaction_id='E2E-OFFLINE-1'`) === "1");
     await off.ctx.close(); }
+
+  // ===== 12 bis. Facture PDF du dossier =====
+  { const tok = link2.split("/paiement-service/")[1];
+    const { execFileSync } = require("node:child_process");
+    const fs = require("node:fs");
+    const textOf = (buf, name) => { const f = `${OUT}/${name}.pdf`; fs.writeFileSync(f, buf); return execFileSync("pdftotext", ["-layout", f, "-"], { encoding: "utf8" }).replace(/[\u202f\u00a0]/g, " "); };
+    const pagesOf = (buf) => (buf.toString("latin1").match(/\/Type \/Page\b(?!s)/g) || []).length;
+    const r = await fetch(`${BASE}/paiement-service/${tok}/facture`);
+    const buf = Buffer.from(await r.arrayBuffer());
+    check("[facture client] avec le lien privé : PDF, téléchargement, non mis en cache, non indexé", r.status === 200 && r.headers.get("content-type") === "application/pdf" && buf.subarray(0, 4).toString() === "%PDF" && /attachment/.test(r.headers.get("content-disposition") || "") && /no-store/.test(r.headers.get("cache-control") || "") && /noindex/.test(r.headers.get("x-robots-tag") || ""), `${r.status} ${r.headers.get("content-disposition")}`);
+    const txt = textOf(buf, "facture-service");
+    check("[facture client] dossier soldé : FACTURE, numéro du dossier, facturé à, boutique, « dossier soldé », slogan et site", ["FACTURE", accountId, "FACTURÉ À", MERCHANT, "Facture — dossier soldé", "PAIEMENTS CONFIRMÉS", "Reste à payer", "Service fourni par AkaGest.", "Conditions de remboursement : celles de votre contrat signé.", "Votre Satisfaction, Notre Réussite !", "africakani.com"].every((e) => txt.includes(e)), txt.slice(0, 900));
+    check("[facture client] le lien privé n'y figure jamais (ni adresse, ni jeton)", !txt.includes(tok) && !/paiement-service|https?:\/\//.test(txt) && !buf.toString("latin1").includes(tok), "");
+    check("[facture client] sur une seule page, et le prix total du dossier (100 000 FCFA) est affiché", pagesOf(buf) === 1 && txt.includes("100 000 FCFA"), String(pagesOf(buf)));
+    { const lr = await admin.ctx.request.get(`${BASE}/api/admin/services/${lateId}/facture`);
+      const ltxt = lr.status() === 200 ? textOf(await lr.body(), "facture-service-impaye") : "";
+      const owedNow = sql(`select total_amount from service_accounts where id='${lateId}'`);
+      check("[facture client] dossier NON soldé : titre « Facture — solde restant à payer » avec le montant, jamais « soldé »", /Facture — solde restant à payer : [\d ]+ FCFA/.test(ltxt) && !/dossier soldé/.test(ltxt) && /Prochaine échéance/.test(ltxt) && /TRANCHES À VENIR/.test(ltxt), `${lr.status()} ${owedNow} ${ltxt.slice(0, 700)}`); }
+    const rBad = await fetch(`${BASE}/paiement-service/${tok.slice(0, -1)}${tok.endsWith("A") ? "B" : "A"}/facture`);
+    const rPost = await fetch(`${BASE}/paiement-service/${tok}/facture`, { method: "POST" });
+    check("[sécurité] facture avec un faux lien : 404 ; modification impossible (seule la lecture existe)", rBad.status === 404 && rPost.status === 405, `${rBad.status} ${rPost.status}`);
+    const noAuth = await fetch(`${BASE}/api/admin/services/${accountId}/facture`, { redirect: "manual" });
+    check("[sécurité] facture admin sans connexion : refusée (401), aucun PDF", noAuth.status === 401 && (noAuth.headers.get("content-type") || "") !== "application/pdf", String(noAuth.status));
+    const ar = await admin.ctx.request.get(`${BASE}/api/admin/services/${accountId}/facture`);
+    const abuf = await ar.body();
+    check("[facture admin] connecté : le même dossier en PDF", ar.status() === 200 && ar.headers()["content-type"] === "application/pdf" && textOf(abuf, "facture-service-admin").includes(accountId));
+    const logBefore = sql(`select count(*) from service_events where account_id='${accountId}'`);
+    await fetch(`${BASE}/paiement-service/${tok}/facture`);
+    check("[journal] télécharger la facture ne modifie ni le journal ni le dossier (lecture seule)", sql(`select count(*) from service_events where account_id='${accountId}'`) === logBefore);
+
+    for (const size of ["mobile320", "desktop"]) {
+      const w = SIZES[size].viewport.width;
+      const c = await openClient(browser, size);
+      await c.page.goto(`${BASE}/paiement-service/${tok}`, { waitUntil: "networkidle" });
+      const [dl] = await Promise.all([c.page.waitForEvent("download", { timeout: 15000 }).catch(() => null), c.page.getByTestId("invoice-link").click()]);
+      let ok = false, name = "";
+      if (dl) { const f = `${OUT}/dl-${size}.pdf`; await dl.saveAs(f); name = dl.suggestedFilename(); ok = fs.readFileSync(f).subarray(0, 4).toString() === "%PDF" && /^facture-SV-/.test(name); }
+      check(`[facture client ${w}px] le bouton télécharge bien le PDF (${name || "aucun fichier"})`, ok);
+      await c.ctx.close();
+      const a = await adminContext(browser, size);
+      await a.page.goto(`${BASE}/admin/services/${accountId}`, { waitUntil: "networkidle" });
+      const btn = a.page.getByTestId("admin-invoice-link");
+      const bb = await btn.boundingBox();
+      const [dl2] = await Promise.all([a.page.waitForEvent("download", { timeout: 15000 }).catch(() => null), btn.click()]);
+      check(`[facture admin ${w}px] bouton visible dans l'écran, sans débordement, et télécharge le PDF`, !!bb && bb.x >= 0 && bb.x + bb.width <= w + 0.5 && (await noOverflow(a.page)) && !!dl2 && /^facture-SV-/.test(dl2.suggestedFilename()), JSON.stringify(bb));
+      await a.ctx.close();
+    }
+    // hors ligne : la page reste affichée et le téléchargement n'ouvre rien d'incomplet
+    { const c = await openClient(browser, "mobile375");
+      await c.page.goto(`${BASE}/paiement-service/${tok}`, { waitUntil: "networkidle" });
+      await c.ctx.setOffline(true);
+      await c.page.getByTestId("invoice-link").click().catch(() => {}); await sleep(1500);
+      check("[hors ligne] « Télécharger la facture » sans réseau : la page reste affichée, rien ne casse", (await c.page.locator("h1").innerText().catch(() => "")) === MERCHANT || (await c.page.locator("body").innerText().catch(() => "")).length > 0);
+      await c.ctx.setOffline(false); await c.ctx.close(); }
+  }
 
   // ===== 13. Administration sur mobile et ordinateur =====
   for (const size of ["mobile320", "mobile375", "tablet768", "desktop"]) {
