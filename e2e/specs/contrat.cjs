@@ -12,30 +12,58 @@ const textOf = (file) => execFileSync("pdftotext", ["-layout", file, "-"], { enc
 const read = (buf, name) => { const f = `${OUT}/${name}.pdf`; fs.writeFileSync(f, buf); return f; };
 const CONTROL = /[\u0000-\u0008\u000b\u000e-\u001f\u007f-\u009f]/; // le saut de page « \f » de pdftotext est normal
 
-/** Dessine une signature qui longe les 4 bords de la zone et ses diagonales : si le bas est coupé, ça se voit. */
+/** Dessine une signature qui longe les 4 bords de la zone et ses diagonales : si le haut ou le bas est coupé ou aplati, ça se voit. */
 async function draw(page) {
-  const canvas = page.locator("canvas").first();
+  const canvas = page.locator('[data-testid="signature-canvas"]');
   await canvas.scrollIntoViewIfNeeded();
   const b = await canvas.boundingBox();
   const px = (fx, fy) => [b.x + b.width * fx, b.y + b.height * fy];
-  const stroke = async (pts) => { const [x0, y0] = px(...pts[0]); await page.mouse.move(x0, y0); await page.mouse.down(); for (const p of pts.slice(1)) { const [x, y] = px(...p); await page.mouse.move(x, y, { steps: 8 }); } await page.mouse.up(); };
+  const stroke = async (pts) => { const [x0, y0] = px(...pts[0]); await page.mouse.move(x0, y0); await page.mouse.down(); for (const p of pts.slice(1)) { const [x, y] = px(...p); await page.mouse.move(x, y, { steps: 10 }); } await page.mouse.up(); };
   await stroke([[0.02, 0.04], [0.98, 0.04], [0.98, 0.96], [0.02, 0.96], [0.02, 0.04]]);
   await stroke([[0.02, 0.04], [0.98, 0.96]]);
   await stroke([[0.02, 0.96], [0.98, 0.04]]);
+  // Ce que la capture exporte : dimensions, étendue du dessin et épaisseur du trait du haut et du bas.
+  return page.evaluate(() => {
+    const c = document.querySelector('[data-testid="signature-canvas"]');
+    const url = c.toDataURL("image/png");
+    const w = c.width, h = c.height;
+    const d = c.getContext("2d").getImageData(0, 0, w, h).data;
+    const on = (x, y) => d[(y * w + x) * 4 + 3] > 40;
+    let minX = w, maxX = -1, minY = h, maxY = -1;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (on(x, y)) { if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+    // épaisseur (en pixels) des traits horizontaux du haut et du bas, mesurée sur une colonne sans diagonale (25 % de la largeur)
+    const run = (x, from, to) => { let best = 0, cur = 0; for (let y = from; y < to; y++) { if (on(x, y)) { cur++; best = Math.max(best, cur); } else cur = 0; } return best; };
+    const x25 = Math.round(w * 0.25), x75 = Math.round(w * 0.75);
+    const rect = c.getBoundingClientRect();
+    return { url, w, h, cssW: rect.width, cssH: rect.height, minX, maxX, minY, maxY, topRun: run(x25, 0, Math.round(h * 0.12)), bottomRun: run(x75, Math.round(h * 0.88), h) };
+  });
 }
 
-async function fillAndSign(page, size, who) {
+async function fillAndSign(page, size, who, w) {
   await page.goto(BASE + "/contrat", { waitUntil: "networkidle" }); await sleep(300);
-  await page.locator('input[type="checkbox"]').first().check();
+  const submit = page.getByRole("button", { name: /Signer et envoyer le contrat/ });
+  // Case d'acceptation pas encore cochée : bouton grisé, et un message-lien qui remonte à la case.
+  const hint = page.getByTestId("accept-hint");
+  const hintText = (await hint.innerText()).replace(/\s+/g, " ").trim();
+  check(`[contrat ${w}px] case non cochée : bouton grisé et message « Cochez d'abord la case « J'ai lu et j'accepte les termes du contrat » (sous le texte du contrat) »`, (await submit.isDisabled()) && hintText === "Cochez d’abord la case « J’ai lu et j’accepte les termes du contrat » (sous le texte du contrat)", hintText);
+  check(`[contrat ${w}px] le message est un lien vers la case, sans débordement`, (await hint.locator('a[href="#accept-contract"]').count()) === 1 && (await noOverflow(page)));
+  await page.locator("canvas").first().scrollIntoViewIfNeeded();
+  await hint.locator("a").click(); await sleep(900);
+  const box = await page.locator("#accept-contract").boundingBox();
+  const vh = page.viewportSize().height;
+  check(`[contrat ${w}px] cliquer le lien remonte à la case (visible dans l'écran) et la met en évidence (focus)`, !!box && box.y >= 0 && box.y + box.height <= vh && (await page.evaluate(() => document.activeElement && document.activeElement.id === "accept-contract")), JSON.stringify(box));
+  await page.locator("#accept-contract").check();
+  check(`[contrat ${w}px] case cochée : le message disparaît et le bouton s'active`, (await hint.count()) === 0 && (await submit.isEnabled()));
   const field = (label) => page.locator("label", { hasText: label }).locator("input, textarea").first();
   await field("Nom complet").fill(who);
   await field("E-mail").fill("signataire.test@example.com");
   await field("Téléphone").fill("+22997000001");
   await page.getByRole("button", { name: "Site web" }).click();
   await field("Description du besoin").fill("Un site.\r\n\r\nDeuxième paragraphe avec « guillemets » et accents é è à.");
-  await draw(page);
-  await page.getByRole("button", { name: /Signer et envoyer le contrat/ }).click();
+  const info = await draw(page);
+  await submit.click();
   await page.getByText("Contrat signé avec succès").waitFor({ timeout: 20000 });
+  return info;
 }
 
 /** Boîte (en points) occupée par la signature dans la page, et boîte des pixels verts dessinés (en points). */
@@ -76,7 +104,12 @@ function signatureBoxes(pdfFile, page) {
     await ctx.route("**/_vercel/**", (r) => r.fulfill({ status: 404, body: "" }));
     const page = await ctx.newPage();
     const errors = []; page.on("pageerror", (e) => errors.push(String(e)));
-    await fillAndSign(page, size, `Signataire ${w}`);
+    const exp = await fillAndSign(page, size, `Signataire ${w}`, w);
+    check(`[signature ${w}px] la zone de dessin fait ${200} px de haut (${Math.round(exp.cssW)} px de large)`, Math.abs(exp.cssH - 200) < 1 && exp.cssW > 200, JSON.stringify({ cssW: exp.cssW, cssH: exp.cssH }));
+    check(`[signature ${w}px] la capture exporte toute la zone, sans étirement : ${exp.w}×${exp.h} px, mêmes proportions que la zone à l'écran, au moins 2× pour rester net`, Math.abs(exp.w / exp.h - exp.cssW / exp.cssH) < 0.02 && exp.w >= exp.cssW * 1.9 && exp.url.startsWith("data:image/png;base64,"), JSON.stringify({ w: exp.w, h: exp.h, cssW: exp.cssW, cssH: exp.cssH }));
+    check(`[signature ${w}px] le dessin longe les quatre bords sans être coupé : de 2 % à 98 % en largeur et en hauteur`, exp.minX / exp.w < 0.04 && exp.maxX / exp.w > 0.96 && exp.minY / exp.h < 0.04 && exp.maxY / exp.h > 0.96, JSON.stringify(exp, (k, v) => (k === "url" ? undefined : v)));
+    const lineWidth = 2.5 * (exp.w / exp.cssW);
+    check(`[signature ${w}px] les traits du haut et du bas ne sont pas aplatis (épaisseur ${exp.topRun} et ${exp.bottomRun} px pour un trait de ${lineWidth.toFixed(1)} px)`, exp.topRun >= lineWidth * 0.8 && exp.bottomRun >= lineWidth * 0.8, `${exp.topRun} ${exp.bottomRun}`);
     check(`[contrat ${w}px] signé et enregistré, sans débordement ni erreur`, (await noOverflow(page)) && errors.length === 0, errors.join("||"));
     await page.screenshot({ path: `${OUT}/contrat-${w}.png`, fullPage: true });
     await ctx.close();
@@ -101,8 +134,12 @@ function signatureBoxes(pdfFile, page) {
 
     const pages = (fs.readFileSync(file).toString("latin1").match(/\/Type \/Page\b(?!s)/g) || []).length;
     const sig = signatureBoxes(file, pages === 1 ? 1 : 2);
-    const ok = sig && sig.found && sig.h > 0 && Math.abs(sig.w / sig.h - 3) < 0.25 && sig.bottom <= sig.areaBottom;
-    check(`[PDF ${w}px] la signature s'affiche en entier (cadre complet, proportions 3:1, rien de coupé en bas)`, !!ok, JSON.stringify(sig));
+    // Le cadre dessiné va de 2 % à 98 % en largeur et en hauteur : mêmes proportions que la zone, à 4 % près de marge.
+    const expected = (exp.w * 0.96) / (exp.h * 0.96);
+    const ok = sig && sig.found && sig.h > 0 && Math.abs(sig.w / sig.h / expected - 1) < 0.08 && sig.bottom <= sig.areaBottom;
+    check(`[PDF ${w}px] la signature s'affiche en entier, avec ses proportions (${expected.toFixed(2)}:1), rien de coupé en bas`, !!ok, JSON.stringify({ sig, expected }));
+    const hdr = Buffer.from(sql(`select substr(signature_data_url, 23, 40) from signed_contracts where id='${id}'`), "base64");
+    check(`[contrat ${w}px] la signature enregistrée a les dimensions exportées (${exp.w}×${exp.h})`, hdr.readUInt32BE(16) === exp.w && hdr.readUInt32BE(20) === exp.h, `${hdr.readUInt32BE(16)}×${hdr.readUInt32BE(20)}`);
     fs.copyFileSync(`${OUT}/sigpage.png`, `${OUT}/contrat-signature-${w}.png`);
   }
 

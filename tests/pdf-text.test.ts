@@ -113,30 +113,69 @@ describe("PDF du contrat signé", () => {
     assert.equal(pdfPages(await generateContractPdf(contract())), 2);
   });
 
-  it("signature entière, jamais coupée : le texte occupe de 1 à 90 lignes (tous les cas de bas de page)", async () => {
-    let checked = 0;
-    for (let n = 1; n <= 90; n += 1) {
-      const body = Array.from({ length: n }, (_, i) => `Article ${i + 1} : le prestataire s'engage à fournir le service décrit.`).join("\r\n");
-      const pdf = await generateContractPdf(contract({ contractTextSnapshot: body }));
-      const lines = pdfLines(pdf);
-      if (!lines) return;
-      const pages = pdfPages(pdf);
-      const title = lines.find((l) => l.text.startsWith("SIGNATURE"));
-      const caption = lines.find((l) => /^Signé électroniquement par/.test(l.text));
-      assert.ok(title && caption, `n=${n} : titre et légende de la signature`);
-      assert.equal(title.page, caption.page, `n=${n} : titre et légende sur la même page`);
-      const box = greenBox(pdf, title.page, title.yMax + 1, caption.yMin);
-      if (!box) return;
-      // Cadre entier (haut, bas, côtés) : proportions 3:1 de la zone de signature, et fini avant la légende.
-      assert.ok(box.w > 150 && Math.abs(box.w / box.h - 3) < 0.25, `n=${n} : signature complète (${box.w.toFixed(0)}×${box.h.toFixed(0)} pt, page ${title.page}/${pages})`);
-      assert.ok(box.bottom < caption.yMin, `n=${n} : la signature finit avant sa légende`);
-      assert.ok(caption.yMax < 842 - 70, `n=${n} : la légende reste au-dessus du pied de page (${caption.yMax.toFixed(0)} pt)`);
-      const footer = lines.find((l) => l.page === pages && l.text.includes("contact@africakani.com"));
-      assert.ok(footer && footer.page === pages && caption.yMax < footer.yMin, `n=${n} : pied de page seul, sous la légende`);
-      assert.equal(lines.filter((l) => l.text.startsWith("SIGNATURE")).length, 1, `n=${n} : une seule signature`);
-      checked += 1;
-    }
-    assert.equal(checked, 90);
+  // Signatures : l'ancienne zone (600×200, 3:1) et les nouvelles (hauteur 200 px à l'écran : ordinateur ≈ 3:1, téléphones ≈ 1,2:1).
+  for (const [w, h, label] of [[600, 200, "ancienne zone 600×200"], [1180, 400, "ordinateur 1180×400"], [496, 400, "téléphone 496×400"], [700, 400, "tablette 700×400"]] as const) {
+    it(`signature entière, jamais coupée, proportions respectées — ${label} — contrat de 1 à 90 lignes (tous les cas de bas de page)`, async () => {
+      let checked = 0;
+      for (let n = 1; n <= 90; n += 1) {
+        const body = Array.from({ length: n }, (_, i) => `Article ${i + 1} : le prestataire s'engage à fournir le service décrit.`).join("\r\n");
+        const pdf = await generateContractPdf(contract({ contractTextSnapshot: body, signatureDataUrl: framedSignaturePng(w, h) }));
+        const lines = pdfLines(pdf);
+        if (!lines) return;
+        const pages = pdfPages(pdf);
+        const title = lines.find((l) => l.text.startsWith("SIGNATURE"));
+        const caption = lines.find((l) => /^Signé électroniquement par/.test(l.text));
+        assert.ok(title && caption, `n=${n} : titre et légende de la signature`);
+        assert.equal(title.page, caption.page, `n=${n} : titre et légende sur la même page`);
+        const box = greenBox(pdf, title.page, title.yMax + 1, caption.yMin);
+        if (!box) return;
+        // Cadre entier (haut, bas, côtés), mêmes proportions que la zone dessinée, et fini avant la légende.
+        const expected = w / h;
+        assert.ok(box.w > 80 && Math.abs(box.w / box.h / expected - 1) < 0.08, `n=${n} : signature complète (${box.w.toFixed(0)}×${box.h.toFixed(0)} pt au lieu de ${expected.toFixed(2)}:1, page ${title.page}/${pages})`);
+        assert.ok(box.w <= 245 && box.h <= 95, `n=${n} : dans le cadre prévu (${box.w.toFixed(0)}×${box.h.toFixed(0)} pt)`);
+        assert.ok(box.bottom < caption.yMin, `n=${n} : la signature finit avant sa légende`);
+        assert.ok(caption.yMax < 842 - 70, `n=${n} : la légende reste au-dessus du pied de page (${caption.yMax.toFixed(0)} pt)`);
+        const footer = lines.find((l) => l.page === pages && l.text.includes("contact@africakani.com"));
+        assert.ok(footer && footer.page === pages && caption.yMax < footer.yMin, `n=${n} : pied de page seul, sous la légende`);
+        assert.equal(lines.filter((l) => l.text.startsWith("SIGNATURE")).length, 1, `n=${n} : une seule signature`);
+        checked += 1;
+      }
+      assert.equal(checked, 90);
+    });
+  }
+
+  it("une ancienne signature (600×200) s'affiche exactement comme avant : 240 pt de large sous le titre", async () => {
+    const pdf = await generateContractPdf(contract({ signatureDataUrl: framedSignaturePng(600, 200) }));
+    const lines = pdfLines(pdf);
+    if (!lines) return;
+    const title = lines.find((l) => l.text.startsWith("SIGNATURE"))!;
+    const caption = lines.find((l) => /^Signé électroniquement par/.test(l.text))!;
+    const box = greenBox(pdf, title.page, title.yMax + 1, caption.yMin)!;
+    assert.ok(Math.abs(box.w - 240) < 8 && Math.abs(box.h - 80) < 6, `${box.w.toFixed(0)}×${box.h.toFixed(0)} pt`);
+  });
+});
+
+describe("zone de dessin de la signature (formulaire du contrat)", () => {
+  const pad = read("src/components/shop/signature-pad.tsx");
+  const form = read("src/app/contrat/contract-form.tsx");
+  it("hauteur de 200 px à l'écran, sur téléphone comme sur ordinateur, largeur pleine", () => {
+    assert.match(pad, /SIGNATURE_PAD_HEIGHT = 200/);
+    assert.match(pad, /style=\{\{ height: SIGNATURE_PAD_HEIGHT \}\}/);
+    assert.match(pad, /className="block w-full touch-none"/);
+  });
+  it("le dessin a les proportions de la zone à l'écran (jamais étiré) et reste net : 2× au moins, 1400 px de large au plus", () => {
+    assert.ok(pad.includes("Math.round(rect.width * ratio)") && pad.includes("Math.round(rect.height * ratio)"));
+    assert.ok(pad.includes("Math.max(2,"));
+    assert.ok(pad.includes("MAX_EXPORT_WIDTH = 1400"));
+  });
+  it("la capture exporte toute la zone (toDataURL du canevas entier)", () => {
+    assert.ok(pad.includes('canvasRef.current?.toDataURL("image/png")'));
+  });
+  it("message sous le bouton grisé : lien vers la case d'acceptation, texte demandé", () => {
+    assert.ok(form.includes('id="accept-contract"'));
+    assert.ok(form.includes('href="#accept-contract"'));
+    assert.ok(form.includes("Cochez d&rsquo;abord la case «&nbsp;J&rsquo;ai lu et j&rsquo;accepte les termes du contrat&nbsp;» (sous le texte du contrat)"));
+    assert.ok(!form.includes("Cochez la case ci-dessus pour activer la signature"));
   });
 });
 
