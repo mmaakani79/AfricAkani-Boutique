@@ -34,12 +34,30 @@ export interface ReceiptPayment {
   createdAt: string;
 }
 
-/** The first payment confirmed on a file is the deposit: its receipt carries the deposit rules. */
-export function isDepositReceipt(payments: ReceiptPayment[], paymentId: string): boolean {
+/**
+ * The payments that make up the PLANNED DEPOSIT of the file. Confirmed payments are applied in the order
+ * they were confirmed (like the schedule does): a payment belongs to the deposit while the amount received
+ * before it is still below the planned deposit. So the receipt of a payment carries the deposit rules only
+ * when that payment pays (part of) the deposit; with a planned deposit of 0 no receipt does. Every other
+ * receipt only refers to the signed contract.
+ */
+export function depositPaymentIds(payments: ReceiptPayment[], depositPlanned: number): Set<string> {
+  const ids = new Set<string>();
   const confirmed = payments
     .filter((p) => p.confirmedAt)
     .sort((a, b) => (a.confirmedAt as string).localeCompare(b.confirmedAt as string) || a.createdAt.localeCompare(b.createdAt));
-  return confirmed[0]?.id === paymentId;
+  let received = 0;
+  for (const p of confirmed) {
+    if (received >= depositPlanned) break;
+    ids.add(p.id);
+    received += p.amount;
+  }
+  return ids;
+}
+
+/** True when the receipt of `paymentId` carries the deposit refund rules (see `depositPaymentIds`). */
+export function isDepositReceipt(payments: ReceiptPayment[], paymentId: string, depositPlanned: number): boolean {
+  return depositPaymentIds(payments, depositPlanned).has(paymentId);
 }
 
 /** A due date already behind the day the receipt is issued is not shown as a date: it is overdue. */

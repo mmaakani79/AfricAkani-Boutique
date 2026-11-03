@@ -11,6 +11,7 @@ import { renderReceiptEmail } from "@/lib/email-html";
 import { RECEIPT_SLOGAN } from "@/lib/receipt-slogan";
 import { CONTRACT_REFUND_LINE, OVERDUE_TEXT, PROVIDER_LINE, buildServiceReceipt } from "@/lib/service-receipt";
 import { INVOICE_FOOTER_LINE } from "@/lib/invoice-pdf-parts";
+import { SUPPLIER_ADDRESS } from "@/lib/business-info";
 import { computeAccountState } from "@/lib/service-account-math";
 import { generateServiceInvoicePdf, serviceInvoiceFilename, serviceInvoiceHeadline } from "@/lib/service-invoice-pdf";
 import { generateInvoicePdf } from "@/lib/invoice-pdf";
@@ -157,8 +158,22 @@ const LONG_WORDS = "Beurre de karité pur non raffiné extra long ".repeat(60);
 const LONG_NO_SPACE = "X".repeat(900);
 
 describe("facture PDF de commande", () => {
-  it("la ligne de pied contient le site : « AfricAkani — Cotonou, Bénin · africakani.com · contact@africakani.com · WhatsApp … »", () => {
-    assert.match(INVOICE_FOOTER_LINE, /^AfricAkani — Cotonou, Bénin · africakani\.com · contact@africakani\.com · WhatsApp \+1 514 867 3738$/);
+  it("la ligne de pied : adresse du fournisseur (Rimouski, Québec, Canada), site, courriel et WhatsApp", () => {
+    assert.match(INVOICE_FOOTER_LINE, /^AfricAkani — Rimouski, Québec, Canada · africakani\.com · contact@africakani\.com · WhatsApp \+1 514 867 3738$/);
+  });
+  it("adresse du fournisseur : une seule source (Rimouski, Québec, Canada), jamais d'adresse de rue, plus « Cotonou, Bénin »", () => {
+    assert.equal(SUPPLIER_ADDRESS, "Rimouski, Québec, Canada");
+    assert.ok(read("src/lib/invoice-pdf-parts.ts").includes("${SUPPLIER_ADDRESS}"));
+    assert.ok(read("src/components/layout/footer.tsx").includes("{SUPPLIER_ADDRESS}"));
+    const walk = (dir: string, hits: string[] = []) => {
+      for (const e of fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true })) {
+        const rel = `${dir}/${e.name}`;
+        if (e.isDirectory()) walk(rel, hits);
+        else if (/\.(ts|tsx)$/.test(e.name) && /Cotonou,\s*Bénin/.test(read(rel))) hits.push(rel);
+      }
+      return hits;
+    };
+    assert.deepEqual(walk("src"), []);
   });
   it("le pied et le slogan sont dans le PDF, centrés, le slogan sous le pied", async () => {
     const pdf = await generateInvoicePdf(order([{ productName: "Beurre de karité", quantity: 2, unitPrice: 12500, lineTotal: 25000 }]));
@@ -168,8 +183,9 @@ describe("facture PDF de commande", () => {
     const foot = lines.find((l) => l.text.includes("africakani.com"));
     const slogan = lines.find((l) => l.text === RECEIPT_SLOGAN);
     assert.ok(foot && slogan, "pied et slogan présents");
-    assert.ok(foot.text.includes("Cotonou, Bénin · africakani.com · contact@africakani.com · WhatsApp +1 514 867 3738"), foot.text);
+    assert.ok(foot.text.includes("Rimouski, Québec, Canada · africakani.com · contact@africakani.com · WhatsApp +1 514 867 3738"), foot.text);
     assert.ok(slogan.yMin > foot.yMin, "le slogan est sous le pied");
+    assert.ok(foot.xMin >= 40 && foot.xMax <= 555, `la ligne de pied tient dans la page (${foot.xMin}–${foot.xMax})`);
     assert.ok(Math.abs(centerOf(foot) - PAGE_CENTER) < 3 && Math.abs(centerOf(slogan) - PAGE_CENTER) < 3, `centrés ${centerOf(foot)} ${centerOf(slogan)}`);
   });
   for (const [label, name] of [["une ligne d'article très longue (avec espaces)", LONG_WORDS], ["un nom d'article de 900 caractères sans espace", LONG_NO_SPACE]] as const) {
@@ -257,9 +273,10 @@ describe("facture PDF d'un dossier de service", () => {
       "Prix total", "100 000 FCFA", "Acompte prévu", "Total payé", "36 666 FCFA", "Reste à payer", "63 334 FCFA",
       "Prochaine échéance : mise en ligne — 30 décembre 2026 — 31 666 FCFA",
       "TRANCHES À VENIR", "Tranche 3", "30 janvier 2027",
-      PROVIDER_LINE, CONTRACT_REFUND_LINE, RECEIPT_SLOGAN, "africakani.com",
+      PROVIDER_LINE, CONTRACT_REFUND_LINE, RECEIPT_SLOGAN, "Rimouski, Québec, Canada · africakani.com · contact@africakani.com · WhatsApp +1 514 867 3738",
     ]) assert.ok(text.includes(expected), `absent : ${expected}\n${text}`);
     assert.ok(!/dossier soldé/.test(text), "ne laisse pas croire que tout est payé");
+    assert.ok(!/Cotonou/.test(text), "plus d'adresse à Cotonou dans le pied");
     assert.ok(!text.includes("SP-WAIT"), "un paiement non confirmé n'est pas listé comme payé");
   });
 

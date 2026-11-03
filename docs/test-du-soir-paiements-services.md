@@ -37,10 +37,10 @@ Aucun vrai paiement. Ne rien faire sur le site de production. Ne jamais écrire 
 
 ## 4 bis. Reçu, facture et slogan
 - Le reçu par courriel : le détail (n°, marchand, montants, situation) est à gauche ; en dessous, « Service fourni par AkaGest. », les conditions de remboursement, la phrase sur le lien WhatsApp et « Pour toute question… » sont **centrés**, puis la ligne de pied, puis le bandeau vert « Votre Satisfaction, Notre Réussite ! ».
-- 1er reçu (acompte) : règles de l'acompte. Reçus suivants : seulement « Conditions de remboursement : celles de votre contrat signé. » (c'est voulu).
+- Reçu qui règle l'acompte prévu du dossier : règles de l'acompte. Tous les autres reçus : seulement « Conditions de remboursement : celles de votre contrat signé. » (c'est voulu). Avec un acompte prévu de 0, aucun reçu n'a les règles de l'acompte.
 - Si l'échéance suivante est déjà passée, le reçu écrit « échéance dépassée » à la place de la date.
-- Page privée du client : bouton **Télécharger la facture (PDF)**. Même bouton dans le dossier côté admin. Le PDF : en-tête vert, « FACTURE », numéro du dossier, « Facturé à », paiements confirmés, total payé, reste à payer, tranches à venir, mentions centrées, ligne de pied avec africakani.com, slogan. Le lien privé n'y figure jamais. Tant que le dossier n'est pas soldé, le titre dit « Facture — solde restant à payer : … ».
-- Facture d'une commande (suivi ou « Mon compte ») : la ligne de pied contient africakani.com ; elle reste sur une seule page.
+- Page privée du client : bouton **Télécharger la facture (PDF)**. Même bouton dans le dossier côté admin. Le PDF : en-tête vert, « FACTURE », numéro du dossier, « Facturé à », paiements confirmés, total payé, reste à payer, tranches à venir, mentions centrées, ligne de pied « AfricAkani — Rimouski, Québec, Canada · africakani.com · contact@africakani.com · WhatsApp +1 514 867 3738 », slogan. Le lien privé n'y figure jamais. Tant que le dossier n'est pas soldé, le titre dit « Facture — solde restant à payer : … ».
+- Facture d'une commande (suivi ou « Mon compte ») : la ligne de pied contient « Rimouski, Québec, Canada » et africakani.com ; elle reste sur une seule page. Le pied de page du site donne aussi « Rimouski, Québec, Canada » dans Contact.
 
 ## 5. Boutiques clientes (menu **Boutiques clientes**)
 - Ajouter une boutique fictive (domaine fictif).

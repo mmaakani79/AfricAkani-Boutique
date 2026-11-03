@@ -198,6 +198,20 @@ describe("courriels envoyés pour de vrai vers un faux Resend", () => {
     }
   });
 
+  it("la signature « L'équipe AfricAkani » reste centrée (commande, paiement confirmé, contrat signé), le détail à gauche", () => {
+    for (const label of ["commande-client", "paiement-confirme", "contrat-client"]) {
+      const html = sent.find((s) => s.label === label)!.mail.html;
+      const start = html.indexOf('data-receipt-closing="1"');
+      assert.ok(start > 0, `${label} : bloc de conclusion`);
+      const closing = html.slice(start, html.indexOf("</td>", start));
+      assert.match(closing, /align="center"/, label);
+      assert.match(closing, /text-align:center/, label);
+      assert.ok(closing.includes("L&#39;équipe AfricAkani"), `${label} : signature dans le bloc centré`);
+      assert.ok(html.indexOf("Bonjour") < start, `${label} : le corps du message est avant, à gauche`);
+      assert.ok(!/text-align:center/.test(html.slice(html.indexOf("Bonjour") - 80, html.indexOf("Bonjour") + 40)), label);
+    }
+  });
+
   it("la confirmation de contrat garde sa signature avant le slogan", () => {
     const mail = sent.find((s) => s.label === "contrat-client")!.mail;
     assert.ok(mail.text.trimEnd().endsWith(`L'équipe AfricAkani\n\n${EXACT}`));

@@ -5,6 +5,7 @@
 import PDFDocument from "pdfkit";
 import fs from "node:fs";
 import path from "node:path";
+import { SUPPLIER_ADDRESS } from "./business-info";
 import { RECEIPT_SLOGAN } from "./receipt-slogan";
 
 export type PdfDoc = InstanceType<typeof PDFDocument>;
@@ -18,8 +19,7 @@ export const LINE = "#e5ded0";
 export const MARGIN_X = 50;
 
 /** The footer line of every invoice: the shop, its site and its contacts. */
-export const INVOICE_FOOTER_LINE =
-  "AfricAkani — Cotonou, Bénin · africakani.com · contact@africakani.com · WhatsApp +1 514 867 3738";
+export const INVOICE_FOOTER_LINE = `AfricAkani — ${SUPPLIER_ADDRESS} · africakani.com · contact@africakani.com · WhatsApp +1 514 867 3738`;
 
 /** Room kept at the bottom of every page for the footer line and the slogan. */
 export const ENDING_RESERVED = 100;

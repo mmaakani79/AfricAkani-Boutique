@@ -326,6 +326,8 @@ const count = async (page) => Number(((await page.getByTestId("catalogue-count")
     const r = await submit(page, { pay: null });
     const sl = page.getByTestId("receipt-slogan");
     const box = await sl.boundingBox();
+    { const foot = (await page.locator("footer").first().innerText()).replace(/\s+/g, " ");
+      check("[confirmation de commande 320 px] le pied de page donne l'adresse « Rimouski, Québec, Canada » (et plus « Cotonou, Bénin » comme adresse), WhatsApp +1 514 inchangé", foot.includes("Rimouski, Québec, Canada") && !foot.includes("Cotonou, Bénin") && foot.includes("WhatsApp +1 514 867 3738"), foot.slice(0, 400)); }
     check("[confirmation de commande 320 px] slogan lisible : visible, dans l'écran, rien ne déborde", r.outcome === "confirmed" && (await sl.count()) === 1 && !!box && box.x >= 0 && box.x + box.width <= 320.5 && (await noOverflow(page)), `${r.outcome} ${JSON.stringify(box)}`);
     await sl.scrollIntoViewIfNeeded(); await page.screenshot({ path: `${OUT}/zones-confirmation-320.png`, fullPage: true });
     await ctx.close(); }

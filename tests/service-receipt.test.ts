@@ -8,6 +8,7 @@ import {
   PROVIDER_LINE,
   SERVICE_REPLY_TO,
   TRACKING_LINK_LINE,
+  depositPaymentIds,
   isDepositReceipt,
   receiptRecipient,
   receiptWhatsappHref,
@@ -51,7 +52,7 @@ const pay = (id: string, amount: number, confirmedAt: string | null, over: Parti
   ...over,
 });
 
-function fullAccount(payments: ServicePayment[], adjustments: ServiceAccountFull["adjustments"] = []): ServiceAccountFull {
+function fullAccount(payments: ServicePayment[], adjustments: ServiceAccountFull["adjustments"] = [], deposit = 5000): ServiceAccountFull {
   const account = {
     id: "SV-TEST0001",
     createdAt: "2026-10-30T10:00:00.000Z",
@@ -61,7 +62,7 @@ function fullAccount(payments: ServicePayment[], adjustments: ServiceAccountFull
     clientPhone: "+229 97 00 00 01",
     contractId: null,
     total: 100_000,
-    deposit: 5000,
+    deposit,
     installmentsCount: 3,
     goLiveDate: null,
     followupAmount: 3000,
@@ -69,7 +70,7 @@ function fullAccount(payments: ServicePayment[], adjustments: ServiceAccountFull
     note: "",
     tokenCreatedAt: "2026-10-30T10:00:00.000Z",
   };
-  const state = computeAccountState({ total: 100_000, deposit: 5000, installments: INSTALLMENTS, payments, adjustments, today: "2026-11-10" });
+  const state = computeAccountState({ total: 100_000, deposit, installments: INSTALLMENTS, payments, adjustments, today: "2026-11-10" });
   return { account, installments: INSTALLMENTS, payments, adjustments, state };
 }
 
@@ -194,12 +195,72 @@ describe("message WhatsApp", () => {
   });
 });
 
-describe("l'acompte est le premier paiement confirmé", () => {
+describe("l'acompte est le paiement qui règle l'acompte prévu du dossier", () => {
   it("détecte le reçu de l'acompte, pas celui des tranches ni d'un paiement non confirmé", () => {
     const list = [TRANCHE, DEPOSIT, pay("SP-WAIT", 100, null)];
-    assert.equal(isDepositReceipt(list, "SP-DEPOSIT1"), true);
-    assert.equal(isDepositReceipt(list, "SP-TRANCHE1"), false);
-    assert.equal(isDepositReceipt(list, "SP-WAIT"), false);
+    assert.equal(isDepositReceipt(list, "SP-DEPOSIT1", 5000), true);
+    assert.equal(isDepositReceipt(list, "SP-TRANCHE1", 5000), false);
+    assert.equal(isDepositReceipt(list, "SP-WAIT", 5000), false);
+  });
+});
+
+describe("règles de l'acompte liées à l'acompte PRÉVU du dossier (pas au premier paiement confirmé)", () => {
+  const rules = (full: ServiceAccountFull, id: string) => {
+    const r = buildReceiptForPayment(full, id)!;
+    const t = allText(r);
+    return { deposit: DEPOSIT_REFUND_LINES.every((l) => t.includes(l)), contract: t.includes(CONTRACT_REFUND_LINE), r };
+  };
+  const classic = fullAccount([DEPOSIT, TRANCHE]);
+
+  it("cas habituel : l'acompte de 5 000 a les règles de l'acompte, la tranche renvoie au contrat", () => {
+    assert.deepEqual([rules(classic, "SP-DEPOSIT1").deposit, rules(classic, "SP-DEPOSIT1").contract], [true, false]);
+    assert.deepEqual([rules(classic, "SP-TRANCHE1").deposit, rules(classic, "SP-TRANCHE1").contract], [false, true]);
+  });
+
+  it("le premier paiement confirmé n'est PAS l'acompte prévu (acompte prévu : 0) : aucun reçu n'a les règles de l'acompte", () => {
+    const full = fullAccount([DEPOSIT, TRANCHE], [], 0);
+    for (const id of ["SP-DEPOSIT1", "SP-TRANCHE1"]) {
+      const x = rules(full, id);
+      assert.deepEqual([x.deposit, x.contract], [false, true], id);
+      assert.ok(!allText(x.r).includes("Remboursement de l'acompte"), id);
+    }
+  });
+
+  it("l'acompte se règle en deux versements (2 000 puis 3 000) : les deux reçus ont les règles de l'acompte, le suivant non", () => {
+    const full = fullAccount([
+      pay("SP-A1", 2000, "2026-11-02T09:00:00.000Z"),
+      pay("SP-A2", 3000, "2026-11-04T09:00:00.000Z"),
+      pay("SP-B1", 10_000, "2026-11-06T09:00:00.000Z"),
+    ]);
+    assert.equal(rules(full, "SP-A1").deposit, true);
+    assert.equal(rules(full, "SP-A2").deposit, true);
+    assert.deepEqual([rules(full, "SP-B1").deposit, rules(full, "SP-B1").contract], [false, true]);
+  });
+
+  it("un paiement soumis ou rejeté d'abord ne compte pas : le premier paiement CONFIRMÉ règle l'acompte", () => {
+    const rejected = pay("SP-REJ", 5000, null, { status: "rejete", rejectedAt: "2026-11-01T12:00:00.000Z", rejectReason: "introuvable" });
+    const full = fullAccount([rejected, pay("SP-WAIT", 5000, null), DEPOSIT, TRANCHE]);
+    assert.equal(rules(full, "SP-DEPOSIT1").deposit, true);
+    assert.equal(rules(full, "SP-TRANCHE1").deposit, false);
+  });
+
+  it("le premier paiement confirmé est plus grand que l'acompte (une tranche réglée avant l'acompte) : il règle l'acompte prévu, le suivant renvoie au contrat", () => {
+    const full = fullAccount([TRANCHE, pay("SP-LATE5K", 5000, "2026-11-25T09:00:00.000Z")]);
+    assert.equal(rules(full, "SP-TRANCHE1").deposit, true, "ce paiement couvre l'acompte prévu (premier élément de l'échéancier)");
+    const next = rules(full, "SP-LATE5K");
+    assert.deepEqual([next.deposit, next.contract], [false, true]);
+  });
+
+  it("la règle suit l'acompte prévu au moment du paiement : une réduction qui l'annule ne change pas les reçus déjà émis", () => {
+    const before = rules(classic, "SP-DEPOSIT1").deposit;
+    const reduced = fullAccount([DEPOSIT, TRANCHE], [{ id: "A1", accountId: "SV-TEST0001", createdAt: "2026-12-01T09:00:00.000Z", kind: "reduction", amount: 10_000, reason: "geste" }]);
+    assert.equal(rules(reduced, "SP-DEPOSIT1").deposit, before);
+  });
+
+  it("depositPaymentIds : ordre chronologique, quel que soit l'ordre de la liste", () => {
+    const ids = depositPaymentIds([TRANCHE, pay("SP-A2", 3000, "2026-11-04T09:00:00.000Z"), pay("SP-A1", 2000, "2026-11-02T09:00:00.000Z")], 5000);
+    assert.deepEqual([...ids].sort(), ["SP-A1", "SP-A2"]);
+    assert.equal(depositPaymentIds([TRANCHE], 0).size, 0);
   });
 });
 

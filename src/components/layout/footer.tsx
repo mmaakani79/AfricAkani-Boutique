@@ -9,6 +9,7 @@ import { isStripeConfigured } from "@/lib/stripe";
 import { isPaypalConfigured } from "@/lib/paypal";
 import { getMobileMoneyConfig } from "@/lib/mobile-money-db";
 import { LEGAL_PAGE_LIST } from "@/lib/legal-content";
+import { SUPPLIER_ADDRESS } from "@/lib/business-info";
 
 const LINKS = [
   { href: "/notre-histoire#benin", label: "Bénin & Afrique de l'Ouest" },
@@ -83,7 +84,7 @@ export async function Footer() {
           <ul className="space-y-3 text-sm">
             <li className="flex items-start gap-2">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-gold-light" />
-              <span>Cotonou, Bénin</span>
+              <span>{SUPPLIER_ADDRESS}</span>
             </li>
             <li className="flex items-start gap-2">
               <Mail className="mt-0.5 h-4 w-4 shrink-0 text-brand-gold-light" />

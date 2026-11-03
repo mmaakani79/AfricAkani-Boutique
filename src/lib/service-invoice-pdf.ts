@@ -6,7 +6,7 @@
 import type { ServiceAccountFull } from "./service-accounts-db";
 import { ADJUSTMENT_KIND_LABELS, SCHEDULE_STATUS_LABELS, todayInBenin } from "./service-account-math";
 import { dateFr, fcfa } from "./service-format";
-import { CONTRACT_REFUND_LINE, PROVIDER_LINE, isDepositReceipt } from "./service-receipt";
+import { CONTRACT_REFUND_LINE, PROVIDER_LINE, depositPaymentIds } from "./service-receipt";
 import { PAYMENT_METHOD_LABELS } from "./service-validation";
 import {
   GOLD,
@@ -93,6 +93,7 @@ export async function generateServiceInvoicePdf(
   const confirmed = payments
     .filter((p) => p.status === "confirme")
     .sort((a, b) => (a.confirmedAt ?? "").localeCompare(b.confirmedAt ?? "") || a.createdAt.localeCompare(b.createdAt));
+  const depositIds = depositPaymentIds(confirmed, state.schedule.find((l) => l.kind === "deposit")?.amount ?? 0);
   const col = { date: marginX, kind: marginX + 85, method: marginX + 160, receipt: marginX + 290, amount: marginX + contentWidth - 90 };
   if (confirmed.length === 0) {
     cell("Aucun paiement confirmé pour le moment.", marginX, y, contentWidth, { color: MUTED });
@@ -109,7 +110,7 @@ export async function generateServiceInvoicePdf(
       y = ensureSpace(doc, y, 20);
       const method = PAYMENT_METHOD_LABELS[p.method] ?? p.method;
       cell(dateFr(p.paidOn ?? (p.confirmedAt ?? p.createdAt).slice(0, 10)), col.date, y, 80);
-      cell(isDepositReceipt(payments, p.id) ? "Acompte" : "Paiement", col.kind, y, 70);
+      cell(depositIds.has(p.id) ? "Acompte" : "Paiement", col.kind, y, 70);
       cell(p.mmOperator ? `${method} (${p.mmOperator})` : method, col.method, y, 125);
       cell(p.id, col.receipt, y, 120);
       cell(fcfa(p.amount), col.amount, y, 90, { align: "right", bold: true });
