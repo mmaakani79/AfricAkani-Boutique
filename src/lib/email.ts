@@ -4,13 +4,28 @@ import { formatOrderAddress, type OrderDetail, type OrderSummary } from "./order
 import type { SignedContract } from "./contracts-db";
 import { ZONES, formatPrice } from "@/data/zones";
 import { getAdminNotifyEmail, getPaymentTimeoutHours, getSiteUrl } from "./order-config";
-import { renderEmailHtml } from "./email-html";
+import { renderEmailHtml, renderReceiptEmail } from "./email-html";
 import { withInlineLogo } from "./email-logo";
 import {
   buildAdminContractEmail,
   buildClientContractEmail,
   contractPdfFilename,
 } from "./contract-email-content";
+
+const TEAM_SIGNATURE = "L'équipe AfricAkani";
+
+/** The team signature that ends a customer e-mail is the (centered) closing block of its receipt; the rest is the detail. */
+function splitSignature(lines: string[]): { lines: string[]; closing: string[] } {
+  if (lines[lines.length - 1] !== TEAM_SIGNATURE) return { lines, closing: [] };
+  const detail = lines.slice(0, -1);
+  while (detail.length > 0 && detail[detail.length - 1] === "") detail.pop();
+  return { lines: detail, closing: [TEAM_SIGNATURE] };
+}
+
+function closingArgs(lines: string[]): [string[], string[]] {
+  const { lines: detail, closing } = splitSignature(lines);
+  return [detail, closing];
+}
 
 /** What the senders below use of Resend: every message goes through here, so the
  *  logo is attached inline to every e-mail whose HTML shows it. */
@@ -189,6 +204,71 @@ export async function sendAdminNewOrderNotification(
   }
 }
 
+/** Tells the admin that a client has just submitted a payment on their private page (Mobile Money, to confirm).
+ *  The message never contains the client's secret link. */
+export async function sendAdminServicePaymentSubmitted(params: {
+  accountId: string;
+  merchantName: string;
+  paymentId: string;
+  amount: number;
+  operator: string | null;
+  phone: string | null;
+  transactionId: string | null;
+  remainingAfter: number;
+}): Promise<void> {
+  const resend = getClient();
+  const to = getAdminNotifyEmail();
+  const siteUrl = getSiteUrl();
+  const amount = formatPrice(params.amount, "bj");
+  const subject = `Paiement de service à confirmer — ${params.merchantName} — ${amount}`;
+  const lines = [
+    `${params.merchantName} vient de soumettre un paiement de ${amount}.`,
+    "",
+    `Dossier : ${params.accountId}`,
+    `Paiement : ${params.paymentId}`,
+    `Moyen : Mobile Money${params.operator ? ` (${params.operator})` : ""} — en attente de votre confirmation`,
+    `Numéro du client : ${params.phone ?? "—"}`,
+    `Identifiant de transaction : ${params.transactionId ?? "—"}`,
+    `Reste à payer si vous confirmez : ${formatPrice(Math.max(0, params.remainingAfter), "bj")}`,
+    "",
+    "Vérifiez la réception sur votre compte Mobile Money, puis confirmez ou rejetez le paiement :",
+    `${siteUrl}/admin/services/${params.accountId}`,
+  ];
+  const { error } = await resend.emails.send({
+    from: getFrom(),
+    to,
+    subject,
+    text: lines.join("\n"),
+    html: renderEmailHtml(subject, lines),
+  });
+  if (error) {
+    throw new Error(resendErrorMessage(error));
+  }
+}
+
+/** The receipt of a confirmed service payment. Sent from the shop's own sender; the client's replies go to `replyTo`. */
+export async function sendServicePaymentReceipt(params: {
+  to: string;
+  replyTo: string;
+  subject: string;
+  /** The receipt detail (left-aligned). */
+  lines: string[];
+  /** The concluding block before the slogan (centered). */
+  closing?: string[];
+}): Promise<void> {
+  const resend = getClient();
+  const { error } = await resend.emails.send({
+    from: getFrom(),
+    to: params.to,
+    replyTo: params.replyTo,
+    subject: params.subject,
+    ...renderReceiptEmail(params.subject, params.lines, params.closing),
+  });
+  if (error) {
+    throw new Error(resendErrorMessage(error));
+  }
+}
+
 export async function sendCustomerOrderConfirmation(
   order: OrderDetail
 ): Promise<void> {
@@ -225,8 +305,7 @@ export async function sendCustomerOrderConfirmation(
     from: getFrom(),
     to: order.customerEmail,
     subject,
-    text: lines.join("\n"),
-    html: renderEmailHtml(subject, lines),
+    ...renderReceiptEmail(subject, ...closingArgs(lines)),
   });
 
   if (error) {
@@ -339,8 +418,7 @@ export async function sendCustomerPaymentConfirmed(
     from: getFrom(),
     to: order.customerEmail,
     subject,
-    text: lines.join("\n"),
-    html: renderEmailHtml(subject, lines),
+    ...renderReceiptEmail(subject, ...closingArgs(lines)),
   });
 
   if (error) {
@@ -419,8 +497,7 @@ export async function sendContractClientEmail(
     to,
     replyTo: getAdminNotifyEmail(),
     subject,
-    text: lines.join("\n"),
-    html: renderEmailHtml(subject, lines),
+    ...renderReceiptEmail(subject, ...closingArgs(lines)),
     attachments: [{ filename: contractPdfFilename(contract), content: pdf }],
   });
 

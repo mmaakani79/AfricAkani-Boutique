@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { Download, Trash2, Phone, Mail, Send } from "lucide-react";
 import type { ContractEmailTarget, SignedContract } from "@/lib/contracts-db";
+import { formatSignedAtUtc } from "@/lib/contract-datetime";
 import { contractEmailStatus, type ContractEmailStatus } from "@/lib/contract-email-delivery";
 import { deleteSignedContractAction, resendContractEmailAction } from "./actions";
 
@@ -126,13 +127,7 @@ function ContractRow({ contract }: { contract: SignedContract }) {
           </div>
           <p className="mt-1 text-xs text-ink/50">
             {contract.id} —{" "}
-            {new Date(contract.createdAt).toLocaleDateString("fr-FR", {
-              day: "2-digit",
-              month: "long",
-              year: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+            {formatSignedAtUtc(contract.createdAt)}
           </p>
         </div>
         <div className="flex flex-wrap gap-1.5">

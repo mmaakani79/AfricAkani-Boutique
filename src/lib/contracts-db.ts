@@ -163,6 +163,13 @@ export async function getSignedContractById(
   return rows[0] ? rowToSignedContract(rows[0]) : null;
 }
 
+/** Whether a signed contract exists, without reading it (used by the client's private payment page). */
+export async function signedContractExists(id: string): Promise<boolean> {
+  await ensureSchema();
+  const { rowCount } = await getPool().query("SELECT 1 FROM signed_contracts WHERE id = $1", [id]);
+  return (rowCount ?? 0) > 0;
+}
+
 export async function deleteSignedContract(id: string): Promise<boolean> {
   await ensureSchema();
   const { rowCount } = await getPool().query(

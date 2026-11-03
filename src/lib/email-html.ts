@@ -1,3 +1,4 @@
+import { RECEIPT_SLOGAN, withReceiptSlogan } from "./receipt-slogan";
 import {
   EMAIL_LOGO_CID,
   EMAIL_LOGO_DISPLAY_HEIGHT,
@@ -23,7 +24,39 @@ function escapeHtml(value: string): string {
  * header is white because the logo's name is dark green and gold: unreadable on
  * the green brand colour.
  */
-export function renderEmailHtml(subject: string, lines: string[]): string {
+export function renderEmailHtml(
+  subject: string,
+  lines: string[],
+  { receipt = false, closing = [] }: { receipt?: boolean; closing?: string[] } = {}
+): string {
+  // Receipts and confirmations end with the slogan, below the existing mentions.
+  const sloganRow = receipt
+    ? `
+            <tr>
+              <td data-receipt-slogan="1" align="center" style="padding:18px 20px 22px;background:#0e5a44;color:#ffffff;font-size:18px;line-height:1.4;font-weight:bold;">
+                ${escapeHtml(RECEIPT_SLOGAN)}
+              </td>
+            </tr>`
+    : "";
+
+  // The closing block of a receipt (provider line, refund terms, tracking sentence…) is centered, like
+  // the footer line and the slogan; the detail above it stays left-aligned.
+  const closingBlock =
+    receipt && closing.length > 0
+      ? `
+                <div data-receipt-closing="1" align="center" style="margin-top:18px;text-align:center;">
+${closing
+  .map((line) =>
+    line === ""
+      ? '                  <div style="height:10px;line-height:10px;font-size:1px;">&nbsp;</div>'
+      : `                  <p style="margin:0 0 6px;text-align:center;white-space:pre-line;">${escapeHtml(line)}</p>`
+  )
+  .join("\n")}
+                </div>`
+      : "";
+  const footerAlign = receipt ? 'align="center" ' : "";
+  const footerStyle = receipt ? "text-align:center;" : "";
+
   const body = lines
     .map((line) =>
       line === ""
@@ -60,21 +93,39 @@ export function renderEmailHtml(subject: string, lines: string[]): string {
             </tr>
             <tr>
               <td style="padding:28px 28px 8px;font-size:14px;line-height:1.6;">
-                ${body}
+                ${body}${closingBlock}
               </td>
             </tr>
             <tr>
-              <td style="padding:16px 28px 24px;border-top:1px solid #e0b65a55;">
-                <p style="margin:0;font-size:11px;color:#1c1c1a99;">
+              <td ${footerAlign}style="padding:16px 28px 24px;border-top:1px solid #e0b65a55;${footerStyle}">
+                <p style="margin:0;font-size:11px;color:#1c1c1a99;${footerStyle}">
                   AfricAkani — Boutique généraliste africaine — produits naturels, mode,
                   technologie et bien plus, livrés en Afrique de l'Ouest, au Canada et aux États-Unis.
                 </p>
               </td>
-            </tr>
+            </tr>${sloganRow}
           </table>
         </td>
       </tr>
     </table>
   </body>
 </html>`;
+}
+
+/**
+ * The e-mail body of a RECEIPT or CONFIRMATION sent to a client: `lines` is the detail (left-aligned),
+ * `closing` the concluding block that comes right before the slogan (centered in the HTML). The plain
+ * text and the HTML both end with the slogan. Every such e-mail is built with this, never with
+ * `renderEmailHtml` alone.
+ */
+export function renderReceiptEmail(
+  subject: string,
+  lines: string[],
+  closing: string[] = []
+): { text: string; html: string } {
+  const all = closing.length > 0 ? [...lines, "", ...closing] : lines;
+  return {
+    text: withReceiptSlogan(all).join("\n"),
+    html: renderEmailHtml(subject, lines, { receipt: true, closing }),
+  };
 }

@@ -12,9 +12,12 @@ import {
   FileSignature,
   Tags,
   PackageOpen,
+  Handshake,
+  Store,
 } from "lucide-react";
 import { logoutAction } from "../actions";
 import { getShopStatus } from "@/lib/site-settings-db";
+import { countPendingServicePayments } from "@/lib/service-accounts-db";
 import { PreviewBanner } from "@/components/admin/preview-banner";
 
 // Reads the live shop status from the database on every request — without
@@ -29,6 +32,9 @@ export default async function AdminProtectedLayout({
   const shopClosed = await getShopStatus()
     .then((s) => s.closed)
     .catch(() => null);
+
+  // Payments of services waiting for the admin's confirmation (a failed read never breaks the admin).
+  const pendingServicePayments = await countPendingServicePayments().catch(() => 0);
 
   return (
     <div className="min-h-screen bg-ivory">
@@ -119,6 +125,28 @@ export default async function AdminProtectedLayout({
             className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-brand-green-dark hover:bg-ivory"
           >
             <FileSignature className="h-4 w-4" /> Contrats signés
+          </Link>
+          <Link
+            href="/admin/services"
+            data-testid="nav-services"
+            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-brand-green-dark hover:bg-ivory"
+          >
+            <Handshake className="h-4 w-4" /> Services
+            {pendingServicePayments > 0 && (
+              <span
+                data-testid="nav-services-badge"
+                className="rounded-full bg-amber-500 px-1.5 text-[11px] font-bold text-white"
+              >
+                {pendingServicePayments}
+              </span>
+            )}
+          </Link>
+          <Link
+            href="/admin/boutiques"
+            data-testid="nav-boutiques"
+            className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-brand-green-dark hover:bg-ivory"
+          >
+            <Store className="h-4 w-4" /> Boutiques clientes
           </Link>
           <Link
             href="/admin/reglages"

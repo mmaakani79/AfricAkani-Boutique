@@ -26,7 +26,7 @@ describe("les 5 emplacements disent « livrés en Afrique de l'Ouest, au Canada 
     "src/components/layout/footer.tsx",
     "src/app/notre-histoire/page.tsx",
     "src/app/layout.tsx",
-    "src/lib/invoice-pdf.ts",
+    "src/lib/invoice-pdf-parts.ts",
     "src/lib/email-html.ts",
   ]) {
     it(file, () => assert.ok(read(file).includes(SENTENCE), `phrase absente de ${file}`));

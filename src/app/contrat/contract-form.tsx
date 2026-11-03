@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CheckCircle2, FileText, Download } from "lucide-react";
 import { CONTRACT_SERVICES, isValidContractId } from "@/lib/contract-types";
 import { SignaturePad, type SignaturePadHandle } from "@/components/shop/signature-pad";
+import { ReceiptSlogan } from "@/components/receipt-slogan";
 import { submitSignedContractAction } from "./actions";
 
 function Field({
@@ -175,6 +176,7 @@ export function ContractForm({ contractText }: { contractText: string }) {
         >
           Retour à l&rsquo;accueil
         </Link>
+        <ReceiptSlogan />
       </div>
     );
   }
@@ -190,6 +192,7 @@ export function ContractForm({ contractText }: { contractText: string }) {
         </div>
         <label className="mt-3 flex items-start gap-2 text-xs font-semibold text-ink/70">
           <input
+            id="accept-contract"
             type="checkbox"
             checked={readAccepted}
             onChange={(e) => setReadAccepted(e.target.checked)}
@@ -282,8 +285,19 @@ export function ContractForm({ contractText }: { contractText: string }) {
           {submitting ? "Envoi…" : "Signer et envoyer le contrat"}
         </button>
         {!readAccepted && (
-          <p className="text-center text-[11px] text-ink/40">
-            Cochez la case ci-dessus pour activer la signature.
+          <p className="text-center text-[11px] text-ink/60" data-testid="accept-hint">
+            <a
+              href="#accept-contract"
+              onClick={(e) => {
+                e.preventDefault();
+                const box = document.getElementById("accept-contract");
+                box?.scrollIntoView({ behavior: "smooth", block: "center" });
+                box?.focus({ preventScroll: true });
+              }}
+              className="font-semibold text-brand-green-dark underline underline-offset-2"
+            >
+              Cochez d&rsquo;abord la case «&nbsp;J&rsquo;ai lu et j&rsquo;accepte les termes du contrat&nbsp;» (sous le texte du contrat)
+            </a>
           </p>
         )}
         {error && (

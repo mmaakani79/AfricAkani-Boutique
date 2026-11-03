@@ -13,6 +13,7 @@ import {
   buildLoginDiagnostic,
   classifyLoginError,
   isPreviewDiagnosticEnabled,
+  loginRefusalMessage,
   type LoginRefusal,
 } from "@/lib/login-diagnostic";
 import { isAdminAuthed } from "@/lib/admin-api-auth";
@@ -82,14 +83,13 @@ export async function loginAction(
   } catch (err) {
     await logPreviewLoginRefusal(password, "erreur-interne", err);
     return {
-      error:
-        "ADMIN_PASSWORD n'est pas configuré côté serveur. Ajoutez cette variable d'environnement.",
+      error: loginRefusalMessage({ resultat: "erreur-interne", cause: classifyLoginError(err), env: process.env }),
     };
   }
 
   if (!ok) {
     await logPreviewLoginRefusal(password, "mot-de-passe-incorrect");
-    return { error: "Mot de passe incorrect." };
+    return { error: loginRefusalMessage({ resultat: "mot-de-passe-incorrect", env: process.env }) };
   }
 
   const token = await createSessionToken();

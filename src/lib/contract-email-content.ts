@@ -60,7 +60,7 @@ export function buildClientContractEmail(contract: SignedContract): ContractEmai
   const lines = [
     `Bonjour${firstName ? ` ${firstName}` : ""},`,
     "",
-    `Nous avons bien reçu votre contrat de prestation de services, signé électroniquement le ${formatContractDate(contract.createdAt)}.`,
+    `Nous avons bien reçu votre contrat de prestation de services, signé électroniquement le ${formatContractDate(contract.createdAt)} (heure de Cotonou).`,
     `Référence du contrat : ${contract.id}`,
     contract.services.length > 0 ? `Service(s) : ${contract.services.join(", ")}` : null,
     "",

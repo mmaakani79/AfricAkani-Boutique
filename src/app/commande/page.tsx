@@ -36,6 +36,7 @@ import { getPaymentTimeoutHours } from "@/lib/order-config";
 import { computeShippingFee, isBelowMinOrder } from "@/lib/shipping-calc";
 import { countriesForZone } from "@/lib/zone-countries";
 import { CartZoneNotice } from "@/components/shop/cart-zone-notice";
+import { ReceiptSlogan } from "@/components/receipt-slogan";
 
 const PAYMENT_TIMEOUT_HOURS = getPaymentTimeoutHours();
 
@@ -490,6 +491,7 @@ export default function CommandePage() {
           >
             Suivre ma commande
           </Link>
+          <ReceiptSlogan />
         </div>
       </Container>
     );

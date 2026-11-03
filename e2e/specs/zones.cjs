@@ -318,6 +318,18 @@ const count = async (page) => Number(((await page.getByTestId("catalogue-count")
     await fillForm(page, { zone: "bj", country: "Togo" });
     const r = await submit(page, { pay: null });
     check("[WhatsApp (Bénin)] pays « Togo » (zone Afrique de l'Ouest) : accepté et enregistré", r.outcome === "confirmed" && lastOrder()?.country === "Togo", `${r.outcome} ${r.error} ${JSON.stringify(lastOrder())}`);
+    const sl = page.getByTestId("receipt-slogan");
+    check("[confirmation de commande ordinateur] le slogan « Votre Satisfaction, Notre Réussite ! » est tout en bas, visible, après les liens", (await sl.count()) === 1 && (await sl.innerText()).trim() === "Votre Satisfaction, Notre Réussite !" && (await sl.isVisible()) && (await page.locator("main").evaluate((m) => { const slogan = m.querySelector('[data-testid="receipt-slogan"]'); return [...m.querySelectorAll("a,p,h1")].filter((e) => e !== slogan).every((e) => e.getBoundingClientRect().bottom <= slogan.getBoundingClientRect().top + 1); })));
+    await ctx.close(); }
+  { const { ctx, page } = await newCheckout(browser, "mobile320", "bj");
+    await fillForm(page, { zone: "bj", country: "Togo" });
+    const r = await submit(page, { pay: null });
+    const sl = page.getByTestId("receipt-slogan");
+    const box = await sl.boundingBox();
+    { const foot = (await page.locator("footer").first().innerText()).replace(/\s+/g, " ");
+      check("[confirmation de commande 320 px] le pied de page donne l'adresse « Québec, Canada » (et plus « Cotonou, Bénin » comme adresse), WhatsApp +1 514 inchangé", foot.includes("Québec, Canada") && !foot.includes("Cotonou, Bénin") && foot.includes("WhatsApp +1 514 867 3738"), foot.slice(0, 400)); }
+    check("[confirmation de commande 320 px] slogan lisible : visible, dans l'écran, rien ne déborde", r.outcome === "confirmed" && (await sl.count()) === 1 && !!box && box.x >= 0 && box.x + box.width <= 320.5 && (await noOverflow(page)), `${r.outcome} ${JSON.stringify(box)}`);
+    await sl.scrollIntoViewIfNeeded(); await page.screenshot({ path: `${OUT}/zones-confirmation-320.png`, fullPage: true });
     await ctx.close(); }
   { const { ctx, page } = await newCheckout(browser, "desktop", "us");
     await fillForm(page, { zone: "us", country: "États-Unis" });

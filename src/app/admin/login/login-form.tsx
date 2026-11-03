@@ -6,9 +6,18 @@ import { loginAction, type ActionState } from "../actions";
 
 const initialState: ActionState = {};
 
+// Without a connection the submission itself fails: show a message instead of an error page.
+async function loginOrExplain(previous: ActionState, formData: FormData): Promise<ActionState> {
+  try {
+    return await loginAction(previous, formData);
+  } catch {
+    return { error: "Connexion impossible : vérifiez votre réseau puis réessayez." };
+  }
+}
+
 export function LoginForm() {
   const [state, formAction, pending] = useActionState(
-    loginAction,
+    loginOrExplain,
     initialState
   );
 

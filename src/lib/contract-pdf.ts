@@ -2,6 +2,8 @@ import PDFDocument from "pdfkit";
 import fs from "node:fs";
 import path from "node:path";
 import type { SignedContract } from "./contracts-db";
+import { formatSignedAtUtc } from "./contract-datetime";
+import { pdfSafeText } from "./pdf-text";
 
 const GREEN = "#0e5a44";
 const GOLD = "#c9962c";
@@ -37,7 +39,7 @@ function addField(
   value: string
 ): number {
   doc.font("Helvetica-Bold").fontSize(8.5).fillColor(GOLD).text(label, marginX, y, { width });
-  doc.font("Helvetica").fontSize(10).fillColor(INK).text(value || "—", marginX, doc.y + 1, { width });
+  doc.font("Helvetica").fontSize(10).fillColor(INK).text(pdfSafeText(value) || "—", marginX, doc.y + 1, { width });
   return doc.y + 10;
 }
 
@@ -81,19 +83,13 @@ export async function generateContractPdf(contract: SignedContract): Promise<Buf
     .text("CONTRAT", marginX, 40, { width: contentWidth, align: "right" });
 
   let y = 132;
-  doc.fillColor(INK).font("Helvetica-Bold").fontSize(12).text(`N° ${contract.id}`, marginX, y);
+  doc.fillColor(INK).font("Helvetica-Bold").fontSize(12).text(pdfSafeText(`N° ${contract.id}`), marginX, y);
   doc
     .fillColor(MUTED)
     .font("Helvetica")
     .fontSize(9)
     .text(
-      `Signé le ${new Date(contract.createdAt).toLocaleDateString("fr-FR", {
-        day: "2-digit",
-        month: "long",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })}`,
+      pdfSafeText(`Signé le ${formatSignedAtUtc(contract.createdAt)}`),
       marginX,
       y + 18
     );
@@ -122,12 +118,12 @@ export async function generateContractPdf(contract: SignedContract): Promise<Buf
   y = Math.max(leftBottom3, rightBottom3);
 
   doc.font("Helvetica-Bold").fontSize(8.5).fillColor(GOLD).text("DESCRIPTION DU BESOIN", marginX, y, { width: contentWidth });
-  doc.font("Helvetica").fontSize(10).fillColor(INK).text(contract.projectDescription || "—", marginX, doc.y + 1, { width: contentWidth });
+  doc.font("Helvetica").fontSize(10).fillColor(INK).text(pdfSafeText(contract.projectDescription) || "—", marginX, doc.y + 1, { width: contentWidth });
   y = doc.y + 10;
 
   if (contract.notes) {
     doc.font("Helvetica-Bold").fontSize(8.5).fillColor(GOLD).text("PRÉCISIONS COMPLÉMENTAIRES", marginX, y, { width: contentWidth });
-    doc.font("Helvetica").fontSize(10).fillColor(INK).text(contract.notes, marginX, doc.y + 1, { width: contentWidth });
+    doc.font("Helvetica").fontSize(10).fillColor(INK).text(pdfSafeText(contract.notes), marginX, doc.y + 1, { width: contentWidth });
     y = doc.y + 10;
   }
 
@@ -136,7 +132,7 @@ export async function generateContractPdf(contract: SignedContract): Promise<Buf
   y = 50;
   doc.font("Helvetica-Bold").fontSize(11).fillColor(GREEN).text("TEXTE DU CONTRAT ACCEPTÉ PAR LE CLIENT", marginX, y);
   y = doc.y + 12;
-  doc.font("Helvetica").fontSize(9.5).fillColor(INK).text(contract.contractTextSnapshot, marginX, y, {
+  doc.font("Helvetica").fontSize(9.5).fillColor(INK).text(pdfSafeText(contract.contractTextSnapshot), marginX, y, {
     width: contentWidth,
     align: "left",
     lineGap: 2,
@@ -144,7 +140,11 @@ export async function generateContractPdf(contract: SignedContract): Promise<Buf
   y = doc.y + 24;
 
   // --- Signature ---
-  if (y > doc.page.height - 160) {
+  // The whole signature box must fit on the page, with its title, its caption and the footer: otherwise it
+  // goes to a new page (a drawing is never cut at the bottom of a page).
+  const SIGNATURE_MAX_WIDTH = 240;
+  const SIGNATURE_MAX_HEIGHT = 90;
+  if (y + 14 + 24 + SIGNATURE_MAX_HEIGHT + 40 > doc.page.height - 80) {
     doc.addPage();
     y = 50;
   }
@@ -156,8 +156,14 @@ export async function generateContractPdf(contract: SignedContract): Promise<Buf
   const signatureBuffer = decodeSignature(contract.signatureDataUrl);
   if (signatureBuffer) {
     try {
-      doc.image(signatureBuffer, marginX, y, { width: 220, height: 90, fit: [220, 90] });
-      y += 96;
+      // Drawn at its own proportions, entirely inside the box (never stretched, never cropped).
+      // Size read from the PNG header (width and height, 4 bytes each, right after the "IHDR" tag).
+      const imageWidth = signatureBuffer.readUInt32BE(16);
+      const imageHeight = signatureBuffer.readUInt32BE(20);
+      if (!imageWidth || !imageHeight) throw new Error("PNG sans dimensions");
+      const scale = Math.min(SIGNATURE_MAX_WIDTH / imageWidth, SIGNATURE_MAX_HEIGHT / imageHeight);
+      doc.image(signatureBuffer, marginX, y, { width: imageWidth * scale, height: imageHeight * scale });
+      y += imageHeight * scale + 10;
     } catch {
       doc.font("Helvetica").fontSize(9).fillColor(MUTED).text("(Signature illisible)", marginX, y);
       y += 20;
@@ -168,19 +174,14 @@ export async function generateContractPdf(contract: SignedContract): Promise<Buf
     .fontSize(8.5)
     .fillColor(MUTED)
     .text(
-      `Signé électroniquement par ${contract.clientName} le ${new Date(contract.createdAt).toLocaleDateString("fr-FR", {
-        day: "2-digit",
-        month: "long",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })}.`,
+      pdfSafeText(`Signé électroniquement par ${contract.clientName} le ${formatSignedAtUtc(contract.createdAt)}.`),
       marginX,
       y,
       { width: contentWidth }
     );
 
-  // --- Footer ---
+  // --- Footer --- (inside the bottom margin: lifted, or PDFKit would open a page just for this line)
+  doc.page.margins.bottom = 0;
   doc
     .font("Helvetica")
     .fontSize(8.5)

@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import { Eraser } from "lucide-react";
 
 export interface SignaturePadHandle {
@@ -8,19 +8,73 @@ export interface SignaturePadHandle {
   clear: () => void;
 }
 
-/** A drawable signature box (mouse + touch/pen) — draws at 2x the CSS size
- *  for a crisp export, and exposes `getDataUrl()`/`clear()` via ref. */
+/** Height of the drawing area, in CSS pixels, on phones and computers alike. */
+export const SIGNATURE_PAD_HEIGHT = 200;
+/** The drawing is kept at 2x the CSS size (3x on very sharp screens) for a crisp export… */
+const MAX_PIXEL_RATIO = 3;
+/** …but never wider than this many pixels, so the saved PNG stays light. */
+const MAX_EXPORT_WIDTH = 1400;
+const STROKE_WIDTH_CSS = 2.5;
+
+/**
+ * A drawable signature box (mouse + touch/pen). The drawing surface has exactly the proportions of the
+ * box on screen, so what is drawn is what is exported: the whole box, never cropped, never stretched.
+ * It exposes `getDataUrl()` / `clear()` via ref.
+ */
 export const SignaturePad = forwardRef<SignaturePadHandle>(function SignaturePad(_props, ref) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawingRef = useRef(false);
   const hasDrawnRef = useRef(false);
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
+  const pixelRatioRef = useRef(2);
   const [isEmpty, setIsEmpty] = useState(true);
 
   function getContext(): CanvasRenderingContext2D | null {
     const canvas = canvasRef.current;
     return canvas ? canvas.getContext("2d") : null;
   }
+
+  // Gives the drawing surface the size of the box on screen (and keeps it that way when the width changes,
+  // for instance when a phone is turned): what was already drawn is carried over, scaled evenly.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    function fit() {
+      const el = canvasRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      if (rect.width < 1 || rect.height < 1) return;
+      const dpr = Math.min(MAX_PIXEL_RATIO, Math.max(2, Math.ceil(window.devicePixelRatio || 1)));
+      const ratio = Math.min(dpr, MAX_EXPORT_WIDTH / rect.width);
+      const width = Math.round(rect.width * ratio);
+      const height = Math.round(rect.height * ratio);
+      pixelRatioRef.current = ratio;
+      if (el.width === width && el.height === height) return;
+      let previous: HTMLCanvasElement | null = null;
+      if (hasDrawnRef.current && el.width > 0 && el.height > 0) {
+        previous = document.createElement("canvas");
+        previous.width = el.width;
+        previous.height = el.height;
+        previous.getContext("2d")?.drawImage(el, 0, 0);
+      }
+      el.width = width;
+      el.height = height;
+      if (previous) {
+        const scale = Math.min(width / previous.width, height / previous.height);
+        const w = previous.width * scale;
+        const h = previous.height * scale;
+        el.getContext("2d")?.drawImage(previous, (width - w) / 2, (height - h) / 2, w, h);
+      }
+    }
+    fit();
+    const observer = typeof ResizeObserver !== "undefined" ? new ResizeObserver(fit) : null;
+    observer?.observe(canvas);
+    window.addEventListener("resize", fit);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", fit);
+    };
+  }, []);
 
   function pointFromEvent(e: React.PointerEvent<HTMLCanvasElement>) {
     const canvas = canvasRef.current!;
@@ -43,7 +97,7 @@ export const SignaturePad = forwardRef<SignaturePadHandle>(function SignaturePad
     if (!ctx || !last) return;
     const point = pointFromEvent(e);
     ctx.strokeStyle = "#0e5a44";
-    ctx.lineWidth = 3;
+    ctx.lineWidth = STROKE_WIDTH_CSS * pixelRatioRef.current;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.beginPath();
@@ -80,16 +134,18 @@ export const SignaturePad = forwardRef<SignaturePadHandle>(function SignaturePad
       <div className="relative overflow-hidden rounded-xl border border-brand-green/20 bg-ivory">
         <canvas
           ref={canvasRef}
-          width={600}
-          height={200}
-          className="h-[100px] w-full touch-none"
+          data-testid="signature-canvas"
+          width={1200}
+          height={400}
+          style={{ height: SIGNATURE_PAD_HEIGHT }}
+          className="block w-full touch-none"
           onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerUp}
+          onPointerCancel={handlePointerUp}
         />
         {isEmpty && (
-          <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-ink/30">
+          <p className="pointer-events-none absolute inset-0 flex items-center justify-center px-4 text-center text-xs text-ink/30">
             Signez ici avec la souris ou le doigt
           </p>
         )}
