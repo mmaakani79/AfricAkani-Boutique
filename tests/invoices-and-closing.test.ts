@@ -158,11 +158,11 @@ const LONG_WORDS = "Beurre de karité pur non raffiné extra long ".repeat(60);
 const LONG_NO_SPACE = "X".repeat(900);
 
 describe("facture PDF de commande", () => {
-  it("la ligne de pied : adresse du fournisseur (Rimouski, Québec, Canada), site, courriel et WhatsApp", () => {
-    assert.match(INVOICE_FOOTER_LINE, /^AfricAkani — Rimouski, Québec, Canada · africakani\.com · contact@africakani\.com · WhatsApp \+1 514 867 3738$/);
+  it("la ligne de pied : adresse du fournisseur (Québec, Canada), site, courriel et WhatsApp", () => {
+    assert.match(INVOICE_FOOTER_LINE, /^AfricAkani — Québec, Canada · africakani\.com · contact@africakani\.com · WhatsApp \+1 514 867 3738$/);
   });
-  it("adresse du fournisseur : une seule source (Rimouski, Québec, Canada), jamais d'adresse de rue, plus « Cotonou, Bénin »", () => {
-    assert.equal(SUPPLIER_ADDRESS, "Rimouski, Québec, Canada");
+  it("adresse du fournisseur : une seule source (Québec, Canada), jamais de ville ni d'adresse de rue, plus « Cotonou, Bénin »", () => {
+    assert.equal(SUPPLIER_ADDRESS, "Québec, Canada");
     assert.ok(read("src/lib/invoice-pdf-parts.ts").includes("${SUPPLIER_ADDRESS}"));
     assert.ok(read("src/components/layout/footer.tsx").includes("{SUPPLIER_ADDRESS}"));
     const walk = (dir: string, hits: string[] = []) => {
@@ -175,6 +175,21 @@ describe("facture PDF de commande", () => {
     };
     assert.deepEqual(walk("src"), []);
   });
+  it("aucun nom de ville dans l'adresse du fournisseur : le nom de ville écarté n'est écrit nulle part dans le dépôt", () => {
+    const banned = "Rimou" + "ski";
+    const hits: string[] = [];
+    const walk = (dir: string) => {
+      for (const e of fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true })) {
+        if (["node_modules", ".next", ".git"].includes(e.name)) continue;
+        const rel = dir ? `${dir}/${e.name}` : e.name;
+        if (e.isDirectory()) walk(rel);
+        else if (/\.(ts|tsx|md|cjs|mjs|json|sh)$/.test(e.name) && read(rel).includes(banned)) hits.push(rel);
+      }
+    };
+    walk("");
+    assert.deepEqual(hits, []);
+    assert.ok(!SUPPLIER_ADDRESS.includes(banned) && !INVOICE_FOOTER_LINE.includes(banned));
+  });
   it("le pied et le slogan sont dans le PDF, centrés, le slogan sous le pied", async () => {
     const pdf = await generateInvoicePdf(order([{ productName: "Beurre de karité", quantity: 2, unitPrice: 12500, lineTotal: 25000 }]));
     assert.equal(pdfPages(pdf), 1);
@@ -183,7 +198,7 @@ describe("facture PDF de commande", () => {
     const foot = lines.find((l) => l.text.includes("africakani.com"));
     const slogan = lines.find((l) => l.text === RECEIPT_SLOGAN);
     assert.ok(foot && slogan, "pied et slogan présents");
-    assert.ok(foot.text.includes("Rimouski, Québec, Canada · africakani.com · contact@africakani.com · WhatsApp +1 514 867 3738"), foot.text);
+    assert.ok(foot.text.includes("Québec, Canada · africakani.com · contact@africakani.com · WhatsApp +1 514 867 3738"), foot.text);
     assert.ok(slogan.yMin > foot.yMin, "le slogan est sous le pied");
     assert.ok(foot.xMin >= 40 && foot.xMax <= 555, `la ligne de pied tient dans la page (${foot.xMin}–${foot.xMax})`);
     assert.ok(Math.abs(centerOf(foot) - PAGE_CENTER) < 3 && Math.abs(centerOf(slogan) - PAGE_CENTER) < 3, `centrés ${centerOf(foot)} ${centerOf(slogan)}`);
@@ -273,7 +288,7 @@ describe("facture PDF d'un dossier de service", () => {
       "Prix total", "100 000 FCFA", "Acompte prévu", "Total payé", "36 666 FCFA", "Reste à payer", "63 334 FCFA",
       "Prochaine échéance : mise en ligne — 30 décembre 2026 — 31 666 FCFA",
       "TRANCHES À VENIR", "Tranche 3", "30 janvier 2027",
-      PROVIDER_LINE, CONTRACT_REFUND_LINE, RECEIPT_SLOGAN, "Rimouski, Québec, Canada · africakani.com · contact@africakani.com · WhatsApp +1 514 867 3738",
+      PROVIDER_LINE, CONTRACT_REFUND_LINE, RECEIPT_SLOGAN, "Québec, Canada · africakani.com · contact@africakani.com · WhatsApp +1 514 867 3738",
     ]) assert.ok(text.includes(expected), `absent : ${expected}\n${text}`);
     assert.ok(!/dossier soldé/.test(text), "ne laisse pas croire que tout est payé");
     assert.ok(!/Cotonou/.test(text), "plus d'adresse à Cotonou dans le pied");
