@@ -10,7 +10,7 @@ Ces scripts pilotent un vrai navigateur (Chromium, via Playwright) sur une **cop
 
 ```bash
 npm ci                       # une fois
-e2e/run.sh                   # tout : build + les 7 specs (≈ 20 minutes)
+e2e/run.sh                   # tout : build + les 9 specs (≈ 20 minutes)
 e2e/run.sh legal             # un seul spec (noms des fichiers de specs/, sans .cjs)
 e2e/run.sh legal zones       # plusieurs
 E2E_SKIP_BUILD=1 e2e/run.sh legal    # réutilise le build .next existant (plus rapide)
@@ -44,6 +44,8 @@ Réglages possibles : `E2E_PORT` (4603), `E2E_MOCK_PORT` (4810), `E2E_OUT`, `E2E
 | `boutiques` | Interrupteur des boutiques clientes (côté AfricAkani) : liste, statuts, adresse de statut signée (clé vérifiée, falsification refusée), suspension avec motif obligatoire et confirmation, réactivation en un clic, conservation de 6 mois avant suppression, journal immuable, maintenance, hors ligne, 320–1280 px |
 | `connexion` | Connexion à l'admin : mauvais mot de passe refusé avec message, bon mot de passe accepté, message clair hors ligne, 320–1280 px |
 | `contrat` | Contrat signé : signature dessinée dans le navigateur (mobile et ordinateur), PDF de l'administration : texte à retours Windows sans « Ð », lignes vides conservées, accents / guillemets / espaces insécables, zone de dessin de 200 px, capture complète sans aplatissement, signature entière en proportions, message-lien de la case d'acceptation, fuseau « UTC » affiché dans le PDF et la liste d'administration, texte stocké intact |
+| `pied-de-page` | Pied de page du site : « Québec, Canada » dans Contact et dans « Le cœur de l'opération », plus de « Cotonou », 320–1280 px, hors ligne |
+| `acompte` | Reçus d'un dossier de service : règles de l'acompte liées à l'acompte prévu (4 999 + 1, 5 000, 5 001, une tranche payée d'abord), reçu renvoyé identique |
 | `zones` | Visibilité des produits par zone, lien direct « Non disponible dans votre zone », panier au changement de zone, pays de livraison cohérent avec la zone pour WhatsApp / Mobile Money / Stripe / PayPal (commandes falsifiées refusées, aucun appel au fournisseur), 320–1280 px, hors ligne |
 
 `tools/measure.cjs` n'est pas un spec : il mesure le poids du JavaScript et les temps d'affichage

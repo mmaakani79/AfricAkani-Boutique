@@ -34,30 +34,57 @@ export interface ReceiptPayment {
   createdAt: string;
 }
 
+/** A refund recorded on the file (an adjustment of kind "remboursement"): `at` is the ISO instant it was recorded. */
+export interface DepositRefund {
+  amount: number;
+  at: string;
+}
+
 /**
  * The payments that make up the PLANNED DEPOSIT of the file. Confirmed payments are applied in the order
- * they were confirmed (like the schedule does): a payment belongs to the deposit while the amount received
- * before it is still below the planned deposit. So the receipt of a payment carries the deposit rules only
- * when that payment pays (part of) the deposit; with a planned deposit of 0 no receipt does. Every other
- * receipt only refers to the signed contract.
+ * they were confirmed, exactly like the schedule does: a payment belongs to the deposit while what the
+ * client has paid before it (refunds taken off) is still below the planned deposit. So the receipt of a
+ * payment carries the deposit rules only when that payment pays (part of) the deposit; with a planned
+ * deposit of 0 no receipt does. Every other receipt only refers to the signed contract.
+ *
+ *  - exactly the deposit (5 000): that payment; the next one is a normal payment;
+ *  - below (4 999): that payment, and the next one that completes the deposit;
+ *  - above (5 001, or a whole tranche): one payment, which pays the deposit first and the rest on the tranches;
+ *  - a deposit that was refunded is owed again: the payment that pays it again carries the rules again.
  */
-export function depositPaymentIds(payments: ReceiptPayment[], depositPlanned: number): Set<string> {
+export function depositPaymentIds(
+  payments: ReceiptPayment[],
+  depositPlanned: number,
+  refunds: DepositRefund[] = []
+): Set<string> {
   const ids = new Set<string>();
-  const confirmed = payments
-    .filter((p) => p.confirmedAt)
-    .sort((a, b) => (a.confirmedAt as string).localeCompare(b.confirmedAt as string) || a.createdAt.localeCompare(b.createdAt));
-  let received = 0;
-  for (const p of confirmed) {
-    if (received >= depositPlanned) break;
-    ids.add(p.id);
-    received += p.amount;
+  type Step = { at: string; created: string; payment: ReceiptPayment | null; refund: number };
+  const steps: Step[] = [
+    ...payments
+      .filter((p) => p.confirmedAt)
+      .map((p) => ({ at: p.confirmedAt as string, created: p.createdAt, payment: p, refund: 0 })),
+    ...refunds.map((r) => ({ at: r.at, created: r.at, payment: null, refund: r.amount })),
+  ].sort((a, b) => a.at.localeCompare(b.at) || (a.payment ? 0 : 1) - (b.payment ? 0 : 1) || a.created.localeCompare(b.created));
+  let paid = 0;
+  for (const step of steps) {
+    if (!step.payment) {
+      paid = Math.max(0, paid - step.refund);
+      continue;
+    }
+    if (paid < depositPlanned) ids.add(step.payment.id);
+    paid += step.payment.amount;
   }
   return ids;
 }
 
 /** True when the receipt of `paymentId` carries the deposit refund rules (see `depositPaymentIds`). */
-export function isDepositReceipt(payments: ReceiptPayment[], paymentId: string, depositPlanned: number): boolean {
-  return depositPaymentIds(payments, depositPlanned).has(paymentId);
+export function isDepositReceipt(
+  payments: ReceiptPayment[],
+  paymentId: string,
+  depositPlanned: number,
+  refunds: DepositRefund[] = []
+): boolean {
+  return depositPaymentIds(payments, depositPlanned, refunds).has(paymentId);
 }
 
 /** A due date already behind the day the receipt is issued is not shown as a date: it is overdue. */

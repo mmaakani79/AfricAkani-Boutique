@@ -94,7 +94,11 @@ export async function generateServiceInvoicePdf(
   const confirmed = payments
     .filter((p) => p.status === "confirme")
     .sort((a, b) => (a.confirmedAt ?? "").localeCompare(b.confirmedAt ?? "") || a.createdAt.localeCompare(b.createdAt));
-  const depositIds = depositPaymentIds(confirmed, state.schedule.find((l) => l.kind === "deposit")?.amount ?? 0);
+  const depositIds = depositPaymentIds(
+    confirmed,
+    state.schedule.find((l) => l.kind === "deposit")?.amount ?? 0,
+    adjustments.filter((a) => a.kind === "remboursement").map((a) => ({ amount: a.amount, at: a.createdAt }))
+  );
   const col = { date: marginX, kind: marginX + 85, method: marginX + 160, receipt: marginX + 290, amount: marginX + contentWidth - 90 };
   if (confirmed.length === 0) {
     cell("Aucun paiement confirmé pour le moment.", marginX, y, contentWidth, { color: MUTED });

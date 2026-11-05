@@ -24,22 +24,24 @@ export function buildReceiptForPayment(full: ServiceAccountFull, paymentId: stri
   if (!payment || payment.status !== "confirme" || !payment.confirmedAt) return null;
   const at = payment.confirmedAt;
   const asOfPayments = full.payments.filter((p) => p.status !== "confirme" || (p.confirmedAt ?? "") <= at);
+  const asOfAdjustments = full.adjustments.filter((a) => a.createdAt <= at);
   const state = computeAccountState({
     total: full.account.total,
     deposit: full.account.deposit,
     installments: full.installments,
     payments: asOfPayments,
-    adjustments: full.adjustments.filter((a) => a.createdAt <= at),
+    adjustments: asOfAdjustments,
     today: todayInBenin(),
   });
   // The deposit rules go with the PLANNED deposit of the file (first line of its schedule), not with "the first payment".
   const depositPlanned = state.schedule.find((l) => l.kind === "deposit")?.amount ?? 0;
+  const asOfRefunds = asOfAdjustments.filter((a) => a.kind === "remboursement").map((a) => ({ amount: a.amount, at: a.createdAt }));
   return buildServiceReceipt({
     merchantName: full.account.merchantName,
     clientName: full.account.clientName,
     payment,
     state,
-    deposit: isDepositReceipt(asOfPayments, paymentId, depositPlanned),
+    deposit: isDepositReceipt(asOfPayments, paymentId, depositPlanned, asOfRefunds),
     asOf: todayInBenin(Date.parse(at)),
   });
 }
