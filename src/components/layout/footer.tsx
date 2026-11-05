@@ -119,7 +119,7 @@ export async function Footer() {
               <p className="text-sm font-bold text-brand-gold-light">
                 Le cœur de l&rsquo;opération
               </p>
-              <p className="text-sm text-ivory/70">Cotonou — Bénin</p>
+              <p className="text-sm text-ivory/70">{SUPPLIER_ADDRESS}</p>
             </div>
           </div>
 
